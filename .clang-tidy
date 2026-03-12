@@ -23,12 +23,8 @@ WarningsAsErrors: ""
 HeaderFilterRegex: ""
 FormatStyle: none
 
-# Clang uses MSVC headers by default when VS is installed. Our project uses MinGW.
-# ExtraArgsBefore is a fallback when compile_commands.json isn't patched.
-ExtraArgsBefore:
-  - --driver-mode=gcc
-  - --target=x86_64-w64-windows-gnu
-  - --gcc-toolchain=C:/PROGRA~1/mingw64
+# Note: On Windows, compile_commands.json is patched by CMake (patch-compile-commands-for-clang target)
+# with MinGW toolchain flags.
 CheckOptions:
   - key: modernize-use-using.IgnoreMacros
     value: "true"
