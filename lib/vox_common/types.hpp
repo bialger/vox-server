@@ -2,9 +2,15 @@
 #define VOX_COMMON_TYPES_HPP
 
 #include <cstdint>
-#include <expected>
 #include <string>
 #include <variant>
+
+#if defined(__clang__)
+// clangd with MinGW toolchain doesn't resolve std::expected; use polyfill for IDE only
+#include "lib/vox_common/expected_polyfill.hpp"
+#else
+#include <expected>
+#endif
 
 namespace vox::common {
 
