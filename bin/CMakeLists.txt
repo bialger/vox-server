@@ -8,17 +8,10 @@ if (NOT Boost_ROOT AND EXISTS $ENV{BOOSTROOT})
     set(Boost_ROOT $ENV{BOOSTROOT})
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(Boost REQUIRED)
 
-if (WIN32)
-    add_executable(${PROJECT_NAME} WIN32
-            main.cpp
-    )
-else ()
-    add_executable(${PROJECT_NAME}
-            main.cpp
-    )
-endif ()
+add_executable(${PROJECT_NAME}
+        main.cpp
+)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE qt boost)
+target_link_libraries(${PROJECT_NAME} PRIVATE boost)

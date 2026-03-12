@@ -1,14 +1,9 @@
-# QtBoostCMake
+# vox-server
 
-A C++ project template with Qt6, Boost, Google Tests and CMake that downloads and compiles Qt and Boost.
-The resulting app is an executable that can be run on a system without Qt and Boost.
+Server side of the Vox messenger, powered by Boost and C++.
 
-The main Qt6 configuration is found in the [correspondent](lib/qt/CMakeLists.txt) CMakeLists.txt file.
 The main Boost configuration is found in the [correspondent](lib/boost/CMakeLists.txt) CMakeLists.txt file.
 The main Google Tests configuration is found in the [correspondent](tests/CMakeLists.txt) CMakeLists.txt file.
-
-> Note that statically compiled Qt6 weights more than 5 GB.
-> The good thing is that user does not need whole compiled Qt6 with this configuration.
 
 ## Prerequisites
 
@@ -16,16 +11,11 @@ The main Google Tests configuration is found in the [correspondent](tests/CMakeL
 * Ninja
 * Git
 
-On Linux: `libgl1-mesa-dev libglu1-mesa-dev` and all dependencies are required.
-> Note that most of the libraries that match `*xcb*` and `*xkb*` may be required on Linux.
-
 ## How to build and run
 
 Run the following commands from the project directory.
 
 1. Create CMake cache
-
-This step may take a lot of time because it downloads and compiles Qt.
 
 ```shell
 cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
@@ -34,7 +24,7 @@ cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 2. Build executable target
 
 ```shell
-cmake --build cmake-build --target QtCMake
+cmake --build cmake-build --target vox-server
 ```
 
 3. Run executable target
@@ -42,11 +32,11 @@ cmake --build cmake-build --target QtCMake
 * On Windows:
 
 ```shell
-.\cmake-build\bin\QtCMake.exe
+.\cmake-build\bin\vox-server.exe
 ```
 
 * On *nix:
 
 ```shell
-./cmake-build/bin/QtCMake
+./cmake-build/bin/vox-server
 ```

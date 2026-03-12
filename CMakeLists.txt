@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(
-        QtBoostCMake
+        vox-server
         VERSION 1.0.0
-        DESCRIPTION "CMake project for easy Qt and Boost connection to other CMake projects"
+        DESCRIPTION "Server side of the Vox messenger, powered by Boost and C++"
         LANGUAGES CXX
 )
 

@@ -31,12 +31,6 @@ jobs:
 
       - uses: seanmiddleditch/gha-setup-ninja@master
 
-      - name: Install Qt dependencies for Linux
-        if: ${{ matrix.config.os == 'ubuntu-latest' }}
-        run: |
-          sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
-
       - name: Create CMake cache
         shell: bash
         run: |
@@ -45,33 +39,33 @@ jobs:
       - name: Build main target
         shell: bash
         run: |
-          cmake --build cmake-build-release --target QtBoostCMake
+          cmake --build cmake-build-release --target vox-server
 
       - name: Run program
         shell: bash
         working-directory: ./cmake-build-release/bin
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtBoostCMake.exe --help
+              ./vox-server.exe --help
           else 
-              ./QtBoostCMake --help
+              ./vox-server --help
           fi
       - name: Build tests
         shell: bash
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              cmake --build ./cmake-build-release --target QtBoostCMake_tests || echo "Built with errors"
+              cmake --build ./cmake-build-release --target vox-server_tests || echo "Built with errors"
           else
-              cmake --build ./cmake-build-release --target QtBoostCMake_tests
+              cmake --build ./cmake-build-release --target vox-server_tests
           fi
       - name: Run tests
         shell: bash
         working-directory: ./cmake-build-release/tests
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-              ./QtBoostCMake_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
+              ./vox-server_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
           else
-              ./QtBoostCMake_tests
+              ./vox-server_tests
           fi
 
   style-check:
@@ -158,11 +152,9 @@ jobs:
           sudo apt-get update
           # Install a C++23-capable toolchain and clang-tidy-19 for better C++23 support
           sudo apt-get -y install clang-19 clang-tidy-19
-      - name: Install Qt and Boost
+      - name: Install Boost
         run: |
           sudo apt update
-          sudo apt install libgl1-mesa-dev libglu1-mesa-dev
-          sudo apt install qt6-base-dev
           sudo apt install libboost-all-dev
 
       - name: Create CMake cache
