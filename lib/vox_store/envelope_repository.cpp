@@ -36,9 +36,10 @@ common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envel
     return {};
   } catch (const SQLite::Exception& e) {
     if (e.getErrorCode() == SQLITE_CONSTRAINT) {
-      return std::unexpected(common::Error{common::ErrorCode::kDuplicate, "Envelope already exists"});
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kDuplicate, .message = "Envelope already exists"});
     }
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -55,7 +56,7 @@ common::VoidResult EnvelopeRepository::AddDeliveryState(const common::EnvelopeId
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -96,7 +97,7 @@ common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& e
   stmt.bind(3, device_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Delivery state not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Delivery state not found"});
   }
   return {};
 }
@@ -112,7 +113,7 @@ common::VoidResult EnvelopeRepository::MarkAcked(const common::EnvelopeId& envel
   stmt.bind(3, device_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Delivery state not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Delivery state not found"});
   }
   return {};
 }

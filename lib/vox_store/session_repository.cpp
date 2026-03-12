@@ -35,7 +35,7 @@ common::VoidResult SessionRepository::CreateSession(const SessionRecord& session
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -90,7 +90,8 @@ common::VoidResult SessionRepository::RevokeSession(const std::string& session_i
   stmt.bind(2, session_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Session not found or already revoked"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kNotFound, .message = "Session not found or already revoked"});
   }
   return {};
 }

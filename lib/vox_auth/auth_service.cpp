@@ -18,12 +18,14 @@ AuthService::AuthService(store::UserRepository& users,
 
 common::Result<RegisterResponse> AuthService::Register(const RegisterRequest& request) {
   if (request.username.empty() || request.password_derived_value.empty()) {
-    return std::unexpected(common::Error{common::ErrorCode::kInvalidArgument, "Username and password are required"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Username and password are required"});
   }
 
   auto existing = users_.FindByUsername(request.username);
   if (existing) {
-    return std::unexpected(common::Error{common::ErrorCode::kAlreadyExists, "Username already taken"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Username already taken"});
   }
 
   auto hash_future = cpu_pool_.Submit([this, &request]() { return hasher_.Hash(request.password_derived_value); });
@@ -65,17 +67,17 @@ common::Result<RegisterResponse> AuthService::Register(const RegisterRequest& re
   }
 
   spdlog::info("User registered: {} ({})", request.username, user_id);
-  return RegisterResponse{user_id, *token_result};
+  return RegisterResponse{.user_id = user_id, .tokens = *token_result};
 }
 
 common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
   auto user = users_.FindByUsername(request.username);
   if (!user) {
-    return std::unexpected(common::Error{common::ErrorCode::kUnauthorized, "Invalid credentials"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Invalid credentials"});
   }
 
   if (user->disabled_at.has_value()) {
-    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "Account is disabled"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden, .message = "Account is disabled"});
   }
 
   auto verify_future = cpu_pool_.Submit([this, &request, &user]() {
@@ -84,7 +86,7 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
   bool valid = verify_future.get();
 
   if (!valid) {
-    return std::unexpected(common::Error{common::ErrorCode::kUnauthorized, "Invalid credentials"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Invalid credentials"});
   }
 
   auto now = Now();
@@ -107,7 +109,7 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
   }
 
   spdlog::info("User logged in: {} ({})", request.username, user->user_id);
-  return LoginResponse{user->user_id, *token_result};
+  return LoginResponse{.user_id = user->user_id, .tokens = *token_result};
 }
 
 common::VoidResult AuthService::Logout(const std::string& session_id) {

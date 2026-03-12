@@ -67,10 +67,10 @@ common::Result<store::SessionRecord> TokenManager::ValidateAccessToken(const std
   auto hash = HashToken(access_token);
   auto session = sessions_.FindByAccessToken(hash);
   if (!session) {
-    return std::unexpected(common::Error{common::ErrorCode::kUnauthorized, "Invalid access token"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Invalid access token"});
   }
   if (session->access_expires_at <= now) {
-    return std::unexpected(common::Error{common::ErrorCode::kExpired, "Access token expired"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kExpired, .message = "Access token expired"});
   }
   return *session;
 }
@@ -81,13 +81,14 @@ common::Result<TokenPair> TokenManager::RefreshTokens(const std::string& refresh
   auto hash = HashToken(refresh_token);
   auto session = sessions_.FindByRefreshToken(hash);
   if (!session) {
-    return std::unexpected(common::Error{common::ErrorCode::kUnauthorized, "Invalid refresh token"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Invalid refresh token"});
   }
   if (session->refresh_expires_at <= now) {
-    return std::unexpected(common::Error{common::ErrorCode::kExpired, "Refresh token expired"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kExpired, .message = "Refresh token expired"});
   }
   if (session->device_id != device_id) {
-    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "Device mismatch on refresh"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kForbidden, .message = "Device mismatch on refresh"});
   }
 
   auto revoke_result = sessions_.RevokeSession(session->session_id, now);

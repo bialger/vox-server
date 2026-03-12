@@ -66,11 +66,12 @@ common::Result<HashResult> PasswordHasher::Hash(const std::string& password_deri
                                  hash_bytes.size());
 
   if (result != ARGON2_OK) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal,
-                                         fmt::format("Argon2 hash failed: {}", argon2_error_message(result))});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInternal,
+                      .message = fmt::format("Argon2 hash failed: {}", argon2_error_message(result))});
   }
 
-  return HashResult{BytesToHex(salt_bytes), BytesToHex(hash_bytes)};
+  return HashResult{.salt = BytesToHex(salt_bytes), .verifier = BytesToHex(hash_bytes)};
 }
 
 bool PasswordHasher::Verify(const std::string& password_derived_value,

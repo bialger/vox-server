@@ -17,36 +17,39 @@ RelayService::RelayService(store::EnvelopeRepository& envelopes,
 
 common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageRequest& request) {
   if (request.ciphertext.empty()) {
-    return std::unexpected(common::Error{common::ErrorCode::kInvalidArgument, "Ciphertext is required"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Ciphertext is required"});
   }
 
   auto sender_device = devices_.FindById(request.sender_device_id);
   if (!sender_device) {
-    return std::unexpected(common::Error{common::ErrorCode::kUnauthorized, "Sender device not found"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Sender device not found"});
   }
 
   auto conv = conversations_.FindById(request.conversation_id);
   if (!conv) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Conversation not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Conversation not found"});
   }
 
   bool is_member = conversations_.IsUserInConversation(request.conversation_id, sender_device->user_id);
   if (!is_member) {
-    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "Sender is not a member of this conversation"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kForbidden, .message = "Sender is not a member of this conversation"});
   }
 
   if (conv->type == common::ConversationType::kChannel) {
     auto member = conversations_.GetMember(request.conversation_id, sender_device->user_id);
     if (!member || (member->role != common::MemberRole::kOwner && member->role != common::MemberRole::kAdmin)) {
-      return std::unexpected(
-          common::Error{common::ErrorCode::kForbidden, "Only admins/owners can publish to channels"});
+      return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden,
+                                           .message = "Only admins/owners can publish to channels"});
     }
   }
 
   auto envelope_id = request.envelope_id.empty() ? common::GenerateUuid() : request.envelope_id;
 
   if (envelopes_.CheckDuplicate(envelope_id)) {
-    return std::unexpected(common::Error{common::ErrorCode::kDuplicate, "Duplicate envelope"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kDuplicate, .message = "Duplicate envelope"});
   }
 
   auto now = Now();
@@ -99,7 +102,8 @@ common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageR
     }
   }
 
-  return SendMessageResponse{envelope_id, now, delivered_count};
+  return SendMessageResponse{
+      .envelope_id = envelope_id, .server_timestamp = now, .delivered_to_count = delivered_count};
 }
 
 std::vector<store::EnvelopeRecord> RelayService::SyncOffline(const common::DeviceId& device_id, std::size_t limit) {

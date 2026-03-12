@@ -29,9 +29,10 @@ common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
     return {};
   } catch (const SQLite::Exception& e) {
     if (e.getErrorCode() == SQLITE_CONSTRAINT) {
-      return std::unexpected(common::Error{common::ErrorCode::kAlreadyExists, "Username already taken"});
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Username already taken"});
     }
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -78,7 +79,7 @@ common::VoidResult UserRepository::DisableUser(const common::UserId& user_id, co
   stmt.bind(2, user_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "User not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "User not found"});
   }
   return {};
 }

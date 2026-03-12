@@ -58,7 +58,7 @@ ServerStats AdminService::GetServerStats() {
 common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
   auto user = users_.FindById(user_id);
   if (!user) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "User not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "User not found"});
   }
 
   auto now = Now();
@@ -102,7 +102,7 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
 
     txn.commit();
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 
   spdlog::info("User deleted: {} ({})", user->username, user_id);
@@ -112,7 +112,7 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
 common::VoidResult AdminService::ForceLogout(const common::UserId& user_id) {
   auto user = users_.FindById(user_id);
   if (!user) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "User not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "User not found"});
   }
   auto now = Now();
   auto revoke_result = sessions_.RevokeAllForUser(user_id, now);

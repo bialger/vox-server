@@ -38,9 +38,10 @@ common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) 
     return {};
   } catch (const SQLite::Exception& e) {
     if (e.getErrorCode() == SQLITE_CONSTRAINT) {
-      return std::unexpected(common::Error{common::ErrorCode::kAlreadyExists, "Device already registered"});
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Device already registered"});
     }
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -106,14 +107,14 @@ common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device
     txn.commit();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
 common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::DeviceId& device_id) {
   auto device = FindById(device_id);
   if (!device) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Device not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
   }
 
   PrekeyBundle bundle;
@@ -139,7 +140,7 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
                            "WHERE device_id = ? AND consumed_at IS NULL LIMIT 1");
   select.bind(1, device_id);
   if (!select.executeStep()) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "No available prekeys"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "No available prekeys"});
   }
 
   PrekeyRecord record;
@@ -156,7 +157,8 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
   update.bind(2, record.prekey_id);
   int rows = update.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Prekey already consumed (race)"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kNotFound, .message = "Prekey already consumed (race)"});
   }
 
   record.consumed_at = now;

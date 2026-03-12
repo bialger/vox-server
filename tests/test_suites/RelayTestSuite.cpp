@@ -53,7 +53,7 @@ RelayTestSuite::TestUser RelayTestSuite::CreateTestUser(const std::string& usern
     throw std::runtime_error("RegisterDevice failed");
   }
 
-  return {user.user_id, dev_id};
+  return {.user_id = user.user_id, .device_id = dev_id};
 }
 
 std::string RelayTestSuite::CreateTestConversation(vox::common::ConversationType type,

@@ -21,20 +21,24 @@ common::Result<InitUploadResponse> AttachmentService::InitUpload(const common::U
                                                                  std::int64_t file_size,
                                                                  const std::string& mime_hint) {
   if (file_size <= 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kInvalidArgument, "File size must be positive"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "File size must be positive"});
   }
   if (file_size > static_cast<std::int64_t>(config_.max_upload_size_bytes)) {
-    return std::unexpected(common::Error{common::ErrorCode::kQuotaExceeded, "File exceeds maximum upload size"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kQuotaExceeded, .message = "File exceeds maximum upload size"});
   }
 
   auto used = attachments_.GetStorageUsedByUser(user_id);
   if (used + file_size > static_cast<std::int64_t>(config_.max_storage_per_user_bytes)) {
-    return std::unexpected(common::Error{common::ErrorCode::kQuotaExceeded, "User storage quota exceeded"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kQuotaExceeded, .message = "User storage quota exceeded"});
   }
 
   bool is_member = conversations_.IsUserInConversation(conversation_id, user_id);
   if (!is_member) {
-    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "User is not a member of this conversation"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kForbidden, .message = "User is not a member of this conversation"});
   }
 
   auto now = Now();
@@ -58,7 +62,7 @@ common::Result<InitUploadResponse> AttachmentService::InitUpload(const common::U
     return std::unexpected(result.error());
   }
 
-  return InitUploadResponse{attachment_id, blob_path.string()};
+  return InitUploadResponse{.attachment_id = attachment_id, .blob_path = blob_path.string()};
 }
 
 common::VoidResult AttachmentService::WriteChunk(const common::AttachmentId& attachment_id,
@@ -66,10 +70,11 @@ common::VoidResult AttachmentService::WriteChunk(const common::AttachmentId& att
                                                  const std::string& data) {
   auto meta = attachments_.GetAttachmentMeta(attachment_id);
   if (!meta) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment not found"});
   }
   if (meta->upload_complete) {
-    return std::unexpected(common::Error{common::ErrorCode::kInvalidArgument, "Upload already complete"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Upload already complete"});
   }
 
   std::ofstream file(meta->blob_path, std::ios::binary | std::ios::in | std::ios::out);
@@ -77,12 +82,12 @@ common::VoidResult AttachmentService::WriteChunk(const common::AttachmentId& att
     file.open(meta->blob_path, std::ios::binary | std::ios::out);
   }
   if (!file.is_open()) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, "Cannot open blob file"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = "Cannot open blob file"});
   }
   file.seekp(offset);
   file.write(data.data(), static_cast<std::streamsize>(data.size()));
   if (!file.good()) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, "Failed to write chunk"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = "Failed to write chunk"});
   }
   return {};
 }
@@ -91,14 +96,16 @@ common::VoidResult AttachmentService::FinalizeUpload(const common::AttachmentId&
                                                      const std::string& ciphertext_hash) {
   auto meta = attachments_.GetAttachmentMeta(attachment_id);
   if (!meta) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment not found"});
   }
   if (meta->upload_complete) {
-    return std::unexpected(common::Error{common::ErrorCode::kInvalidArgument, "Upload already finalized"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Upload already finalized"});
   }
 
   if (!std::filesystem::exists(meta->blob_path)) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, "Blob file not found on disk"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInternal, .message = "Blob file not found on disk"});
   }
 
   return attachments_.MarkUploadComplete(attachment_id, ciphertext_hash);
@@ -108,15 +115,17 @@ common::Result<std::filesystem::path> AttachmentService::GetAttachment(const com
                                                                        const common::UserId& user_id) {
   auto meta = attachments_.GetAttachmentMeta(attachment_id);
   if (!meta) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment not found"});
   }
   if (!meta->upload_complete) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment upload not complete"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment upload not complete"});
   }
 
   bool is_member = conversations_.IsUserInConversation(meta->conversation_id, user_id);
   if (!is_member) {
-    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "Not authorized to access this attachment"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kForbidden, .message = "Not authorized to access this attachment"});
   }
 
   return std::filesystem::path(meta->blob_path);

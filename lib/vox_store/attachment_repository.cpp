@@ -36,7 +36,7 @@ common::VoidResult AttachmentRepository::CreateAttachmentMeta(const AttachmentRe
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -73,7 +73,7 @@ common::VoidResult AttachmentRepository::MarkUploadComplete(const common::Attach
   stmt.bind(2, attachment_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment not found"});
   }
   return {};
 }
@@ -84,7 +84,7 @@ common::VoidResult AttachmentRepository::DeleteAttachment(const common::Attachme
   stmt.bind(1, attachment_id);
   int rows = stmt.exec();
   if (rows == 0) {
-    return std::unexpected(common::Error{common::ErrorCode::kNotFound, "Attachment not found"});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Attachment not found"});
   }
   return {};
 }

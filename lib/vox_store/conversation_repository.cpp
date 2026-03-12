@@ -31,9 +31,10 @@ common::VoidResult ConversationRepository::CreateConversation(const Conversation
     return {};
   } catch (const SQLite::Exception& e) {
     if (e.getErrorCode() == SQLITE_CONSTRAINT) {
-      return std::unexpected(common::Error{common::ErrorCode::kAlreadyExists, "Conversation already exists"});
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Conversation already exists"});
     }
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -72,7 +73,7 @@ common::VoidResult ConversationRepository::AddMember(const common::ConversationI
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 
@@ -187,7 +188,7 @@ common::VoidResult ConversationRepository::Subscribe(const common::ConversationI
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
-    return std::unexpected(common::Error{common::ErrorCode::kInternal, e.what()});
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
 }
 

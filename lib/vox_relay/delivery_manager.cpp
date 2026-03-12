@@ -16,7 +16,8 @@ common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, c
 
   if (queue.pending.size() >= max_queue_per_device_) {
     spdlog::warn("Queue overflow for device {}, switching to offline", device_id);
-    return std::unexpected(common::Error{common::ErrorCode::kQueueFull, "Device queue full, use offline delivery"});
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kQueueFull, .message = "Device queue full, use offline delivery"});
   }
 
   queue.pending.push_back(envelope);
