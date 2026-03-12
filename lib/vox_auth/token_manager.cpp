@@ -90,7 +90,10 @@ common::Result<TokenPair> TokenManager::RefreshTokens(const std::string& refresh
     return std::unexpected(common::Error{common::ErrorCode::kForbidden, "Device mismatch on refresh"});
   }
 
-  sessions_.RevokeSession(session->session_id, now);
+  auto revoke_result = sessions_.RevokeSession(session->session_id, now);
+  if (!revoke_result) {
+    return std::unexpected(revoke_result.error());
+  }
   return IssueTokens(session->user_id, device_id, now);
 }
 

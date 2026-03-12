@@ -13,6 +13,8 @@ namespace {
 
 constexpr std::size_t kSaltLength = 16;
 constexpr std::size_t kHashLength = 32;
+constexpr int kHexRadix = 16;
+constexpr unsigned int kMaxUint8 = 255;
 
 std::string BytesToHex(const std::vector<std::uint8_t>& bytes) {
   std::string hex;
@@ -27,7 +29,7 @@ std::vector<std::uint8_t> HexToBytes(const std::string& hex) {
   std::vector<std::uint8_t> bytes;
   bytes.reserve(hex.size() / 2);
   for (std::size_t i = 0; i < hex.size(); i += 2) {
-    bytes.push_back(static_cast<std::uint8_t>(std::stoul(hex.substr(i, 2), nullptr, 16)));
+    bytes.push_back(static_cast<std::uint8_t>(std::stoul(hex.substr(i, 2), nullptr, kHexRadix)));
   }
   return bytes;
 }
@@ -36,7 +38,7 @@ std::vector<std::uint8_t> GenerateRandomSalt() {
   std::vector<std::uint8_t> salt(kSaltLength);
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::uniform_int_distribution<unsigned int> dist(0, 255);
+  std::uniform_int_distribution<unsigned int> dist(0, kMaxUint8);
   for (auto& b : salt) {
     b = static_cast<std::uint8_t>(dist(gen));
   }

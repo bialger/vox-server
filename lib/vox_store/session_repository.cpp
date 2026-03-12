@@ -4,6 +4,15 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kRefreshTokenHashParam = 5;
+constexpr int kAccessExpiresParam = 6;
+constexpr int kRefreshExpiresParam = 7;
+constexpr int kCreatedAtParam = 8;
+
+} // namespace
+
 SessionRepository::SessionRepository(Database& db) : db_(db) {
 }
 
@@ -19,10 +28,10 @@ common::VoidResult SessionRepository::CreateSession(const SessionRecord& session
     stmt.bind(2, session.user_id);
     stmt.bind(3, session.device_id);
     stmt.bind(4, session.access_token_hash);
-    stmt.bind(5, session.refresh_token_hash);
-    stmt.bind(6, session.access_expires_at);
-    stmt.bind(7, session.refresh_expires_at);
-    stmt.bind(8, session.created_at);
+    stmt.bind(kRefreshTokenHashParam, session.refresh_token_hash);
+    stmt.bind(kAccessExpiresParam, session.access_expires_at);
+    stmt.bind(kRefreshExpiresParam, session.refresh_expires_at);
+    stmt.bind(kCreatedAtParam, session.created_at);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {

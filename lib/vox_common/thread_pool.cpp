@@ -7,7 +7,7 @@ namespace vox::common {
 ThreadPool::ThreadPool(std::size_t thread_count, std::size_t queue_capacity) : queue_(queue_capacity) {
   workers_.reserve(thread_count);
   for (std::size_t i = 0; i < thread_count; ++i) {
-    workers_.emplace_back([this](std::stop_token st) { WorkerLoop(std::move(st)); });
+    workers_.emplace_back([this](const std::stop_token& st) { WorkerLoop(st); });
   }
 }
 
@@ -49,7 +49,7 @@ bool ThreadPool::IsShutdown() const {
   return shutdown_;
 }
 
-void ThreadPool::WorkerLoop(std::stop_token /*stop_token*/) {
+void ThreadPool::WorkerLoop(const std::stop_token& /*stop_token*/) {
   while (true) {
     auto task = queue_.Pop();
     if (!task.has_value()) {

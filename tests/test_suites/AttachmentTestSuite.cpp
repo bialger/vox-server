@@ -1,6 +1,18 @@
 #include "AttachmentTestSuite.hpp"
 
+#include <stdexcept>
+
 #include "lib/vox_common/uuid.hpp"
+
+namespace {
+
+constexpr std::size_t kBytesPerKib = 1024;
+constexpr std::size_t kMaxUploadMebib = 1;
+constexpr std::size_t kMaxStorageMebib = 10;
+constexpr std::int64_t kTestCreatedAt = 1000000;
+constexpr std::int64_t kAttachmentRetentionSeconds = 3600;
+
+} // namespace
 
 const std::filesystem::path AttachmentTestSuite::kBlobDir = std::filesystem::temp_directory_path() / "vox_test_blobs";
 
@@ -15,9 +27,9 @@ void AttachmentTestSuite::SetUp() {
 
   vox::common::ServerConfig config;
   config.blob_storage_path = kBlobDir;
-  config.max_upload_size_bytes = 1024 * 1024;
-  config.max_storage_per_user_bytes = 10 * 1024 * 1024;
-  config.attachment_retention_seconds = 3600;
+  config.max_upload_size_bytes = kMaxUploadMebib * kBytesPerKib * kBytesPerKib;
+  config.max_storage_per_user_bytes = kMaxStorageMebib * kBytesPerKib * kBytesPerKib;
+  config.attachment_retention_seconds = kAttachmentRetentionSeconds;
 
   service_ = std::make_unique<vox::attachments::AttachmentService>(*attachments_, *conversations_, config);
 }
@@ -39,14 +51,20 @@ AttachmentTestSuite::TestUser AttachmentTestSuite::CreateTestUser(const std::str
   user.username = username;
   user.password_salt = "salt";
   user.password_verifier = "verifier";
-  user.created_at = 1000000;
-  users_->CreateUser(user);
+  user.created_at = kTestCreatedAt;
+  auto create_result = users_->CreateUser(user);
+  if (!create_result.has_value()) {
+    throw std::runtime_error("CreateUser failed");
+  }
 
   auto dev_id = vox::common::GenerateUuid();
   vox::store::DeviceRecord device;
   device.device_id = dev_id;
   device.user_id = user.user_id;
-  devices_->RegisterDevice(device);
+  auto reg_result = devices_->RegisterDevice(device);
+  if (!reg_result.has_value()) {
+    throw std::runtime_error("RegisterDevice failed");
+  }
 
   return {user.user_id, dev_id};
 }
@@ -58,13 +76,19 @@ std::string AttachmentTestSuite::CreateTestConversation(const std::string& creat
   conv.conversation_id = conv_id;
   conv.type = vox::common::ConversationType::kGroup;
   conv.created_by = creator_user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestCreatedAt;
+  auto create_conv = conversations_->CreateConversation(conv);
+  if (!create_conv.has_value()) {
+    throw std::runtime_error("CreateConversation failed");
+  }
 
   bool first = true;
   for (const auto& m : members) {
     auto role = first ? vox::common::MemberRole::kOwner : vox::common::MemberRole::kMember;
-    conversations_->AddMember(conv_id, m.user_id, role, 1000000);
+    auto add_result = conversations_->AddMember(conv_id, m.user_id, role, kTestCreatedAt);
+    if (!add_result.has_value()) {
+      throw std::runtime_error("AddMember failed");
+    }
     first = false;
   }
   return conv_id;

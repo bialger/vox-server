@@ -3,6 +3,22 @@
 #include "lib/vox_common/uuid.hpp"
 #include "test_suites/StoreTestSuite.hpp"
 
+namespace {
+
+constexpr vox::common::Timestamp kTestBaseTimestamp = 1000000;
+constexpr vox::common::Timestamp kTestTimestampOffset1 = 1000001;
+constexpr vox::common::Timestamp kDisableUserTimestamp = 2000000;
+constexpr vox::common::Timestamp kRemoveMemberTimestamp1 = 2000000;
+constexpr vox::common::Timestamp kRemoveMemberTimestamp2 = 3000000;
+constexpr vox::common::Timestamp kUnsubscribeTimestamp = 2000000;
+constexpr std::size_t kListUsersLimit = 10;
+constexpr std::size_t kListUsersOffset = 0;
+constexpr int kPrekeyCount = 3;
+constexpr vox::common::Timestamp kTestAccessExpiry = 9999999;
+constexpr vox::common::Timestamp kTestRefreshExpiry = 99999999;
+
+} // namespace
+
 TEST_F(StoreTestSuite, CreateAndFindUserByUsername) {
   auto user = MakeUser("alice");
   auto result = users_->CreateUser(user);
@@ -10,17 +26,22 @@ TEST_F(StoreTestSuite, CreateAndFindUserByUsername) {
 
   auto found = users_->FindByUsername("alice");
   ASSERT_TRUE(found.has_value());
-  ASSERT_EQ(found->username, "alice");
-  ASSERT_EQ(found->user_id, user.user_id);
+  if (found) {
+    const auto& found_ref = *found;
+    ASSERT_EQ(found_ref.username, "alice");
+    ASSERT_EQ(found_ref.user_id, user.user_id);
+  }
 }
 
 TEST_F(StoreTestSuite, CreateAndFindUserById) {
   auto user = MakeUser("bob");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
 
   auto found = users_->FindById(user.user_id);
   ASSERT_TRUE(found.has_value());
-  ASSERT_EQ(found->username, "bob");
+  if (found) {
+    ASSERT_EQ(found->username, "bob");
+  }
 }
 
 TEST_F(StoreTestSuite, DuplicateUsernameRejected) {
@@ -39,27 +60,29 @@ TEST_F(StoreTestSuite, FindNonExistentUserReturnsEmpty) {
 
 TEST_F(StoreTestSuite, DisableUser) {
   auto user = MakeUser("dave");
-  users_->CreateUser(user);
-  auto result = users_->DisableUser(user.user_id, 2000000);
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto result = users_->DisableUser(user.user_id, kDisableUserTimestamp);
   ASSERT_TRUE(result.has_value());
 
   auto found = users_->FindById(user.user_id);
   ASSERT_TRUE(found.has_value());
-  ASSERT_TRUE(found->disabled_at.has_value());
+  if (found) {
+    ASSERT_TRUE(found->disabled_at.has_value());
+  }
 }
 
 TEST_F(StoreTestSuite, ListUsers) {
-  users_->CreateUser(MakeUser("u1"));
-  users_->CreateUser(MakeUser("u2"));
-  users_->CreateUser(MakeUser("u3"));
+  ASSERT_TRUE(users_->CreateUser(MakeUser("u1")));
+  ASSERT_TRUE(users_->CreateUser(MakeUser("u2")));
+  ASSERT_TRUE(users_->CreateUser(MakeUser("u3")));
 
-  auto list = users_->ListUsers(10, 0);
+  auto list = users_->ListUsers(kListUsersLimit, kListUsersOffset);
   ASSERT_EQ(list.size(), 3u);
 }
 
 TEST_F(StoreTestSuite, RegisterAndFindDevice) {
   auto user = MakeUser("eve");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
 
   auto device = MakeDevice(user.user_id, "dev1");
   auto result = devices_->RegisterDevice(device);
@@ -67,15 +90,18 @@ TEST_F(StoreTestSuite, RegisterAndFindDevice) {
 
   auto found = devices_->FindById("dev1");
   ASSERT_TRUE(found.has_value());
-  ASSERT_EQ(found->user_id, user.user_id);
+  if (found) {
+    const auto& found_ref = *found;
+    ASSERT_EQ(found_ref.user_id, user.user_id);
+  }
 }
 
 TEST_F(StoreTestSuite, GetDevicesForUser) {
   auto user = MakeUser("frank");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
 
-  devices_->RegisterDevice(MakeDevice(user.user_id, "dev_a"));
-  devices_->RegisterDevice(MakeDevice(user.user_id, "dev_b"));
+  ASSERT_TRUE(devices_->RegisterDevice(MakeDevice(user.user_id, "dev_a")));
+  ASSERT_TRUE(devices_->RegisterDevice(MakeDevice(user.user_id, "dev_b")));
 
   auto devs = devices_->GetDevicesForUser(user.user_id);
   ASSERT_EQ(devs.size(), 2u);
@@ -83,30 +109,33 @@ TEST_F(StoreTestSuite, GetDevicesForUser) {
 
 TEST_F(StoreTestSuite, StorePrekeyAndConsume) {
   auto user = MakeUser("grace");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "dev_pk");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   std::vector<vox::store::PrekeyRecord> prekeys;
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < kPrekeyCount; ++i) {
     vox::store::PrekeyRecord pk;
     pk.prekey_id = "pk_" + std::to_string(i);
     pk.device_id = "dev_pk";
     pk.prekey_public = "pub_" + std::to_string(i);
     prekeys.push_back(pk);
   }
-  devices_->StorePrekeys("dev_pk", prekeys);
+  ASSERT_TRUE(devices_->StorePrekeys("dev_pk", prekeys));
 
   auto consumed = devices_->ConsumeOneTimePrekey("dev_pk");
   ASSERT_TRUE(consumed.has_value());
-  ASSERT_TRUE(consumed->consumed_at.has_value());
+  if (consumed.has_value()) {
+    const auto& consumed_ref = consumed.value();
+    ASSERT_TRUE(consumed_ref.consumed_at.has_value());
+  }
 }
 
 TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
   auto user = MakeUser("henry");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "dev_pk2");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   std::vector<vox::store::PrekeyRecord> prekeys;
   vox::store::PrekeyRecord pk;
@@ -114,7 +143,7 @@ TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
   pk.device_id = "dev_pk2";
   pk.prekey_public = "pub_single";
   prekeys.push_back(pk);
-  devices_->StorePrekeys("dev_pk2", prekeys);
+  ASSERT_TRUE(devices_->StorePrekeys("dev_pk2", prekeys));
 
   auto first = devices_->ConsumeOneTimePrekey("dev_pk2");
   ASSERT_TRUE(first.has_value());
@@ -126,18 +155,20 @@ TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
 TEST_F(StoreTestSuite, CreateConversationAndAddMembers) {
   auto alice = MakeUser("alice_conv");
   auto bob = MakeUser("bob_conv");
-  users_->CreateUser(alice);
-  users_->CreateUser(bob);
+  ASSERT_TRUE(users_->CreateUser(alice));
+  ASSERT_TRUE(users_->CreateUser(bob));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kGroup;
   conv.created_by = alice.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
 
-  conversations_->AddMember(conv.conversation_id, alice.user_id, vox::common::MemberRole::kOwner, 1000000);
-  conversations_->AddMember(conv.conversation_id, bob.user_id, vox::common::MemberRole::kMember, 1000001);
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, alice.user_id, vox::common::MemberRole::kOwner, kTestBaseTimestamp));
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, bob.user_id, vox::common::MemberRole::kMember, kTestTimestampOffset1));
 
   auto members = conversations_->GetMembers(conv.conversation_id);
   ASSERT_EQ(members.size(), 2u);
@@ -147,67 +178,70 @@ TEST_F(StoreTestSuite, CreateConversationAndAddMembers) {
 
 TEST_F(StoreTestSuite, RemoveMemberTwiceIsIdempotent) {
   auto user = MakeUser("remove_test");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kGroup;
   conv.created_by = user.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
-  conversations_->AddMember(conv.conversation_id, user.user_id, vox::common::MemberRole::kOwner, 1000000);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, user.user_id, vox::common::MemberRole::kOwner, kTestBaseTimestamp));
 
-  auto r1 = conversations_->RemoveMember(conv.conversation_id, user.user_id, 2000000);
+  auto r1 = conversations_->RemoveMember(conv.conversation_id, user.user_id, kRemoveMemberTimestamp1);
   ASSERT_TRUE(r1.has_value());
-  auto r2 = conversations_->RemoveMember(conv.conversation_id, user.user_id, 3000000);
+  auto r2 = conversations_->RemoveMember(conv.conversation_id, user.user_id, kRemoveMemberTimestamp2);
   ASSERT_TRUE(r2.has_value());
 }
 
 TEST_F(StoreTestSuite, StoreAndRetrieveEnvelope) {
   auto user = MakeUser("env_user");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "env_dev");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kDm;
   conv.created_by = user.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
 
   vox::store::EnvelopeRecord env;
   env.envelope_id = vox::common::GenerateUuid();
   env.conversation_id = conv.conversation_id;
   env.sender_device_id = "env_dev";
   env.ciphertext = "encrypted_data";
-  env.server_timestamp = 1000001;
-  envelopes_->StoreEnvelope(env);
+  env.server_timestamp = kTestTimestampOffset1;
+  ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   auto found = envelopes_->FindById(env.envelope_id);
   ASSERT_TRUE(found.has_value());
-  ASSERT_EQ(found->ciphertext, "encrypted_data");
+  if (found) {
+    ASSERT_EQ(found->ciphertext, "encrypted_data");
+  }
 }
 
 TEST_F(StoreTestSuite, DuplicateEnvelopeRejected) {
   auto user = MakeUser("dup_env_user");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "dup_env_dev");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kDm;
   conv.created_by = user.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
 
   vox::store::EnvelopeRecord env;
   env.envelope_id = vox::common::GenerateUuid();
   env.conversation_id = conv.conversation_id;
   env.sender_device_id = "dup_env_dev";
   env.ciphertext = "data";
-  env.server_timestamp = 1000001;
+  env.server_timestamp = kTestTimestampOffset1;
 
   ASSERT_TRUE(envelopes_->StoreEnvelope(env).has_value());
   ASSERT_FALSE(envelopes_->StoreEnvelope(env).has_value());
@@ -215,16 +249,16 @@ TEST_F(StoreTestSuite, DuplicateEnvelopeRejected) {
 
 TEST_F(StoreTestSuite, CheckDuplicateDetection) {
   auto user = MakeUser("chk_dup_user");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "chk_dup_dev");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kDm;
   conv.created_by = user.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
 
   auto env_id = vox::common::GenerateUuid();
   ASSERT_FALSE(envelopes_->CheckDuplicate(env_id));
@@ -234,8 +268,8 @@ TEST_F(StoreTestSuite, CheckDuplicateDetection) {
   env.conversation_id = conv.conversation_id;
   env.sender_device_id = "chk_dup_dev";
   env.ciphertext = "data";
-  env.server_timestamp = 1000001;
-  envelopes_->StoreEnvelope(env);
+  env.server_timestamp = kTestTimestampOffset1;
+  ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   ASSERT_TRUE(envelopes_->CheckDuplicate(env_id));
 }
@@ -243,32 +277,33 @@ TEST_F(StoreTestSuite, CheckDuplicateDetection) {
 TEST_F(StoreTestSuite, ChannelSubscribeAndUnsubscribe) {
   auto admin = MakeUser("ch_admin");
   auto sub = MakeUser("ch_sub");
-  users_->CreateUser(admin);
-  users_->CreateUser(sub);
+  ASSERT_TRUE(users_->CreateUser(admin));
+  ASSERT_TRUE(users_->CreateUser(sub));
 
   vox::store::ConversationRecord conv;
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kChannel;
   conv.created_by = admin.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
-  conversations_->AddMember(conv.conversation_id, admin.user_id, vox::common::MemberRole::kOwner, 1000000);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, admin.user_id, vox::common::MemberRole::kOwner, kTestBaseTimestamp));
 
-  conversations_->Subscribe(conv.conversation_id, sub.user_id, 1000001);
+  ASSERT_TRUE(conversations_->Subscribe(conv.conversation_id, sub.user_id, kTestTimestampOffset1));
   ASSERT_TRUE(conversations_->IsUserInConversation(conv.conversation_id, sub.user_id));
 
   auto subs = conversations_->GetSubscribers(conv.conversation_id);
   ASSERT_EQ(subs.size(), 1u);
 
-  conversations_->Unsubscribe(conv.conversation_id, sub.user_id, 2000000);
+  ASSERT_TRUE(conversations_->Unsubscribe(conv.conversation_id, sub.user_id, kUnsubscribeTimestamp));
   ASSERT_FALSE(conversations_->IsUserInConversation(conv.conversation_id, sub.user_id));
 }
 
 TEST_F(StoreTestSuite, SessionCreateAndFind) {
   auto user = MakeUser("sess_user");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "sess_dev");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   vox::store::SessionRecord session;
   session.session_id = vox::common::GenerateUuid();
@@ -276,23 +311,26 @@ TEST_F(StoreTestSuite, SessionCreateAndFind) {
   session.device_id = "sess_dev";
   session.access_token_hash = "ath_123";
   session.refresh_token_hash = "rth_456";
-  session.access_expires_at = 9999999;
-  session.refresh_expires_at = 99999999;
-  session.created_at = 1000000;
+  session.access_expires_at = kTestAccessExpiry;
+  session.refresh_expires_at = kTestRefreshExpiry;
+  session.created_at = kTestBaseTimestamp;
 
   auto result = sessions_->CreateSession(session);
   ASSERT_TRUE(result.has_value());
 
   auto found = sessions_->FindByAccessToken("ath_123");
   ASSERT_TRUE(found.has_value());
-  ASSERT_EQ(found->user_id, user.user_id);
+  if (found.has_value()) {
+    const auto& found_ref = found.value();
+    ASSERT_EQ(found_ref.user_id, user.user_id);
+  }
 }
 
 TEST_F(StoreTestSuite, RevokeSessionPreventsFinding) {
   auto user = MakeUser("revoke_user");
-  users_->CreateUser(user);
+  ASSERT_TRUE(users_->CreateUser(user));
   auto device = MakeDevice(user.user_id, "revoke_dev");
-  devices_->RegisterDevice(device);
+  ASSERT_TRUE(devices_->RegisterDevice(device));
 
   vox::store::SessionRecord session;
   session.session_id = vox::common::GenerateUuid();
@@ -300,12 +338,12 @@ TEST_F(StoreTestSuite, RevokeSessionPreventsFinding) {
   session.device_id = "revoke_dev";
   session.access_token_hash = "ath_revoke";
   session.refresh_token_hash = "rth_revoke";
-  session.access_expires_at = 9999999;
-  session.refresh_expires_at = 99999999;
-  session.created_at = 1000000;
-  sessions_->CreateSession(session);
+  session.access_expires_at = kTestAccessExpiry;
+  session.refresh_expires_at = kTestRefreshExpiry;
+  session.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(sessions_->CreateSession(session));
 
-  sessions_->RevokeSession(session.session_id, 2000000);
+  ASSERT_TRUE(sessions_->RevokeSession(session.session_id, kDisableUserTimestamp));
 
   auto found = sessions_->FindByAccessToken("ath_revoke");
   ASSERT_FALSE(found.has_value());

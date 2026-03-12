@@ -22,7 +22,7 @@ class AttachmentService {
 public:
   AttachmentService(store::AttachmentRepository& attachments,
                     store::ConversationRepository& conversations,
-                    const common::ServerConfig& config);
+                    common::ServerConfig config);
 
   common::Result<InitUploadResponse> InitUpload(const common::UserId& user_id,
                                                 const common::ConversationId& conversation_id,

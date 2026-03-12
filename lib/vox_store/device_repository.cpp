@@ -7,6 +7,14 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kSignedPrekeySigParam = 5;
+constexpr int kLastPrekeyRefreshParam = 6;
+constexpr int kClientProtocolVersionParam = 7;
+
+} // namespace
+
 DeviceRepository::DeviceRepository(Database& db) : db_(db) {
 }
 
@@ -21,11 +29,11 @@ common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) 
     stmt.bind(2, device.user_id);
     stmt.bind(3, device.identity_key_public);
     stmt.bind(4, device.signed_prekey_public);
-    stmt.bind(5, device.signed_prekey_signature);
+    stmt.bind(kSignedPrekeySigParam, device.signed_prekey_signature);
     if (device.last_prekey_refresh_at) {
-      stmt.bind(6, *device.last_prekey_refresh_at);
+      stmt.bind(kLastPrekeyRefreshParam, *device.last_prekey_refresh_at);
     }
-    stmt.bind(7, device.client_protocol_version);
+    stmt.bind(kClientProtocolVersionParam, device.client_protocol_version);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {

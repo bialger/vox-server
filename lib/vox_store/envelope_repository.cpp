@@ -5,6 +5,14 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kServerTimestampParam = 5;
+constexpr int kEnvelopeTypeParam = 6;
+constexpr int kRetentionUntilParam = 7;
+
+} // namespace
+
 EnvelopeRepository::EnvelopeRepository(Database& db) : db_(db) {
 }
 
@@ -19,10 +27,10 @@ common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envel
     stmt.bind(2, envelope.conversation_id);
     stmt.bind(3, envelope.sender_device_id);
     stmt.bind(4, envelope.ciphertext);
-    stmt.bind(5, envelope.server_timestamp);
-    stmt.bind(6, envelope.envelope_type);
+    stmt.bind(kServerTimestampParam, envelope.server_timestamp);
+    stmt.bind(kEnvelopeTypeParam, envelope.envelope_type);
     if (envelope.retention_until) {
-      stmt.bind(7, *envelope.retention_until);
+      stmt.bind(kRetentionUntilParam, *envelope.retention_until);
     }
     stmt.exec();
     return {};

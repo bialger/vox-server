@@ -2,6 +2,12 @@
 
 #include "lib/vox_common/uuid.hpp"
 
+namespace {
+
+constexpr vox::common::Timestamp kMakeUserCreatedAt = 1000000;
+
+} // namespace
+
 void StoreTestSuite::SetUp() {
   db_ = std::make_unique<vox::store::Database>(":memory:");
   users_ = std::make_unique<vox::store::UserRepository>(*db_);
@@ -28,7 +34,7 @@ vox::store::UserRecord StoreTestSuite::MakeUser(const std::string& username) {
   user.username = username;
   user.password_salt = "test_salt";
   user.password_verifier = "test_verifier";
-  user.created_at = 1000000;
+  user.created_at = kMakeUserCreatedAt;
   return user;
 }
 

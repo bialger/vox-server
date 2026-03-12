@@ -5,6 +5,14 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kPolicyBlobParam = 5;
+constexpr int kAddMemberRoleParam = 5;
+constexpr int kAddMemberNowParam = 6;
+
+} // namespace
+
 ConversationRepository::ConversationRepository(Database& db) : db_(db) {
 }
 
@@ -18,7 +26,7 @@ common::VoidResult ConversationRepository::CreateConversation(const Conversation
     stmt.bind(2, static_cast<int>(conv.type));
     stmt.bind(3, conv.created_by);
     stmt.bind(4, conv.created_at);
-    stmt.bind(5, conv.policy_blob);
+    stmt.bind(kPolicyBlobParam, conv.policy_blob);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
@@ -59,8 +67,8 @@ common::VoidResult ConversationRepository::AddMember(const common::ConversationI
     stmt.bind(2, user_id);
     stmt.bind(3, static_cast<int>(role));
     stmt.bind(4, now);
-    stmt.bind(5, static_cast<int>(role));
-    stmt.bind(6, now);
+    stmt.bind(kAddMemberRoleParam, static_cast<int>(role));
+    stmt.bind(kAddMemberNowParam, now);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {

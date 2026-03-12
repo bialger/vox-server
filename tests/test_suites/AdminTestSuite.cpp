@@ -1,6 +1,14 @@
 #include "AdminTestSuite.hpp"
 
+#include <stdexcept>
+
 #include "lib/vox_common/uuid.hpp"
+
+namespace {
+
+constexpr vox::common::Timestamp kTestCreatedAt = 1000000;
+
+} // namespace
 
 void AdminTestSuite::SetUp() {
   db_ = std::make_unique<vox::store::Database>(":memory:");
@@ -26,14 +34,22 @@ AdminTestSuite::TestUser AdminTestSuite::CreateTestUser(const std::string& usern
   user.username = username;
   user.password_salt = "salt";
   user.password_verifier = "verifier";
-  user.created_at = 1000000;
-  users_->CreateUser(user);
+  user.created_at = kTestCreatedAt;
+
+  auto create_result = users_->CreateUser(user);
+  if (!create_result.has_value()) {
+    throw std::runtime_error("CreateUser failed");
+  }
 
   auto dev_id = vox::common::GenerateUuid();
   vox::store::DeviceRecord device;
   device.device_id = dev_id;
   device.user_id = user.user_id;
-  devices_->RegisterDevice(device);
+
+  auto reg_result = devices_->RegisterDevice(device);
+  if (!reg_result.has_value()) {
+    throw std::runtime_error("RegisterDevice failed");
+  }
 
   return {user.user_id, dev_id};
 }

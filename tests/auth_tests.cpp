@@ -6,6 +6,14 @@
 
 #include "test_suites/AuthTestSuite.hpp"
 
+namespace {
+
+constexpr vox::common::Timestamp kDisableUserTimestamp = 9999999;
+constexpr int kConcurrentRegistrationAttempts = 10;
+constexpr int kExpectedSingleSuccess = 1;
+
+} // namespace
+
 TEST_F(AuthTestSuite, RegisterSuccessfully) {
   vox::auth::RegisterRequest req;
   req.username = "alice";
@@ -52,7 +60,7 @@ TEST_F(AuthTestSuite, LoginWithCorrectPassword) {
   reg.username = "charlie";
   reg.password_derived_value = "correct_pw";
   reg.device_id = "dev1";
-  auth_->Register(reg);
+  ASSERT_TRUE(auth_->Register(reg).has_value());
 
   vox::auth::LoginRequest login;
   login.username = "charlie";
@@ -69,7 +77,7 @@ TEST_F(AuthTestSuite, LoginWithWrongPasswordFails) {
   reg.username = "dave";
   reg.password_derived_value = "correct_pw";
   reg.device_id = "dev1";
-  auth_->Register(reg);
+  ASSERT_TRUE(auth_->Register(reg).has_value());
 
   vox::auth::LoginRequest login;
   login.username = "dave";
@@ -116,6 +124,7 @@ TEST_F(AuthTestSuite, RefreshWithWrongDeviceFails) {
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
 
+  ASSERT_TRUE(reg_result.has_value());
   vox::auth::RefreshRequest refresh;
   refresh.refresh_token = reg_result->tokens.refresh_token;
   refresh.device_id = "wrong_device";
@@ -131,6 +140,7 @@ TEST_F(AuthTestSuite, RevokedRefreshTokenFails) {
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
+  ASSERT_TRUE(reg_result.has_value());
 
   vox::auth::RefreshRequest refresh;
   refresh.refresh_token = reg_result->tokens.refresh_token;
@@ -149,25 +159,26 @@ TEST_F(AuthTestSuite, LogoutRevokesSession) {
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
+  ASSERT_TRUE(reg_result.has_value());
+  auto access_hash = vox::auth::TokenManager::HashToken(reg_result.value().tokens.access_token);
 
-  auto access_hash = vox::auth::TokenManager::HashToken(reg_result->tokens.access_token);
   auto session = sessions_->FindByAccessToken(access_hash);
   ASSERT_TRUE(session.has_value());
-
-  auto result = auth_->Logout(session->session_id);
-  ASSERT_TRUE(result.has_value());
+  if (session.has_value()) {
+    auto result = auth_->Logout(session->session_id);
+    ASSERT_TRUE(result.has_value());
+  }
 
   auto found = sessions_->FindByAccessToken(access_hash);
   ASSERT_FALSE(found.has_value());
 }
 
 TEST_F(AuthTestSuite, ConcurrentRegistrationsSameUsername) {
-  constexpr int kAttempts = 10;
   std::atomic<int> success_count{0};
   std::vector<std::jthread> threads;
-  threads.reserve(kAttempts);
+  threads.reserve(kConcurrentRegistrationAttempts);
 
-  for (int i = 0; i < kAttempts; ++i) {
+  for (int i = 0; i < kConcurrentRegistrationAttempts; ++i) {
     threads.emplace_back([this, i, &success_count]() {
       vox::auth::RegisterRequest req;
       req.username = "race_user";
@@ -181,7 +192,7 @@ TEST_F(AuthTestSuite, ConcurrentRegistrationsSameUsername) {
   }
 
   threads.clear();
-  ASSERT_EQ(success_count.load(), 1);
+  ASSERT_EQ(success_count.load(), kExpectedSingleSuccess);
 }
 
 TEST_F(AuthTestSuite, LoginDisabledAccountFails) {
@@ -191,8 +202,7 @@ TEST_F(AuthTestSuite, LoginDisabledAccountFails) {
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
-
-  users_->DisableUser(reg_result->user_id, 9999999);
+  ASSERT_TRUE(users_->DisableUser(reg_result->user_id, kDisableUserTimestamp));
 
   vox::auth::LoginRequest login;
   login.username = "disabled";

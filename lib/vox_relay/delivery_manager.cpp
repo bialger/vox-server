@@ -62,7 +62,9 @@ void DeliveryManager::SwitchToOffline(const common::DeviceId& device_id) {
       std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
   for (const auto& env : queue->pending) {
-    envelopes_.AddDeliveryState(env.envelope_id, device_id, now);
+    if (auto add_result = envelopes_.AddDeliveryState(env.envelope_id, device_id, now); !add_result) {
+      spdlog::warn("Failed to add delivery state for envelope {}: {}", env.envelope_id, add_result.error().message);
+    }
   }
   queue->pending.clear();
   spdlog::info("Switched device {} to offline delivery, persisted queued envelopes", device_id);

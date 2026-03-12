@@ -115,7 +115,10 @@ common::VoidResult AdminService::ForceLogout(const common::UserId& user_id) {
     return std::unexpected(common::Error{common::ErrorCode::kNotFound, "User not found"});
   }
   auto now = Now();
-  sessions_.RevokeAllForUser(user_id, now);
+  auto revoke_result = sessions_.RevokeAllForUser(user_id, now);
+  if (!revoke_result) {
+    return revoke_result;
+  }
   spdlog::info("Forced logout for user: {} ({})", user->username, user_id);
   return {};
 }

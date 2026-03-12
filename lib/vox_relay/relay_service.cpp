@@ -92,7 +92,9 @@ common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageR
       if (enqueue_result) {
         ++delivered_count;
       } else {
-        envelopes_.AddDeliveryState(envelope_id, dev.device_id, now);
+        if (auto add_result = envelopes_.AddDeliveryState(envelope_id, dev.device_id, now); !add_result) {
+          spdlog::warn("Failed to add delivery state for device {}: {}", dev.device_id, add_result.error().message);
+        }
       }
     }
   }

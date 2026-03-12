@@ -1,12 +1,21 @@
 #include "RelayTestSuite.hpp"
 
+#include <stdexcept>
+
+namespace {
+
+constexpr std::size_t kDeliveryManagerMaxQueuePerDevice = 100;
+constexpr vox::common::Timestamp kTestCreatedAt = 1000000;
+
+} // namespace
+
 void RelayTestSuite::SetUp() {
   db_ = std::make_unique<vox::store::Database>(":memory:");
   users_ = std::make_unique<vox::store::UserRepository>(*db_);
   devices_ = std::make_unique<vox::store::DeviceRepository>(*db_);
   conversations_ = std::make_unique<vox::store::ConversationRepository>(*db_);
   envelopes_ = std::make_unique<vox::store::EnvelopeRepository>(*db_);
-  delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, 100);
+  delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, kDeliveryManagerMaxQueuePerDevice);
   relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_);
 }
 
@@ -26,8 +35,11 @@ RelayTestSuite::TestUser RelayTestSuite::CreateTestUser(const std::string& usern
   user.username = username;
   user.password_salt = "salt";
   user.password_verifier = "verifier";
-  user.created_at = 1000000;
-  users_->CreateUser(user);
+  user.created_at = kTestCreatedAt;
+  auto create_result = users_->CreateUser(user);
+  if (!create_result.has_value()) {
+    throw std::runtime_error("CreateUser failed");
+  }
 
   auto dev_id = vox::common::GenerateUuid();
   vox::store::DeviceRecord device;
@@ -36,7 +48,10 @@ RelayTestSuite::TestUser RelayTestSuite::CreateTestUser(const std::string& usern
   device.identity_key_public = "ik_" + dev_id;
   device.signed_prekey_public = "spk_" + dev_id;
   device.signed_prekey_signature = "sig_" + dev_id;
-  devices_->RegisterDevice(device);
+  auto reg_result = devices_->RegisterDevice(device);
+  if (!reg_result.has_value()) {
+    throw std::runtime_error("RegisterDevice failed");
+  }
 
   return {user.user_id, dev_id};
 }
@@ -49,15 +64,24 @@ std::string RelayTestSuite::CreateTestConversation(vox::common::ConversationType
   conv.conversation_id = conv_id;
   conv.type = type;
   conv.created_by = creator_user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestCreatedAt;
+  auto conv_result = conversations_->CreateConversation(conv);
+  if (!conv_result.has_value()) {
+    throw std::runtime_error("CreateConversation failed");
+  }
 
   bool first = true;
   for (const auto& m : members) {
     auto role = first ? vox::common::MemberRole::kOwner : vox::common::MemberRole::kMember;
-    conversations_->AddMember(conv_id, m.user_id, role, 1000000);
+    auto add_result = conversations_->AddMember(conv_id, m.user_id, role, kTestCreatedAt);
+    if (!add_result.has_value()) {
+      throw std::runtime_error("AddMember failed");
+    }
     if (type == vox::common::ConversationType::kChannel) {
-      conversations_->Subscribe(conv_id, m.user_id, 1000000);
+      auto sub_result = conversations_->Subscribe(conv_id, m.user_id, kTestCreatedAt);
+      if (!sub_result.has_value()) {
+        throw std::runtime_error("Subscribe failed");
+      }
     }
     first = false;
   }

@@ -95,7 +95,10 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
     store::DeviceRecord device;
     device.device_id = device_id;
     device.user_id = user->user_id;
-    devices_.RegisterDevice(device);
+    auto device_result = devices_.RegisterDevice(device);
+    if (!device_result) {
+      return std::unexpected(device_result.error());
+    }
   }
 
   auto token_result = tokens_.IssueTokens(user->user_id, device_id, now);

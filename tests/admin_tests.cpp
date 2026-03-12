@@ -3,6 +3,15 @@
 #include "lib/vox_common/uuid.hpp"
 #include "test_suites/AdminTestSuite.hpp"
 
+namespace {
+
+constexpr vox::common::Timestamp kTestBaseTimestamp = 1000000;
+constexpr vox::common::Timestamp kTestAccessExpiry = 9999999;
+constexpr vox::common::Timestamp kTestRefreshExpiry = 99999999;
+constexpr int kForceLogoutSessionCount = 3;
+
+} // namespace
+
 TEST_F(AdminTestSuite, EmptyDbStatsReturnsZeros) {
   auto stats = admin_->GetServerStats();
   ASSERT_EQ(stats.user_count, 0u);
@@ -21,8 +30,8 @@ TEST_F(AdminTestSuite, StatsReturnsCorrectCounts) {
   conv.conversation_id = vox::common::GenerateUuid();
   conv.type = vox::common::ConversationType::kDm;
   conv.created_by = alice.user_id;
-  conv.created_at = 1000000;
-  conversations_->CreateConversation(conv);
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
 
   auto stats = admin_->GetServerStats();
   ASSERT_EQ(stats.user_count, 2u);
@@ -39,10 +48,10 @@ TEST_F(AdminTestSuite, DeleteUserCascadesCleanly) {
   session.device_id = alice.device_id;
   session.access_token_hash = "ath_del";
   session.refresh_token_hash = "rth_del";
-  session.access_expires_at = 9999999;
-  session.refresh_expires_at = 99999999;
-  session.created_at = 1000000;
-  sessions_->CreateSession(session);
+  session.access_expires_at = kTestAccessExpiry;
+  session.refresh_expires_at = kTestRefreshExpiry;
+  session.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(sessions_->CreateSession(session));
 
   auto result = admin_->DeleteUser(alice.user_id);
   ASSERT_TRUE(result.has_value());
@@ -64,26 +73,26 @@ TEST_F(AdminTestSuite, DeleteNonExistentUserFails) {
 TEST_F(AdminTestSuite, ForceLogoutRevokesAllSessions) {
   auto alice = CreateTestUser("logout_alice");
 
-  for (int i = 0; i < 3; ++i) {
+  for (int i = 0; i < kForceLogoutSessionCount; ++i) {
     vox::store::SessionRecord session;
     session.session_id = vox::common::GenerateUuid();
     session.user_id = alice.user_id;
     session.device_id = alice.device_id;
     session.access_token_hash = "ath_" + std::to_string(i);
     session.refresh_token_hash = "rth_" + std::to_string(i);
-    session.access_expires_at = 9999999;
-    session.refresh_expires_at = 99999999;
-    session.created_at = 1000000 + i;
-    sessions_->CreateSession(session);
+    session.access_expires_at = kTestAccessExpiry;
+    session.refresh_expires_at = kTestRefreshExpiry;
+    session.created_at = kTestBaseTimestamp + i;
+    ASSERT_TRUE(sessions_->CreateSession(session));
   }
 
-  auto count_before = sessions_->CountActiveForUser(alice.user_id, 1000000);
-  ASSERT_EQ(count_before, 3u);
+  auto count_before = sessions_->CountActiveForUser(alice.user_id, kTestBaseTimestamp);
+  ASSERT_EQ(count_before, static_cast<std::size_t>(kForceLogoutSessionCount));
 
   auto result = admin_->ForceLogout(alice.user_id);
   ASSERT_TRUE(result.has_value());
 
-  auto count_after = sessions_->CountActiveForUser(alice.user_id, 1000000);
+  auto count_after = sessions_->CountActiveForUser(alice.user_id, kTestBaseTimestamp);
   ASSERT_EQ(count_after, 0u);
 }
 

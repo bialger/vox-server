@@ -5,6 +5,12 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kCreatedAtParam = 5;
+
+} // namespace
+
 UserRepository::UserRepository(Database& db) : db_(db) {
 }
 
@@ -18,7 +24,7 @@ common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
     stmt.bind(2, user.username);
     stmt.bind(3, user.password_salt);
     stmt.bind(4, user.password_verifier);
-    stmt.bind(5, user.created_at);
+    stmt.bind(kCreatedAtParam, user.created_at);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {

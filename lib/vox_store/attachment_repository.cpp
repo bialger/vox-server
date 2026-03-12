@@ -4,6 +4,15 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kMimeHintParam = 5;
+constexpr int kBlobPathParam = 6;
+constexpr int kCreatedAtParam = 7;
+constexpr int kRetentionUntilParam = 8;
+
+} // namespace
+
 AttachmentRepository::AttachmentRepository(Database& db) : db_(db) {
 }
 
@@ -18,11 +27,11 @@ common::VoidResult AttachmentRepository::CreateAttachmentMeta(const AttachmentRe
     stmt.bind(2, record.user_id);
     stmt.bind(3, record.conversation_id);
     stmt.bind(4, record.file_size);
-    stmt.bind(5, record.mime_hint);
-    stmt.bind(6, record.blob_path);
-    stmt.bind(7, record.created_at);
+    stmt.bind(kMimeHintParam, record.mime_hint);
+    stmt.bind(kBlobPathParam, record.blob_path);
+    stmt.bind(kCreatedAtParam, record.created_at);
     if (record.retention_until) {
-      stmt.bind(8, *record.retention_until);
+      stmt.bind(kRetentionUntilParam, *record.retention_until);
     }
     stmt.exec();
     return {};

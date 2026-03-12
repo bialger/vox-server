@@ -42,7 +42,7 @@ public:
   [[nodiscard]] bool IsShutdown() const;
 
 private:
-  void WorkerLoop(std::stop_token stop_token);
+  void WorkerLoop(const std::stop_token& stop_token);
 
   BoundedQueue<std::function<void()>> queue_;
   std::vector<std::jthread> workers_;
