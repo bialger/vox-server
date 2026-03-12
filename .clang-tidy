@@ -23,13 +23,8 @@ WarningsAsErrors: ""
 HeaderFilterRegex: ""
 FormatStyle: none
 
-# clang-tidy uses Clang for parsing (not g++), so on Windows it defaults to MSVC
-# target/system headers. Our project builds with MinGW-w64; force GNU target and
-# point Clang at the MinGW toolchain so flags like -mthreads work correctly.
-# Uncomment on Windows
-#ExtraArgsBefore:
-#  - "--target=x86_64-w64-windows-gnu"
-#  - "--gcc-toolchain=C:/Program Files/mingw64"
+# Note: On Windows, compile_commands.json is patched by CMake (patch-compile-commands-for-clang target)
+# with MinGW toolchain flags.
 CheckOptions:
   - key: modernize-use-using.IgnoreMacros
     value: "true"

@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 
 if(NOT TESTS_ONLY)
-    add_subdirectory(qt)
     add_subdirectory(boost)
 endif()
+
+add_subdirectory(vox_common)
+add_subdirectory(vox_store)
+add_subdirectory(vox_auth)
+add_subdirectory(vox_relay)
+add_subdirectory(vox_attachments)
+add_subdirectory(vox_admin)

@@ -1,0 +1,356 @@
+[
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -O3 -std=gnu++23 -o lib\\vox_common\\CMakeFiles\\vox_common.dir\\config.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\config.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\config.cpp",
+  "output": "lib\\vox_common\\CMakeFiles\\vox_common.dir\\config.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -O3 -std=gnu++23 -o lib\\vox_common\\CMakeFiles\\vox_common.dir\\uuid.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\uuid.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\uuid.cpp",
+  "output": "lib\\vox_common\\CMakeFiles\\vox_common.dir\\uuid.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -O3 -std=gnu++23 -o lib\\vox_common\\CMakeFiles\\vox_common.dir\\thread_pool.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\thread_pool.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\thread_pool.cpp",
+  "output": "lib\\vox_common\\CMakeFiles\\vox_common.dir\\thread_pool.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -O3 -std=gnu++23 -o lib\\vox_common\\CMakeFiles\\vox_common.dir\\logging.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\logging.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_common\\logging.cpp",
+  "output": "lib\\vox_common\\CMakeFiles\\vox_common.dir\\logging.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=gnu++23 -o _deps\\fmt-build\\CMakeFiles\\fmt.dir\\src\\format.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\fmt-src\\src\\format.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\fmt-src\\src\\format.cc",
+  "output": "_deps\\fmt-build\\CMakeFiles\\fmt.dir\\src\\format.cc.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=gnu++23 -o _deps\\fmt-build\\CMakeFiles\\fmt.dir\\src\\os.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\fmt-src\\src\\os.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\fmt-src\\src\\os.cc",
+  "output": "_deps\\fmt-build\\CMakeFiles\\fmt.dir\\src\\os.cc.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\spdlog.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\spdlog.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\spdlog.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\spdlog.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\stdout_sinks.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\stdout_sinks.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\stdout_sinks.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\stdout_sinks.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\color_sinks.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\color_sinks.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\color_sinks.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\color_sinks.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\file_sinks.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\file_sinks.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\file_sinks.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\file_sinks.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\async.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\async.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\async.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\async.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -O3 -std=c++23 -o _deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\cfg.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\cfg.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\spdlog-src\\src\\cfg.cpp",
+  "output": "_deps\\spdlog-build\\CMakeFiles\\spdlog.dir\\src\\cfg.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\database.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\database.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\database.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\database.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\user_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\user_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\user_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\user_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\device_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\device_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\device_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\device_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\session_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\session_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\session_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\session_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\conversation_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\conversation_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\conversation_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\conversation_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\envelope_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\envelope_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\envelope_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\envelope_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_store\\CMakeFiles\\vox_store.dir\\attachment_repository.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\attachment_repository.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_store\\attachment_repository.cpp",
+  "output": "lib\\vox_store\\CMakeFiles\\vox_store.dir\\attachment_repository.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Backup.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Backup.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Backup.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Backup.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Column.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Column.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Column.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Column.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Database.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Database.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Database.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Database.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Exception.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Exception.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Exception.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Exception.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Savepoint.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Savepoint.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Savepoint.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Savepoint.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Statement.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Statement.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Statement.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Statement.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3  -Wall -Wextra -Wpedantic -Wswitch-enum -Wshadow -Wno-long-long -O3 -std=gnu++23 -o _deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Transaction.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Transaction.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\src\\Transaction.cpp",
+  "output": "_deps\\sqlitecpp-build\\CMakeFiles\\SQLiteCpp.dir\\src\\Transaction.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -DNDEBUG -o _deps\\sqlitecpp-build\\sqlite3\\CMakeFiles\\sqlite3.dir\\sqlite3.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\sqlite3\\sqlite3.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\sqlitecpp-src\\sqlite3\\sqlite3.c",
+  "output": "_deps\\sqlitecpp-build\\sqlite3\\CMakeFiles\\sqlite3.dir\\sqlite3.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\argon2.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\argon2.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\argon2.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\argon2.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\core.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\core.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\core.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\core.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\encoding.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\encoding.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\encoding.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\encoding.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\thread.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\thread.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\thread.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\thread.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\blake2\\blake2b.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\blake2\\blake2b.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\blake2\\blake2b.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\blake2\\blake2b.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\gcc.exe -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/src -O3 -DNDEBUG -w -o lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\ref.c.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\ref.c",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\argon2-src\\src\\ref.c",
+  "output": "lib\\vox_auth\\CMakeFiles\\argon2.dir\\__\\__\\_deps\\argon2-src\\src\\ref.c.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -O3 -std=gnu++23 -o lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\password_hasher.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\password_hasher.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\password_hasher.cpp",
+  "output": "lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\password_hasher.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -O3 -std=gnu++23 -o lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\token_manager.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\token_manager.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\token_manager.cpp",
+  "output": "lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\token_manager.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -O3 -std=gnu++23 -o lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\auth_service.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\auth_service.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_auth\\auth_service.cpp",
+  "output": "lib\\vox_auth\\CMakeFiles\\vox_auth.dir\\auth_service.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_relay\\CMakeFiles\\vox_relay.dir\\delivery_manager.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_relay\\delivery_manager.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_relay\\delivery_manager.cpp",
+  "output": "lib\\vox_relay\\CMakeFiles\\vox_relay.dir\\delivery_manager.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_relay\\CMakeFiles\\vox_relay.dir\\relay_service.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_relay\\relay_service.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_relay\\relay_service.cpp",
+  "output": "lib\\vox_relay\\CMakeFiles\\vox_relay.dir\\relay_service.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_attachments\\CMakeFiles\\vox_attachments.dir\\attachment_service.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_attachments\\attachment_service.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_attachments\\attachment_service.cpp",
+  "output": "lib\\vox_attachments\\CMakeFiles\\vox_attachments.dir\\attachment_service.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -O3 -std=gnu++23 -o lib\\vox_admin\\CMakeFiles\\vox_admin.dir\\admin_service.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_admin\\admin_service.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\lib\\vox_admin\\admin_service.cpp",
+  "output": "lib\\vox_admin\\CMakeFiles\\vox_admin.dir\\admin_service.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -IC:/Users/bialger/CursorProjects/vox-server/build/lib/boost/boost_1_83_0 -O3 -std=gnu++23 -o bin\\CMakeFiles\\vox-server.dir\\main.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\bin\\main.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\bin\\main.cpp",
+  "output": "bin\\CMakeFiles\\vox-server.dir\\main.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\ProjectIntegrationTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\ProjectIntegrationTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\ProjectIntegrationTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\ProjectIntegrationTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\ThreadPoolTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\ThreadPoolTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\ThreadPoolTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\ThreadPoolTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\StoreTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\StoreTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\StoreTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\StoreTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AuthTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AuthTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AuthTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AuthTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\RelayTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\RelayTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\RelayTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\RelayTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AttachmentTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AttachmentTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AttachmentTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AttachmentTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AdminTestSuite.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AdminTestSuite.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\test_suites\\AdminTestSuite.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\test_suites\\AdminTestSuite.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\main_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\main_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\main_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\main_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\thread_pool_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\thread_pool_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\thread_pool_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\thread_pool_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\store_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\store_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\store_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\store_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\auth_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\auth_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\auth_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\auth_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\relay_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\relay_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\relay_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\relay_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\attachment_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\attachment_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\attachment_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\attachment_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSQLITE_ENABLE_COLUMN_METADATA -IC:/Users/bialger/CursorProjects/vox-server -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/fmt-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/spdlog-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/sqlitecpp-src/sqlite3 -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/argon2-src/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=gnu++23 -o tests\\CMakeFiles\\vox-server_tests.dir\\admin_tests.cpp.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\admin_tests.cpp",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\tests\\admin_tests.cpp",
+  "output": "tests\\CMakeFiles\\vox-server_tests.dir\\admin_tests.cpp.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googlemock/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googlemock -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=c++23 -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=0 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o _deps\\googletest-build\\googlemock\\CMakeFiles\\gmock.dir\\src\\gmock-all.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googlemock\\src\\gmock-all.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googlemock\\src\\gmock-all.cc",
+  "output": "_deps\\googletest-build\\googlemock\\CMakeFiles\\gmock.dir\\src\\gmock-all.cc.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googlemock/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googlemock -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=c++23 -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=0 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o _deps\\googletest-build\\googlemock\\CMakeFiles\\gmock_main.dir\\src\\gmock_main.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googlemock\\src\\gmock_main.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googlemock\\src\\gmock_main.cc",
+  "output": "_deps\\googletest-build\\googlemock\\CMakeFiles\\gmock_main.dir\\src\\gmock_main.cc.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -IC:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=c++23 -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=0 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o _deps\\googletest-build\\googletest\\CMakeFiles\\gtest.dir\\src\\gtest-all.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googletest\\src\\gtest-all.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googletest\\src\\gtest-all.cc",
+  "output": "_deps\\googletest-build\\googletest\\CMakeFiles\\gtest.dir\\src\\gtest-all.cc.obj"
+},
+{
+  "directory": "C:/Users/bialger/CursorProjects/vox-server/build",
+  "command": "C:\\PROGRA~1\\mingw64\\bin\\G__~1.EXE -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest/include -isystem C:/Users/bialger/CursorProjects/vox-server/build/_deps/googletest-src/googletest -O3 -std=c++23 -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=0 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o _deps\\googletest-build\\googletest\\CMakeFiles\\gtest_main.dir\\src\\gtest_main.cc.obj  --driver-mode=gcc --target=x86_64-w64-windows-gnu --gcc-toolchain=C:/PROGRA~1/mingw64 -std=gnu++23 -stdlib=libstdc++ -c C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googletest\\src\\gtest_main.cc",
+  "file": "C:\\Users\\bialger\\CursorProjects\\vox-server\\build\\_deps\\googletest-src\\googletest\\src\\gtest_main.cc",
+  "output": "_deps\\googletest-build\\googletest\\CMakeFiles\\gtest_main.dir\\src\\gtest_main.cc.obj"
+}
+]
