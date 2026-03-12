@@ -22,16 +22,14 @@ struct ServerStats {
 };
 
 class AdminService {
- public:
-  AdminService(store::Database& db,
-               store::UserRepository& users,
-               store::SessionRepository& sessions);
+public:
+  AdminService(store::Database& db, store::UserRepository& users, store::SessionRepository& sessions);
 
   ServerStats GetServerStats();
   common::VoidResult DeleteUser(const common::UserId& user_id);
   common::VoidResult ForceLogout(const common::UserId& user_id);
 
- private:
+private:
   common::Timestamp Now();
 
   store::Database& db_;
@@ -39,6 +37,6 @@ class AdminService {
   store::SessionRepository& sessions_;
 };
 
-}  // namespace vox::admin
+} // namespace vox::admin
 
-#endif  // VOX_ADMIN_ADMIN_SERVICE_HPP
+#endif // VOX_ADMIN_ADMIN_SERVICE_HPP

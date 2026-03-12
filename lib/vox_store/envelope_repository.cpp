@@ -11,11 +11,10 @@ EnvelopeRepository::EnvelopeRepository(Database& db) : db_(db) {
 common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envelope) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "INSERT INTO encrypted_envelopes (envelope_id, conversation_id, sender_device_id, "
-        "ciphertext, server_timestamp, envelope_type, retention_until) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)");
+    SQLite::Statement stmt(db_.Connection(),
+                           "INSERT INTO encrypted_envelopes (envelope_id, conversation_id, sender_device_id, "
+                           "ciphertext, server_timestamp, envelope_type, retention_until) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?)");
     stmt.bind(1, envelope.envelope_id);
     stmt.bind(2, envelope.conversation_id);
     stmt.bind(3, envelope.sender_device_id);
@@ -40,9 +39,8 @@ common::VoidResult EnvelopeRepository::AddDeliveryState(const common::EnvelopeId
                                                         common::Timestamp now) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "INSERT INTO delivery_state (envelope_id, target_device_id, queued_at) VALUES (?, ?, ?)");
+    SQLite::Statement stmt(db_.Connection(),
+                           "INSERT INTO delivery_state (envelope_id, target_device_id, queued_at) VALUES (?, ?, ?)");
     stmt.bind(1, envelope_id);
     stmt.bind(2, target_device_id);
     stmt.bind(3, now);
@@ -56,12 +54,11 @@ common::VoidResult EnvelopeRepository::AddDeliveryState(const common::EnvelopeId
 std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common::DeviceId& device_id,
                                                                     std::size_t limit) {
   std::vector<EnvelopeRecord> result;
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT e.* FROM encrypted_envelopes e "
-      "JOIN delivery_state d ON e.envelope_id = d.envelope_id "
-      "WHERE d.target_device_id = ? AND d.delivered_at IS NULL AND d.acked_at IS NULL "
-      "ORDER BY e.server_timestamp ASC LIMIT ?");
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT e.* FROM encrypted_envelopes e "
+                         "JOIN delivery_state d ON e.envelope_id = d.envelope_id "
+                         "WHERE d.target_device_id = ? AND d.delivered_at IS NULL AND d.acked_at IS NULL "
+                         "ORDER BY e.server_timestamp ASC LIMIT ?");
   stmt.bind(1, device_id);
   stmt.bind(2, static_cast<std::int64_t>(limit));
   while (stmt.executeStep()) {
@@ -84,9 +81,8 @@ common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& e
                                                      const common::DeviceId& device_id,
                                                      common::Timestamp now) {
   auto lock = db_.WriteLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "UPDATE delivery_state SET delivered_at = ? WHERE envelope_id = ? AND target_device_id = ?");
+  SQLite::Statement stmt(db_.Connection(),
+                         "UPDATE delivery_state SET delivered_at = ? WHERE envelope_id = ? AND target_device_id = ?");
   stmt.bind(1, now);
   stmt.bind(2, envelope_id);
   stmt.bind(3, device_id);
@@ -101,9 +97,8 @@ common::VoidResult EnvelopeRepository::MarkAcked(const common::EnvelopeId& envel
                                                  const common::DeviceId& device_id,
                                                  common::Timestamp now) {
   auto lock = db_.WriteLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "UPDATE delivery_state SET acked_at = ? WHERE envelope_id = ? AND target_device_id = ?");
+  SQLite::Statement stmt(db_.Connection(),
+                         "UPDATE delivery_state SET acked_at = ? WHERE envelope_id = ? AND target_device_id = ?");
   stmt.bind(1, now);
   stmt.bind(2, envelope_id);
   stmt.bind(3, device_id);
@@ -126,8 +121,7 @@ int EnvelopeRepository::DeleteExpired(common::Timestamp now) {
   del_delivery.exec();
 
   SQLite::Statement del_envelopes(
-      db_.Connection(),
-      "DELETE FROM encrypted_envelopes WHERE retention_until IS NOT NULL AND retention_until < ?");
+      db_.Connection(), "DELETE FROM encrypted_envelopes WHERE retention_until IS NOT NULL AND retention_until < ?");
   del_envelopes.bind(1, now);
   int deleted = del_envelopes.exec();
 
@@ -136,8 +130,7 @@ int EnvelopeRepository::DeleteExpired(common::Timestamp now) {
 }
 
 bool EnvelopeRepository::CheckDuplicate(const common::EnvelopeId& envelope_id) {
-  SQLite::Statement stmt(db_.Connection(),
-                         "SELECT 1 FROM encrypted_envelopes WHERE envelope_id = ?");
+  SQLite::Statement stmt(db_.Connection(), "SELECT 1 FROM encrypted_envelopes WHERE envelope_id = ?");
   stmt.bind(1, envelope_id);
   return stmt.executeStep();
 }
@@ -172,4 +165,4 @@ std::size_t EnvelopeRepository::CountPendingForDevice(const common::DeviceId& de
   return 0;
 }
 
-}  // namespace vox::store
+} // namespace vox::store

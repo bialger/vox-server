@@ -97,4 +97,4 @@ std::vector<UserRecord> UserRepository::ListUsers(std::size_t limit, std::size_t
   return result;
 }
 
-}  // namespace vox::store
+} // namespace vox::store

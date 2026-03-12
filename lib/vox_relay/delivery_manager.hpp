@@ -20,7 +20,7 @@ struct QueuedEnvelope {
 };
 
 class DeliveryManager {
- public:
+public:
   DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device);
 
   common::VoidResult Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope);
@@ -29,7 +29,7 @@ class DeliveryManager {
   void SwitchToOffline(const common::DeviceId& device_id);
   std::size_t QueueSize(const common::DeviceId& device_id) const;
 
- private:
+private:
   struct DeviceQueue {
     std::deque<QueuedEnvelope> pending;
     mutable std::mutex mutex;
@@ -42,6 +42,6 @@ class DeliveryManager {
   common::ShardMap<common::DeviceId, std::shared_ptr<DeviceQueue>> queues_;
 };
 
-}  // namespace vox::relay
+} // namespace vox::relay
 
-#endif  // VOX_RELAY_DELIVERY_MANAGER_HPP
+#endif // VOX_RELAY_DELIVERY_MANAGER_HPP

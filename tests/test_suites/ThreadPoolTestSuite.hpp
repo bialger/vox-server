@@ -8,7 +8,7 @@
 #include "lib/vox_common/thread_pool.hpp"
 
 class ThreadPoolTestSuite : public testing::Test {
- protected:
+protected:
   static constexpr std::size_t kDefaultThreadCount = 4;
   static constexpr std::size_t kDefaultQueueCapacity = 64;
 
@@ -18,4 +18,4 @@ class ThreadPoolTestSuite : public testing::Test {
   void TearDown() override;
 };
 
-#endif  // THREADPOOLTESTSUITE_HPP
+#endif // THREADPOOLTESTSUITE_HPP

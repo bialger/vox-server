@@ -35,7 +35,7 @@ struct PrekeyBundle {
 };
 
 class DeviceRepository {
- public:
+public:
   explicit DeviceRepository(Database& db);
 
   common::VoidResult RegisterDevice(const DeviceRecord& device);
@@ -45,10 +45,10 @@ class DeviceRepository {
   common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id);
   common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_DEVICE_REPOSITORY_HPP
+#endif // VOX_STORE_DEVICE_REPOSITORY_HPP

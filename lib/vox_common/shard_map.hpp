@@ -10,26 +10,26 @@
 
 namespace vox::common {
 
-template <typename Key, typename Value, std::size_t ShardCount = 16>
+template<typename Key, typename Value, std::size_t ShardCount = 16>
 class ShardMap {
   static_assert(ShardCount > 0, "ShardCount must be positive");
 
- public:
+public:
   ShardMap() = default;
 
   ShardMap(const ShardMap&) = delete;
   ShardMap& operator=(const ShardMap&) = delete;
 
-  template <typename Fn>
+  template<typename Fn>
   auto WithShard(const Key& key, Fn&& fn) -> decltype(fn(std::declval<std::unordered_map<Key, Value>&>())) {
     auto& shard = GetShard(key);
     std::unique_lock lock(shard.mutex);
     return fn(shard.map);
   }
 
-  template <typename Fn>
-  auto WithShardShared(const Key& key, Fn&& fn) const
-      -> decltype(fn(std::declval<const std::unordered_map<Key, Value>&>())) {
+  template<typename Fn>
+  auto WithShardShared(const Key& key,
+                       Fn&& fn) const -> decltype(fn(std::declval<const std::unordered_map<Key, Value>&>())) {
     const auto& shard = GetShard(key);
     std::shared_lock lock(shard.mutex);
     return fn(shard.map);
@@ -63,7 +63,7 @@ class ShardMap {
     return shard.map.contains(key);
   }
 
-  template <typename Fn>
+  template<typename Fn>
   void ForEach(Fn&& fn) const {
     for (const auto& shard : shards_) {
       std::shared_lock lock(shard.mutex);
@@ -82,7 +82,7 @@ class ShardMap {
     return total;
   }
 
- private:
+private:
   struct Shard {
     mutable std::shared_mutex mutex;
     std::unordered_map<Key, Value> map;
@@ -99,6 +99,6 @@ class ShardMap {
   std::array<Shard, ShardCount> shards_;
 };
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_SHARD_MAP_HPP
+#endif // VOX_COMMON_SHARD_MAP_HPP

@@ -10,11 +10,10 @@ AttachmentRepository::AttachmentRepository(Database& db) : db_(db) {
 common::VoidResult AttachmentRepository::CreateAttachmentMeta(const AttachmentRecord& record) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "INSERT INTO attachment_metadata (attachment_id, user_id, conversation_id, file_size, "
-        "mime_hint, blob_path, upload_complete, created_at, retention_until) "
-        "VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)");
+    SQLite::Statement stmt(db_.Connection(),
+                           "INSERT INTO attachment_metadata (attachment_id, user_id, conversation_id, file_size, "
+                           "mime_hint, blob_path, upload_complete, created_at, retention_until) "
+                           "VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)");
     stmt.bind(1, record.attachment_id);
     stmt.bind(2, record.user_id);
     stmt.bind(3, record.conversation_id);
@@ -42,7 +41,8 @@ std::optional<AttachmentRecord> AttachmentRepository::GetAttachmentMeta(const co
     rec.conversation_id = stmt.getColumn("conversation_id").getString();
     rec.file_size = stmt.getColumn("file_size").getInt64();
     rec.mime_hint = stmt.getColumn("mime_hint").getString();
-    rec.ciphertext_hash = stmt.getColumn("ciphertext_hash").isNull() ? "" : stmt.getColumn("ciphertext_hash").getString();
+    rec.ciphertext_hash =
+        stmt.getColumn("ciphertext_hash").isNull() ? "" : stmt.getColumn("ciphertext_hash").getString();
     rec.blob_path = stmt.getColumn("blob_path").getString();
     rec.upload_complete = stmt.getColumn("upload_complete").getInt() != 0;
     rec.created_at = stmt.getColumn("created_at").getInt64();
@@ -93,9 +93,8 @@ std::int64_t AttachmentRepository::GetStorageUsedByUser(const common::UserId& us
 
 std::vector<AttachmentRecord> AttachmentRepository::GetExpired(common::Timestamp now) {
   std::vector<AttachmentRecord> result;
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT * FROM attachment_metadata WHERE retention_until IS NOT NULL AND retention_until < ?");
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT * FROM attachment_metadata WHERE retention_until IS NOT NULL AND retention_until < ?");
   stmt.bind(1, now);
   while (stmt.executeStep()) {
     AttachmentRecord rec;
@@ -113,11 +112,10 @@ std::vector<AttachmentRecord> AttachmentRepository::GetExpired(common::Timestamp
 
 int AttachmentRepository::DeleteExpired(common::Timestamp now) {
   auto lock = db_.WriteLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "DELETE FROM attachment_metadata WHERE retention_until IS NOT NULL AND retention_until < ?");
+  SQLite::Statement stmt(db_.Connection(),
+                         "DELETE FROM attachment_metadata WHERE retention_until IS NOT NULL AND retention_until < ?");
   stmt.bind(1, now);
   return stmt.exec();
 }
 
-}  // namespace vox::store
+} // namespace vox::store

@@ -2,8 +2,7 @@
 
 #include "lib/vox_common/uuid.hpp"
 
-const std::filesystem::path AttachmentTestSuite::kBlobDir =
-    std::filesystem::temp_directory_path() / "vox_test_blobs";
+const std::filesystem::path AttachmentTestSuite::kBlobDir = std::filesystem::temp_directory_path() / "vox_test_blobs";
 
 void AttachmentTestSuite::SetUp() {
   std::filesystem::create_directories(kBlobDir);

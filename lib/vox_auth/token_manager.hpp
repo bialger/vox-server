@@ -14,7 +14,7 @@ struct TokenPair {
 };
 
 class TokenManager {
- public:
+public:
   TokenManager(store::SessionRepository& sessions,
                common::Timestamp access_lifetime_seconds,
                common::Timestamp refresh_lifetime_seconds);
@@ -34,7 +34,7 @@ class TokenManager {
 
   static std::string HashToken(const std::string& token);
 
- private:
+private:
   static std::string GenerateToken();
 
   store::SessionRepository& sessions_;
@@ -42,6 +42,6 @@ class TokenManager {
   common::Timestamp refresh_lifetime_seconds_;
 };
 
-}  // namespace vox::auth
+} // namespace vox::auth
 
-#endif  // VOX_AUTH_TOKEN_MANAGER_HPP
+#endif // VOX_AUTH_TOKEN_MANAGER_HPP

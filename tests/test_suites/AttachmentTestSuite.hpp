@@ -15,7 +15,7 @@
 #include "lib/vox_store/user_repository.hpp"
 
 class AttachmentTestSuite : public testing::Test {
- protected:
+protected:
   static const std::filesystem::path kBlobDir;
 
   std::unique_ptr<vox::store::Database> db_;
@@ -37,4 +37,4 @@ class AttachmentTestSuite : public testing::Test {
   std::string CreateTestConversation(const std::string& creator_user_id, const std::vector<TestUser>& members);
 };
 
-#endif  // ATTACHMENTTESTSUITE_HPP
+#endif // ATTACHMENTTESTSUITE_HPP

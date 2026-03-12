@@ -31,8 +31,7 @@ common::VoidResult SessionRepository::CreateSession(const SessionRecord& session
 }
 
 std::optional<SessionRecord> SessionRepository::FindByAccessToken(const std::string& access_token_hash) {
-  SQLite::Statement stmt(db_.Connection(),
-                         "SELECT * FROM sessions WHERE access_token_hash = ? AND revoked_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM sessions WHERE access_token_hash = ? AND revoked_at IS NULL");
   stmt.bind(1, access_token_hash);
   if (stmt.executeStep()) {
     SessionRecord rec;
@@ -117,4 +116,4 @@ std::size_t SessionRepository::CountActiveForUser(const common::UserId& user_id,
   return 0;
 }
 
-}  // namespace vox::store
+} // namespace vox::store

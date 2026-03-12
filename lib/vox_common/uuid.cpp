@@ -19,13 +19,12 @@ std::string GenerateUuid() {
   high = (high & 0xFFFFFFFFFFFF0FFFULL) | 0x0000000000004000ULL;
   low = (low & 0x3FFFFFFFFFFFFFFFULL) | 0x8000000000000000ULL;
 
-  return fmt::format(
-      "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-      static_cast<std::uint32_t>(high >> 32),
-      static_cast<std::uint16_t>((high >> 16) & 0xFFFF),
-      static_cast<std::uint16_t>(high & 0xFFFF),
-      static_cast<std::uint16_t>(low >> 48),
-      low & 0x0000FFFFFFFFFFFFULL);
+  return fmt::format("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
+                     static_cast<std::uint32_t>(high >> 32),
+                     static_cast<std::uint16_t>((high >> 16) & 0xFFFF),
+                     static_cast<std::uint16_t>(high & 0xFFFF),
+                     static_cast<std::uint16_t>(low >> 48),
+                     low & 0x0000FFFFFFFFFFFFULL);
 }
 
-}  // namespace vox::common
+} // namespace vox::common

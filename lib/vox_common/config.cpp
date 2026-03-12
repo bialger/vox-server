@@ -6,4 +6,4 @@ ServerConfig ServerConfig::Default() {
   return ServerConfig{};
 }
 
-}  // namespace vox::common
+} // namespace vox::common

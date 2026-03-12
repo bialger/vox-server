@@ -9,4 +9,4 @@ void InitLogging(const std::string& level) {
   spdlog::set_level(spdlog::level::from_str(level));
 }
 
-}  // namespace vox::common
+} // namespace vox::common

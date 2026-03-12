@@ -7,6 +7,6 @@ namespace vox::common {
 
 void InitLogging(const std::string& level = "info");
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_LOGGING_HPP
+#endif // VOX_COMMON_LOGGING_HPP

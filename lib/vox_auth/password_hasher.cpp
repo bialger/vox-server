@@ -43,30 +43,29 @@ std::vector<std::uint8_t> GenerateRandomSalt() {
   return salt;
 }
 
-}  // namespace
+} // namespace
 
-PasswordHasher::PasswordHasher(std::uint32_t time_cost, std::uint32_t memory_cost, std::uint32_t parallelism)
-    : time_cost_(time_cost), memory_cost_(memory_cost), parallelism_(parallelism) {
+PasswordHasher::PasswordHasher(std::uint32_t time_cost, std::uint32_t memory_cost, std::uint32_t parallelism) :
+    time_cost_(time_cost), memory_cost_(memory_cost), parallelism_(parallelism) {
 }
 
 common::Result<HashResult> PasswordHasher::Hash(const std::string& password_derived_value) {
   auto salt_bytes = GenerateRandomSalt();
   std::vector<std::uint8_t> hash_bytes(kHashLength);
 
-  int result = argon2id_hash_raw(
-      time_cost_,
-      memory_cost_,
-      parallelism_,
-      password_derived_value.data(),
-      password_derived_value.size(),
-      salt_bytes.data(),
-      salt_bytes.size(),
-      hash_bytes.data(),
-      hash_bytes.size());
+  int result = argon2id_hash_raw(time_cost_,
+                                 memory_cost_,
+                                 parallelism_,
+                                 password_derived_value.data(),
+                                 password_derived_value.size(),
+                                 salt_bytes.data(),
+                                 salt_bytes.size(),
+                                 hash_bytes.data(),
+                                 hash_bytes.size());
 
   if (result != ARGON2_OK) {
-    return std::unexpected(
-        common::Error{common::ErrorCode::kInternal, fmt::format("Argon2 hash failed: {}", argon2_error_message(result))});
+    return std::unexpected(common::Error{common::ErrorCode::kInternal,
+                                         fmt::format("Argon2 hash failed: {}", argon2_error_message(result))});
   }
 
   return HashResult{BytesToHex(salt_bytes), BytesToHex(hash_bytes)};
@@ -78,16 +77,15 @@ bool PasswordHasher::Verify(const std::string& password_derived_value,
   auto salt_bytes = HexToBytes(salt);
   std::vector<std::uint8_t> hash_bytes(kHashLength);
 
-  int result = argon2id_hash_raw(
-      time_cost_,
-      memory_cost_,
-      parallelism_,
-      password_derived_value.data(),
-      password_derived_value.size(),
-      salt_bytes.data(),
-      salt_bytes.size(),
-      hash_bytes.data(),
-      hash_bytes.size());
+  int result = argon2id_hash_raw(time_cost_,
+                                 memory_cost_,
+                                 parallelism_,
+                                 password_derived_value.data(),
+                                 password_derived_value.size(),
+                                 salt_bytes.data(),
+                                 salt_bytes.size(),
+                                 hash_bytes.data(),
+                                 hash_bytes.size());
 
   if (result != ARGON2_OK) {
     return false;
@@ -96,4 +94,4 @@ bool PasswordHasher::Verify(const std::string& password_derived_value,
   return BytesToHex(hash_bytes) == verifier;
 }
 
-}  // namespace vox::auth
+} // namespace vox::auth

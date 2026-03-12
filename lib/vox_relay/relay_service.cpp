@@ -11,8 +11,8 @@ namespace vox::relay {
 RelayService::RelayService(store::EnvelopeRepository& envelopes,
                            store::ConversationRepository& conversations,
                            store::DeviceRepository& devices,
-                           DeliveryManager& delivery)
-    : envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
+                           DeliveryManager& delivery) :
+    envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
 }
 
 common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageRequest& request) {
@@ -113,4 +113,4 @@ common::Timestamp RelayService::Now() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-}  // namespace vox::relay
+} // namespace vox::relay

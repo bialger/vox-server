@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include "test_suites/ThreadPoolTestSuite.hpp"
 #include "lib/vox_common/bounded_queue.hpp"
+#include "test_suites/ThreadPoolTestSuite.hpp"
 
 TEST_F(ThreadPoolTestSuite, SubmitSingleTask) {
   auto future = pool_->Submit([]() { return 42; });

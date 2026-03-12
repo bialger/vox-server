@@ -66,4 +66,4 @@ void ThreadPool::WorkerLoop(std::stop_token /*stop_token*/) {
   }
 }
 
-}  // namespace vox::common
+} // namespace vox::common

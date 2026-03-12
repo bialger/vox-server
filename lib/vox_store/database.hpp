@@ -10,20 +10,20 @@
 namespace vox::store {
 
 class Database {
- public:
+public:
   explicit Database(const std::string& db_path);
 
   SQLite::Database& Connection();
 
   std::unique_lock<std::mutex> WriteLock();
 
- private:
+private:
   void CreateSchema();
 
   std::unique_ptr<SQLite::Database> db_;
   std::mutex write_mutex_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_DATABASE_HPP
+#endif // VOX_STORE_DATABASE_HPP

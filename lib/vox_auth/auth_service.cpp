@@ -12,8 +12,8 @@ AuthService::AuthService(store::UserRepository& users,
                          store::DeviceRepository& devices,
                          PasswordHasher& hasher,
                          TokenManager& tokens,
-                         common::ThreadPool& cpu_pool)
-    : users_(users), devices_(devices), hasher_(hasher), tokens_(tokens), cpu_pool_(cpu_pool) {
+                         common::ThreadPool& cpu_pool) :
+    users_(users), devices_(devices), hasher_(hasher), tokens_(tokens), cpu_pool_(cpu_pool) {
 }
 
 common::Result<RegisterResponse> AuthService::Register(const RegisterRequest& request) {
@@ -121,4 +121,4 @@ common::Timestamp AuthService::Now() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-}  // namespace vox::auth
+} // namespace vox::auth

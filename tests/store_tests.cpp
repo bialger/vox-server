@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "test_suites/StoreTestSuite.hpp"
 #include "lib/vox_common/uuid.hpp"
+#include "test_suites/StoreTestSuite.hpp"
 
 TEST_F(StoreTestSuite, CreateAndFindUserByUsername) {
   auto user = MakeUser("alice");

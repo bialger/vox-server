@@ -7,10 +7,8 @@
 
 namespace vox::admin {
 
-AdminService::AdminService(store::Database& db,
-                           store::UserRepository& users,
-                           store::SessionRepository& sessions)
-    : db_(db), users_(users), sessions_(sessions) {
+AdminService::AdminService(store::Database& db, store::UserRepository& users, store::SessionRepository& sessions) :
+    db_(db), users_(users), sessions_(sessions) {
 }
 
 ServerStats AdminService::GetServerStats() {
@@ -47,9 +45,8 @@ ServerStats AdminService::GetServerStats() {
   }
 
   {
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "SELECT COALESCE(SUM(file_size), 0) FROM attachment_metadata WHERE upload_complete = 1");
+    SQLite::Statement stmt(db_.Connection(),
+                           "SELECT COALESCE(SUM(file_size), 0) FROM attachment_metadata WHERE upload_complete = 1");
     if (stmt.executeStep()) {
       stats.total_storage_bytes = stmt.getColumn(0).getInt64();
     }
@@ -70,15 +67,21 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
   try {
     SQLite::Transaction txn(db_.Connection());
 
-    db_.Connection().exec("DELETE FROM delivery_state WHERE target_device_id IN "
-                          "(SELECT device_id FROM devices WHERE user_id = '" + user_id + "')");
+    db_.Connection().exec(
+        "DELETE FROM delivery_state WHERE target_device_id IN "
+        "(SELECT device_id FROM devices WHERE user_id = '" +
+        user_id + "')");
 
-    db_.Connection().exec("DELETE FROM delivery_state WHERE envelope_id IN "
-                          "(SELECT envelope_id FROM encrypted_envelopes WHERE sender_device_id IN "
-                          "(SELECT device_id FROM devices WHERE user_id = '" + user_id + "'))");
+    db_.Connection().exec(
+        "DELETE FROM delivery_state WHERE envelope_id IN "
+        "(SELECT envelope_id FROM encrypted_envelopes WHERE sender_device_id IN "
+        "(SELECT device_id FROM devices WHERE user_id = '" +
+        user_id + "'))");
 
-    db_.Connection().exec("DELETE FROM encrypted_envelopes WHERE sender_device_id IN "
-                          "(SELECT device_id FROM devices WHERE user_id = '" + user_id + "')");
+    db_.Connection().exec(
+        "DELETE FROM encrypted_envelopes WHERE sender_device_id IN "
+        "(SELECT device_id FROM devices WHERE user_id = '" +
+        user_id + "')");
 
     db_.Connection().exec("DELETE FROM attachment_metadata WHERE user_id = '" + user_id + "'");
 
@@ -88,8 +91,10 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
 
     db_.Connection().exec("DELETE FROM sessions WHERE user_id = '" + user_id + "'");
 
-    db_.Connection().exec("DELETE FROM one_time_prekeys WHERE device_id IN "
-                          "(SELECT device_id FROM devices WHERE user_id = '" + user_id + "')");
+    db_.Connection().exec(
+        "DELETE FROM one_time_prekeys WHERE device_id IN "
+        "(SELECT device_id FROM devices WHERE user_id = '" +
+        user_id + "')");
 
     db_.Connection().exec("DELETE FROM devices WHERE user_id = '" + user_id + "'");
 
@@ -119,4 +124,4 @@ common::Timestamp AdminService::Now() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-}  // namespace vox::admin
+} // namespace vox::admin

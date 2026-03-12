@@ -19,7 +19,7 @@ struct UserRecord {
 };
 
 class UserRepository {
- public:
+public:
   explicit UserRepository(Database& db);
 
   common::VoidResult CreateUser(const UserRecord& user);
@@ -28,10 +28,10 @@ class UserRepository {
   common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now);
   std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_USER_REPOSITORY_HPP
+#endif // VOX_STORE_USER_REPOSITORY_HPP

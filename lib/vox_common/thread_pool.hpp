@@ -13,7 +13,7 @@
 namespace vox::common {
 
 class ThreadPool {
- public:
+public:
   explicit ThreadPool(std::size_t thread_count, std::size_t queue_capacity = 1024);
 
   ~ThreadPool();
@@ -21,11 +21,11 @@ class ThreadPool {
   ThreadPool(const ThreadPool&) = delete;
   ThreadPool& operator=(const ThreadPool&) = delete;
 
-  template <typename F, typename... Args>
+  template<typename F, typename... Args>
   auto Submit(F&& func, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>> {
     using ReturnType = std::invoke_result_t<F, Args...>;
-    auto task =
-        std::make_shared<std::packaged_task<ReturnType()>>(std::bind(std::forward<F>(func), std::forward<Args>(args)...));
+    auto task = std::make_shared<std::packaged_task<ReturnType()>>(
+        std::bind(std::forward<F>(func), std::forward<Args>(args)...));
     auto future = task->get_future();
     bool pushed = queue_.Push([task]() { (*task)(); });
     if (!pushed) {
@@ -41,7 +41,7 @@ class ThreadPool {
   [[nodiscard]] std::size_t PendingTaskCount() const;
   [[nodiscard]] bool IsShutdown() const;
 
- private:
+private:
   void WorkerLoop(std::stop_token stop_token);
 
   BoundedQueue<std::function<void()>> queue_;
@@ -52,6 +52,6 @@ class ThreadPool {
   bool shutdown_ = false;
 };
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_THREAD_POOL_HPP
+#endif // VOX_COMMON_THREAD_POOL_HPP

@@ -19,7 +19,7 @@ struct InitUploadResponse {
 };
 
 class AttachmentService {
- public:
+public:
   AttachmentService(store::AttachmentRepository& attachments,
                     store::ConversationRepository& conversations,
                     const common::ServerConfig& config);
@@ -40,7 +40,7 @@ class AttachmentService {
 
   int DeleteExpired();
 
- private:
+private:
   common::Timestamp Now();
 
   store::AttachmentRepository& attachments_;
@@ -48,6 +48,6 @@ class AttachmentService {
   common::ServerConfig config_;
 };
 
-}  // namespace vox::attachments
+} // namespace vox::attachments
 
-#endif  // VOX_ATTACHMENTS_ATTACHMENT_SERVICE_HPP
+#endif // VOX_ATTACHMENTS_ATTACHMENT_SERVICE_HPP

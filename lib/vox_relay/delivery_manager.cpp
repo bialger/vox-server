@@ -6,8 +6,8 @@
 
 namespace vox::relay {
 
-DeliveryManager::DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device)
-    : envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
+DeliveryManager::DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device) :
+    envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
 }
 
 common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) {
@@ -44,8 +44,8 @@ std::vector<QueuedEnvelope> DeliveryManager::Dequeue(const common::DeviceId& dev
 
 common::VoidResult DeliveryManager::Acknowledge(const common::DeviceId& device_id,
                                                 const common::EnvelopeId& envelope_id) {
-  auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-                 .count();
+  auto now =
+      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
   return envelopes_.MarkAcked(envelope_id, device_id, now);
 }
 
@@ -58,8 +58,8 @@ void DeliveryManager::SwitchToOffline(const common::DeviceId& device_id) {
   auto& queue = *found;
   std::lock_guard lock(queue->mutex);
 
-  auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-                 .count();
+  auto now =
+      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
   for (const auto& env : queue->pending) {
     envelopes_.AddDeliveryState(env.envelope_id, device_id, now);
@@ -89,4 +89,4 @@ DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::De
   });
 }
 
-}  // namespace vox::relay
+} // namespace vox::relay

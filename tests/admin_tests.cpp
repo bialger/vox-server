@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "test_suites/AdminTestSuite.hpp"
 #include "lib/vox_common/uuid.hpp"
+#include "test_suites/AdminTestSuite.hpp"
 
 TEST_F(AdminTestSuite, EmptyDbStatsReturnsZeros) {
   auto stats = admin_->GetServerStats();

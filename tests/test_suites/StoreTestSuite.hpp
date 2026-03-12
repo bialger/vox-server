@@ -14,7 +14,7 @@
 #include "lib/vox_store/user_repository.hpp"
 
 class StoreTestSuite : public testing::Test {
- protected:
+protected:
   std::unique_ptr<vox::store::Database> db_;
   std::unique_ptr<vox::store::UserRepository> users_;
   std::unique_ptr<vox::store::DeviceRepository> devices_;
@@ -30,4 +30,4 @@ class StoreTestSuite : public testing::Test {
   vox::store::DeviceRecord MakeDevice(const std::string& user_id, const std::string& device_id);
 };
 
-#endif  // STORETESTSUITE_HPP
+#endif // STORETESTSUITE_HPP

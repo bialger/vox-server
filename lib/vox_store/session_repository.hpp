@@ -22,7 +22,7 @@ struct SessionRecord {
 };
 
 class SessionRepository {
- public:
+public:
   explicit SessionRepository(Database& db);
 
   common::VoidResult CreateSession(const SessionRecord& session);
@@ -33,10 +33,10 @@ class SessionRepository {
   int CleanExpired(common::Timestamp now);
   std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_SESSION_REPOSITORY_HPP
+#endif // VOX_STORE_SESSION_REPOSITORY_HPP

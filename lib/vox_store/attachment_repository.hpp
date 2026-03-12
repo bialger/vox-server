@@ -24,22 +24,21 @@ struct AttachmentRecord {
 };
 
 class AttachmentRepository {
- public:
+public:
   explicit AttachmentRepository(Database& db);
 
   common::VoidResult CreateAttachmentMeta(const AttachmentRecord& record);
   std::optional<AttachmentRecord> GetAttachmentMeta(const common::AttachmentId& attachment_id);
-  common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id,
-                                        const std::string& ciphertext_hash);
+  common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id, const std::string& ciphertext_hash);
   common::VoidResult DeleteAttachment(const common::AttachmentId& attachment_id);
   std::int64_t GetStorageUsedByUser(const common::UserId& user_id);
   std::vector<AttachmentRecord> GetExpired(common::Timestamp now);
   int DeleteExpired(common::Timestamp now);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_ATTACHMENT_REPOSITORY_HPP
+#endif // VOX_STORE_ATTACHMENT_REPOSITORY_HPP

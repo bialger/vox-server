@@ -11,10 +11,9 @@ ConversationRepository::ConversationRepository(Database& db) : db_(db) {
 common::VoidResult ConversationRepository::CreateConversation(const ConversationRecord& conv) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "INSERT INTO conversations (conversation_id, type, created_by, created_at, policy_blob) "
-        "VALUES (?, ?, ?, ?, ?)");
+    SQLite::Statement stmt(db_.Connection(),
+                           "INSERT INTO conversations (conversation_id, type, created_by, created_at, policy_blob) "
+                           "VALUES (?, ?, ?, ?, ?)");
     stmt.bind(1, conv.conversation_id);
     stmt.bind(2, static_cast<int>(conv.type));
     stmt.bind(3, conv.created_by);
@@ -73,9 +72,9 @@ common::VoidResult ConversationRepository::RemoveMember(const common::Conversati
                                                         const common::UserId& user_id,
                                                         common::Timestamp now) {
   auto lock = db_.WriteLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "UPDATE conversation_members SET removed_at = ? WHERE conversation_id = ? AND user_id = ? AND removed_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(),
+                         "UPDATE conversation_members SET removed_at = ? WHERE conversation_id = ? AND user_id = ? AND "
+                         "removed_at IS NULL");
   stmt.bind(1, now);
   stmt.bind(2, conv_id);
   stmt.bind(3, user_id);
@@ -85,9 +84,8 @@ common::VoidResult ConversationRepository::RemoveMember(const common::Conversati
 
 std::vector<MemberRecord> ConversationRepository::GetMembers(const common::ConversationId& conv_id) {
   std::vector<MemberRecord> result;
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT * FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT * FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
   stmt.bind(1, conv_id);
   while (stmt.executeStep()) {
     MemberRecord rec;
@@ -105,11 +103,10 @@ std::vector<MemberRecord> ConversationRepository::GetMembers(const common::Conve
 
 std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(const common::UserId& user_id) {
   std::vector<ConversationRecord> result;
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT c.* FROM conversations c "
-      "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
-      "WHERE m.user_id = ? AND m.removed_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT c.* FROM conversations c "
+                         "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
+                         "WHERE m.user_id = ? AND m.removed_at IS NULL");
   stmt.bind(1, user_id);
   while (stmt.executeStep()) {
     ConversationRecord rec;
@@ -190,10 +187,9 @@ common::VoidResult ConversationRepository::Unsubscribe(const common::Conversatio
                                                        const common::UserId& user_id,
                                                        common::Timestamp now) {
   auto lock = db_.WriteLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "UPDATE channel_subscriptions SET unsubscribed_at = ? "
-      "WHERE conversation_id = ? AND user_id = ? AND unsubscribed_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(),
+                         "UPDATE channel_subscriptions SET unsubscribed_at = ? "
+                         "WHERE conversation_id = ? AND user_id = ? AND unsubscribed_at IS NULL");
   stmt.bind(1, now);
   stmt.bind(2, conv_id);
   stmt.bind(3, user_id);
@@ -214,9 +210,8 @@ std::vector<common::UserId> ConversationRepository::GetSubscribers(const common:
 }
 
 std::size_t ConversationRepository::GetMemberCount(const common::ConversationId& conv_id) {
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT COUNT(*) FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT COUNT(*) FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
   stmt.bind(1, conv_id);
   if (stmt.executeStep()) {
     return static_cast<std::size_t>(stmt.getColumn(0).getInt64());
@@ -224,4 +219,4 @@ std::size_t ConversationRepository::GetMemberCount(const common::ConversationId&
   return 0;
 }
 
-}  // namespace vox::store
+} // namespace vox::store

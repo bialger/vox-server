@@ -29,7 +29,7 @@ struct DeliveryStateRecord {
 };
 
 class EnvelopeRepository {
- public:
+public:
   explicit EnvelopeRepository(Database& db);
 
   common::VoidResult StoreEnvelope(const EnvelopeRecord& envelope);
@@ -48,10 +48,10 @@ class EnvelopeRepository {
   std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id);
   std::size_t CountPendingForDevice(const common::DeviceId& device_id);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_ENVELOPE_REPOSITORY_HPP
+#endif // VOX_STORE_ENVELOPE_REPOSITORY_HPP

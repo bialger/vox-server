@@ -49,11 +49,11 @@ struct Error {
   std::string message;
 };
 
-template <typename T>
+template<typename T>
 using Result = std::expected<T, Error>;
 
 using VoidResult = std::expected<void, Error>;
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_TYPES_HPP
+#endif // VOX_COMMON_TYPES_HPP

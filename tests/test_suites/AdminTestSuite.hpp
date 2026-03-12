@@ -13,7 +13,7 @@
 #include "lib/vox_store/user_repository.hpp"
 
 class AdminTestSuite : public testing::Test {
- protected:
+protected:
   std::unique_ptr<vox::store::Database> db_;
   std::unique_ptr<vox::store::UserRepository> users_;
   std::unique_ptr<vox::store::DeviceRepository> devices_;
@@ -32,4 +32,4 @@ class AdminTestSuite : public testing::Test {
   TestUser CreateTestUser(const std::string& username);
 };
 
-#endif  // ADMINTESTSUITE_HPP
+#endif // ADMINTESTSUITE_HPP

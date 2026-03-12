@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "test_suites/RelayTestSuite.hpp"
 #include "lib/vox_common/uuid.hpp"
+#include "test_suites/RelayTestSuite.hpp"
 
 TEST_F(RelayTestSuite, SendMessageToDm) {
   auto alice = CreateTestUser("alice");
@@ -24,8 +24,7 @@ TEST_F(RelayTestSuite, SendMessageToGroup) {
   auto alice = CreateTestUser("alice_g");
   auto bob = CreateTestUser("bob_g");
   auto charlie = CreateTestUser("charlie_g");
-  auto conv_id =
-      CreateTestConversation(vox::common::ConversationType::kGroup, alice.user_id, {alice, bob, charlie});
+  auto conv_id = CreateTestConversation(vox::common::ConversationType::kGroup, alice.user_id, {alice, bob, charlie});
 
   vox::relay::SendMessageRequest req;
   req.sender_device_id = alice.device_id;
@@ -116,8 +115,7 @@ TEST_F(RelayTestSuite, DuplicateEnvelopeRejected) {
 TEST_F(RelayTestSuite, ChannelNonAdminPublishFails) {
   auto admin = CreateTestUser("ch_admin");
   auto subscriber = CreateTestUser("ch_sub");
-  auto conv_id =
-      CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
+  auto conv_id = CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
 
   vox::relay::SendMessageRequest req;
   req.sender_device_id = subscriber.device_id;
@@ -132,8 +130,7 @@ TEST_F(RelayTestSuite, ChannelNonAdminPublishFails) {
 TEST_F(RelayTestSuite, ChannelAdminPublishSucceeds) {
   auto admin = CreateTestUser("ch_admin2");
   auto subscriber = CreateTestUser("ch_sub2");
-  auto conv_id =
-      CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
+  auto conv_id = CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
 
   vox::relay::SendMessageRequest req;
   req.sender_device_id = admin.device_id;

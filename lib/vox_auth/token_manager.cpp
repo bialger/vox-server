@@ -19,14 +19,13 @@ std::string SimpleHash(const std::string& input) {
   return fmt::format("{:016x}{:016x}", h, h2);
 }
 
-}  // namespace
+} // namespace
 
 TokenManager::TokenManager(store::SessionRepository& sessions,
                            common::Timestamp access_lifetime_seconds,
-                           common::Timestamp refresh_lifetime_seconds)
-    : sessions_(sessions),
-      access_lifetime_seconds_(access_lifetime_seconds),
-      refresh_lifetime_seconds_(refresh_lifetime_seconds) {
+                           common::Timestamp refresh_lifetime_seconds) :
+    sessions_(sessions), access_lifetime_seconds_(access_lifetime_seconds),
+    refresh_lifetime_seconds_(refresh_lifetime_seconds) {
 }
 
 std::string TokenManager::GenerateToken() {
@@ -103,4 +102,4 @@ common::VoidResult TokenManager::RevokeAllForUser(const common::UserId& user_id,
   return sessions_.RevokeAllForUser(user_id, now);
 }
 
-}  // namespace vox::auth
+} // namespace vox::auth

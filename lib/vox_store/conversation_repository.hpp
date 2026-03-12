@@ -27,7 +27,7 @@ struct MemberRecord {
 };
 
 class ConversationRepository {
- public:
+public:
   explicit ConversationRepository(Database& db);
 
   common::VoidResult CreateConversation(const ConversationRecord& conv);
@@ -54,10 +54,10 @@ class ConversationRepository {
   std::vector<common::UserId> GetSubscribers(const common::ConversationId& conv_id);
   std::size_t GetMemberCount(const common::ConversationId& conv_id);
 
- private:
+private:
   Database& db_;
 };
 
-}  // namespace vox::store
+} // namespace vox::store
 
-#endif  // VOX_STORE_CONVERSATION_REPOSITORY_HPP
+#endif // VOX_STORE_CONVERSATION_REPOSITORY_HPP

@@ -44,7 +44,7 @@ struct RefreshRequest {
 };
 
 class AuthService {
- public:
+public:
   AuthService(store::UserRepository& users,
               store::DeviceRepository& devices,
               PasswordHasher& hasher,
@@ -56,7 +56,7 @@ class AuthService {
   common::VoidResult Logout(const std::string& session_id);
   common::Result<TokenPair> Refresh(const RefreshRequest& request);
 
- private:
+private:
   common::Timestamp Now();
 
   store::UserRepository& users_;
@@ -66,6 +66,6 @@ class AuthService {
   common::ThreadPool& cpu_pool_;
 };
 
-}  // namespace vox::auth
+} // namespace vox::auth
 
-#endif  // VOX_AUTH_AUTH_SERVICE_HPP
+#endif // VOX_AUTH_AUTH_SERVICE_HPP

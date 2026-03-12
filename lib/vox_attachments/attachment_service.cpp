@@ -11,8 +11,8 @@ namespace vox::attachments {
 
 AttachmentService::AttachmentService(store::AttachmentRepository& attachments,
                                      store::ConversationRepository& conversations,
-                                     const common::ServerConfig& config)
-    : attachments_(attachments), conversations_(conversations), config_(config) {
+                                     const common::ServerConfig& config) :
+    attachments_(attachments), conversations_(conversations), config_(config) {
   std::filesystem::create_directories(config_.blob_storage_path);
 }
 
@@ -34,8 +34,7 @@ common::Result<InitUploadResponse> AttachmentService::InitUpload(const common::U
 
   bool is_member = conversations_.IsUserInConversation(conversation_id, user_id);
   if (!is_member) {
-    return std::unexpected(
-        common::Error{common::ErrorCode::kForbidden, "User is not a member of this conversation"});
+    return std::unexpected(common::Error{common::ErrorCode::kForbidden, "User is not a member of this conversation"});
   }
 
   auto now = Now();
@@ -140,4 +139,4 @@ common::Timestamp AttachmentService::Now() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-}  // namespace vox::attachments
+} // namespace vox::attachments

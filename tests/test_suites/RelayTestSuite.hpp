@@ -15,7 +15,7 @@
 #include "lib/vox_store/user_repository.hpp"
 
 class RelayTestSuite : public testing::Test {
- protected:
+protected:
   std::unique_ptr<vox::store::Database> db_;
   std::unique_ptr<vox::store::UserRepository> users_;
   std::unique_ptr<vox::store::DeviceRepository> devices_;
@@ -38,4 +38,4 @@ class RelayTestSuite : public testing::Test {
                                      const std::vector<TestUser>& members);
 };
 
-#endif  // RELAYTESTSUITE_HPP
+#endif // RELAYTESTSUITE_HPP

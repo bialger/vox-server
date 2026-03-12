@@ -7,6 +7,6 @@ namespace vox::common {
 
 std::string GenerateUuid();
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_UUID_HPP
+#endif // VOX_COMMON_UUID_HPP

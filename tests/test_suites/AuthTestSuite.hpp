@@ -15,7 +15,7 @@
 #include "lib/vox_store/user_repository.hpp"
 
 class AuthTestSuite : public testing::Test {
- protected:
+protected:
   std::unique_ptr<vox::store::Database> db_;
   std::unique_ptr<vox::store::UserRepository> users_;
   std::unique_ptr<vox::store::DeviceRepository> devices_;
@@ -29,4 +29,4 @@ class AuthTestSuite : public testing::Test {
   void TearDown() override;
 };
 
-#endif  // AUTHTESTSUITE_HPP
+#endif // AUTHTESTSUITE_HPP

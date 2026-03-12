@@ -13,11 +13,10 @@ DeviceRepository::DeviceRepository(Database& db) : db_(db) {
 common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(
-        db_.Connection(),
-        "INSERT INTO devices (device_id, user_id, identity_key_public, signed_prekey_public, "
-        "signed_prekey_signature, last_prekey_refresh_at, client_protocol_version) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)");
+    SQLite::Statement stmt(db_.Connection(),
+                           "INSERT INTO devices (device_id, user_id, identity_key_public, signed_prekey_public, "
+                           "signed_prekey_signature, last_prekey_refresh_at, client_protocol_version) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?)");
     stmt.bind(1, device.device_id);
     stmt.bind(2, device.user_id);
     stmt.bind(3, device.identity_key_public);
@@ -77,7 +76,7 @@ std::optional<DeviceRecord> DeviceRepository::FindById(const common::DeviceId& d
 }
 
 common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device_id,
-                                                   const std::vector<PrekeyRecord>& prekeys) {
+                                                  const std::vector<PrekeyRecord>& prekeys) {
   try {
     auto lock = db_.WriteLock();
     SQLite::Transaction txn(db_.Connection());
@@ -90,11 +89,9 @@ common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device
       stmt.exec();
       stmt.reset();
     }
-    auto now = std::chrono::duration_cast<std::chrono::seconds>(
-                   std::chrono::system_clock::now().time_since_epoch())
-                   .count();
-    SQLite::Statement update(db_.Connection(),
-                             "UPDATE devices SET last_prekey_refresh_at = ? WHERE device_id = ?");
+    auto now =
+        std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    SQLite::Statement update(db_.Connection(), "UPDATE devices SET last_prekey_refresh_at = ? WHERE device_id = ?");
     update.bind(1, now);
     update.bind(2, device_id);
     update.exec();
@@ -142,9 +139,8 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
   record.device_id = device_id;
   record.prekey_public = select.getColumn(1).getString();
 
-  auto now = std::chrono::duration_cast<std::chrono::seconds>(
-                 std::chrono::system_clock::now().time_since_epoch())
-                 .count();
+  auto now =
+      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
   SQLite::Statement update(db_.Connection(),
                            "UPDATE one_time_prekeys SET consumed_at = ? WHERE prekey_id = ? AND consumed_at IS NULL");
@@ -159,4 +155,4 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
   return record;
 }
 
-}  // namespace vox::store
+} // namespace vox::store

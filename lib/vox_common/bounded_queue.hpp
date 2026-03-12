@@ -8,9 +8,9 @@
 
 namespace vox::common {
 
-template <typename T>
+template<typename T>
 class BoundedQueue {
- public:
+public:
   explicit BoundedQueue(std::size_t capacity) : capacity_(capacity) {
   }
 
@@ -87,7 +87,7 @@ class BoundedQueue {
     return queue_.empty();
   }
 
- private:
+private:
   const std::size_t capacity_;
   std::queue<T> queue_;
   mutable std::mutex mutex_;
@@ -96,6 +96,6 @@ class BoundedQueue {
   bool shutdown_ = false;
 };
 
-}  // namespace vox::common
+} // namespace vox::common
 
-#endif  // VOX_COMMON_BOUNDED_QUEUE_HPP
+#endif // VOX_COMMON_BOUNDED_QUEUE_HPP

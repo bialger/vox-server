@@ -27,7 +27,7 @@ struct SendMessageResponse {
 };
 
 class RelayService {
- public:
+public:
   RelayService(store::EnvelopeRepository& envelopes,
                store::ConversationRepository& conversations,
                store::DeviceRepository& devices,
@@ -35,10 +35,9 @@ class RelayService {
 
   common::Result<SendMessageResponse> SendMessage(const SendMessageRequest& request);
   std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100);
-  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
-                                         const common::EnvelopeId& envelope_id);
+  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id);
 
- private:
+private:
   common::Timestamp Now();
 
   store::EnvelopeRepository& envelopes_;
@@ -47,6 +46,6 @@ class RelayService {
   DeliveryManager& delivery_;
 };
 
-}  // namespace vox::relay
+} // namespace vox::relay
 
-#endif  // VOX_RELAY_RELAY_SERVICE_HPP
+#endif // VOX_RELAY_RELAY_SERVICE_HPP
