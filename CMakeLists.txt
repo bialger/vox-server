@@ -4,7 +4,7 @@ project(
         vox-server
         VERSION 1.0.0
         DESCRIPTION "Server side of the Vox messenger, powered by Boost and C++"
-        LANGUAGES CXX
+        LANGUAGES C CXX
 )
 
 set(CMAKE_CXX_STANDARD 23)
@@ -40,6 +40,8 @@ endif ()
 add_subdirectory(lib)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    add_subdirectory(bin)
+    if(NOT TESTS_ONLY)
+        add_subdirectory(bin)
+    endif()
     add_subdirectory(tests)
 endif ()
