@@ -49,10 +49,16 @@ protected:
                                            const std::string& bearer = {},
                                            const std::string& admin_token = {});
 
-  std::uint16_t Port() const { return port_; }
+  std::uint16_t Port() const {
+    return port_;
+  }
 
-  std::filesystem::path DbPath() const { return db_path_; }
-  std::filesystem::path BlobPath() const { return blob_path_; }
+  std::filesystem::path DbPath() const {
+    return db_path_;
+  }
+  std::filesystem::path BlobPath() const {
+    return blob_path_;
+  }
 
   vox::common::ServerConfig config_;
   std::unique_ptr<vox::store::Database> db_;

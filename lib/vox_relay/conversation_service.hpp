@@ -20,7 +20,7 @@ public:
 
   /// `member_user_ids` must include `created_by`. Duplicates are ignored. Minimum two distinct users.
   common::Result<common::ConversationId> CreateGroup(const common::UserId& created_by,
-                                                   std::vector<common::UserId> member_user_ids);
+                                                     std::vector<common::UserId> member_user_ids);
 
   /// Admins are recorded in `conversation_members` with admin/owner roles; all recipients must be subscribed.
   common::Result<common::ConversationId> CreateChannel(const common::UserId& created_by,
