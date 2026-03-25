@@ -18,18 +18,28 @@ struct UserRecord {
   std::optional<common::Timestamp> disabled_at;
 };
 
-class UserRepository {
+class IUserRepository {
 public:
-  explicit UserRepository(Database& db);
+  virtual ~IUserRepository() = default;
+  virtual common::VoidResult CreateUser(const UserRecord& user) = 0;
+  virtual std::optional<UserRecord> FindByUsername(const std::string& username) = 0;
+  virtual std::optional<UserRecord> FindById(const common::UserId& user_id) = 0;
+  virtual common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) = 0;
+  virtual std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) = 0;
+};
 
-  common::VoidResult CreateUser(const UserRecord& user);
-  std::optional<UserRecord> FindByUsername(const std::string& username);
-  std::optional<UserRecord> FindById(const common::UserId& user_id);
-  common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now);
-  std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0);
+class UserRepository : public IUserRepository {
+public:
+  explicit UserRepository(IDatabase& db);
+
+  common::VoidResult CreateUser(const UserRecord& user) override;
+  std::optional<UserRecord> FindByUsername(const std::string& username) override;
+  std::optional<UserRecord> FindById(const common::UserId& user_id) override;
+  common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) override;
+  std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) override;
 
 private:
-  Database& db_;
+  IDatabase& db_;
 };
 
 } // namespace vox::store

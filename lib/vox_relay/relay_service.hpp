@@ -26,24 +26,35 @@ struct SendMessageResponse {
   std::size_t delivered_to_count;
 };
 
-class RelayService {
+class IRelayService {
 public:
-  RelayService(store::EnvelopeRepository& envelopes,
-               store::ConversationRepository& conversations,
-               store::DeviceRepository& devices,
-               DeliveryManager& delivery);
+  virtual ~IRelayService() = default;
+  virtual common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) = 0;
+  virtual std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id,
+                                                          std::size_t limit = 100) = 0;
+  virtual common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+                                                 const common::EnvelopeId& envelope_id) = 0;
+};
 
-  common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request);
-  std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100);
-  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id);
+class RelayService : public IRelayService {
+public:
+  RelayService(store::IEnvelopeRepository& envelopes,
+               store::IConversationRepository& conversations,
+               store::IDeviceRepository& devices,
+               IDeliveryManager& delivery);
+
+  common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) override;
+  std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100) override;
+  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+                                         const common::EnvelopeId& envelope_id) override;
 
 private:
   common::Timestamp Now();
 
-  store::EnvelopeRepository& envelopes_;
-  store::ConversationRepository& conversations_;
-  store::DeviceRepository& devices_;
-  DeliveryManager& delivery_;
+  store::IEnvelopeRepository& envelopes_;
+  store::IConversationRepository& conversations_;
+  store::IDeviceRepository& devices_;
+  IDeliveryManager& delivery_;
 };
 
 } // namespace vox::relay

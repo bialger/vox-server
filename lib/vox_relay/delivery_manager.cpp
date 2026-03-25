@@ -6,7 +6,7 @@
 
 namespace vox::relay {
 
-DeliveryManager::DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device) :
+DeliveryManager::DeliveryManager(store::IEnvelopeRepository& envelopes, std::size_t max_queue_per_device) :
     envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
 }
 

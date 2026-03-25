@@ -13,7 +13,7 @@ constexpr int kRetentionUntilParam = 8;
 
 } // namespace
 
-AttachmentRepository::AttachmentRepository(Database& db) : db_(db) {
+AttachmentRepository::AttachmentRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult AttachmentRepository::CreateAttachmentMeta(const AttachmentRecord& record) {

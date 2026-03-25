@@ -13,7 +13,7 @@ constexpr int kAddMemberNowParam = 6;
 
 } // namespace
 
-ConversationRepository::ConversationRepository(Database& db) : db_(db) {
+ConversationRepository::ConversationRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult ConversationRepository::CreateConversation(const ConversationRecord& conv) {

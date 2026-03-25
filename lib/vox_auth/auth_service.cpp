@@ -8,10 +8,10 @@
 
 namespace vox::auth {
 
-AuthService::AuthService(store::UserRepository& users,
-                         store::DeviceRepository& devices,
+AuthService::AuthService(store::IUserRepository& users,
+                         store::IDeviceRepository& devices,
                          PasswordHasher& hasher,
-                         TokenManager& tokens,
+                         ITokenManager& tokens,
                          common::ThreadPool& cpu_pool) :
     users_(users), devices_(devices), hasher_(hasher), tokens_(tokens), cpu_pool_(cpu_pool) {
 }

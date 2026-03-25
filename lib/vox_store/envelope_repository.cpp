@@ -13,7 +13,7 @@ constexpr int kRetentionUntilParam = 7;
 
 } // namespace
 
-EnvelopeRepository::EnvelopeRepository(Database& db) : db_(db) {
+EnvelopeRepository::EnvelopeRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envelope) {

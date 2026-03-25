@@ -7,7 +7,7 @@
 
 namespace vox::admin {
 
-AdminService::AdminService(store::Database& db, store::UserRepository& users, store::SessionRepository& sessions) :
+AdminService::AdminService(store::IDatabase& db, store::IUserRepository& users, store::ISessionRepository& sessions) :
     db_(db), users_(users), sessions_(sessions) {
 }
 

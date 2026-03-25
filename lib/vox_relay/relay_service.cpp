@@ -8,10 +8,10 @@
 
 namespace vox::relay {
 
-RelayService::RelayService(store::EnvelopeRepository& envelopes,
-                           store::ConversationRepository& conversations,
-                           store::DeviceRepository& devices,
-                           DeliveryManager& delivery) :
+RelayService::RelayService(store::IEnvelopeRepository& envelopes,
+                           store::IConversationRepository& conversations,
+                           store::IDeviceRepository& devices,
+                           IDeliveryManager& delivery) :
     envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
 }
 

@@ -21,7 +21,7 @@ std::string SimpleHash(const std::string& input) {
 
 } // namespace
 
-TokenManager::TokenManager(store::SessionRepository& sessions,
+TokenManager::TokenManager(store::ISessionRepository& sessions,
                            common::Timestamp access_lifetime_seconds,
                            common::Timestamp refresh_lifetime_seconds) :
     sessions_(sessions), access_lifetime_seconds_(access_lifetime_seconds),

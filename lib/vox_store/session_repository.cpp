@@ -13,7 +13,7 @@ constexpr int kCreatedAtParam = 8;
 
 } // namespace
 
-SessionRepository::SessionRepository(Database& db) : db_(db) {
+SessionRepository::SessionRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult SessionRepository::CreateSession(const SessionRecord& session) {

@@ -15,7 +15,7 @@ constexpr int kClientProtocolVersionParam = 7;
 
 } // namespace
 
-DeviceRepository::DeviceRepository(Database& db) : db_(db) {
+DeviceRepository::DeviceRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) {

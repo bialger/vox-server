@@ -16,7 +16,7 @@ common::Error Err(common::ErrorCode c, std::string m) {
 
 } // namespace
 
-ConversationService::ConversationService(store::ConversationRepository& conversations, common::ServerConfig config) :
+ConversationService::ConversationService(store::IConversationRepository& conversations, common::ServerConfig config) :
     conversations_(conversations), config_(std::move(config)) {
 }
 

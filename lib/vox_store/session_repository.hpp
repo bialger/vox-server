@@ -21,20 +21,32 @@ struct SessionRecord {
   std::optional<common::Timestamp> revoked_at;
 };
 
-class SessionRepository {
+class ISessionRepository {
 public:
-  explicit SessionRepository(Database& db);
+  virtual ~ISessionRepository() = default;
+  virtual common::VoidResult CreateSession(const SessionRecord& session) = 0;
+  virtual std::optional<SessionRecord> FindByAccessToken(const std::string& access_token_hash) = 0;
+  virtual std::optional<SessionRecord> FindByRefreshToken(const std::string& refresh_token_hash) = 0;
+  virtual common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) = 0;
+  virtual common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) = 0;
+  virtual int CleanExpired(common::Timestamp now) = 0;
+  virtual std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now) = 0;
+};
 
-  common::VoidResult CreateSession(const SessionRecord& session);
-  std::optional<SessionRecord> FindByAccessToken(const std::string& access_token_hash);
-  std::optional<SessionRecord> FindByRefreshToken(const std::string& refresh_token_hash);
-  common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now);
-  common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now);
-  int CleanExpired(common::Timestamp now);
-  std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now);
+class SessionRepository : public ISessionRepository {
+public:
+  explicit SessionRepository(IDatabase& db);
+
+  common::VoidResult CreateSession(const SessionRecord& session) override;
+  std::optional<SessionRecord> FindByAccessToken(const std::string& access_token_hash) override;
+  std::optional<SessionRecord> FindByRefreshToken(const std::string& refresh_token_hash) override;
+  common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) override;
+  common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) override;
+  int CleanExpired(common::Timestamp now) override;
+  std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now) override;
 
 private:
-  Database& db_;
+  IDatabase& db_;
 };
 
 } // namespace vox::store

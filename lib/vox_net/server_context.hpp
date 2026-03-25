@@ -18,16 +18,16 @@ namespace vox::net {
 /// Non-owning references to services shared by HTTP/WebSocket handlers.
 struct ServerContext {
   common::ServerConfig& config;
-  vox::auth::AuthService& auth;
-  vox::auth::TokenManager& tokens;
-  vox::relay::RelayService& relay;
-  vox::relay::ConversationService& conversations;
-  vox::relay::DeliveryManager& delivery;
-  vox::store::EnvelopeRepository& envelopes;
-  vox::store::ConversationRepository& conversations_store;
-  vox::store::DeviceRepository& devices;
-  vox::attachments::AttachmentService& attachments;
-  vox::admin::AdminService& admin;
+  vox::auth::IAuthService& auth;
+  vox::auth::ITokenManager& tokens;
+  vox::relay::IRelayService& relay;
+  vox::relay::IConversationService& conversations;
+  vox::relay::IDeliveryManager& delivery;
+  vox::store::IEnvelopeRepository& envelopes;
+  vox::store::IConversationRepository& conversations_store;
+  vox::store::IDeviceRepository& devices;
+  vox::attachments::IAttachmentService& attachments;
+  vox::admin::IAdminService& admin;
 };
 
 } // namespace vox::net

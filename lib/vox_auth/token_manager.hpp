@@ -13,32 +13,52 @@ struct TokenPair {
   std::string refresh_token;
 };
 
-class TokenManager {
+class ITokenManager {
 public:
-  TokenManager(store::SessionRepository& sessions,
+  virtual ~ITokenManager() = default;
+  virtual common::Result<TokenPair> IssueTokens(const common::UserId& user_id,
+                                                  const common::DeviceId& device_id,
+                                                  common::Timestamp now) = 0;
+
+  virtual common::Result<store::SessionRecord> ValidateAccessToken(const std::string& access_token,
+                                                                     common::Timestamp now) = 0;
+
+  virtual common::Result<TokenPair> RefreshTokens(const std::string& refresh_token,
+                                                    const common::DeviceId& device_id,
+                                                    common::Timestamp now) = 0;
+
+  virtual common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) = 0;
+  virtual common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) = 0;
+  virtual common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) = 0;
+};
+
+class TokenManager : public ITokenManager {
+public:
+  TokenManager(store::ISessionRepository& sessions,
                common::Timestamp access_lifetime_seconds,
                common::Timestamp refresh_lifetime_seconds);
 
   common::Result<TokenPair> IssueTokens(const common::UserId& user_id,
                                         const common::DeviceId& device_id,
-                                        common::Timestamp now);
+                                        common::Timestamp now) override;
 
-  common::Result<store::SessionRecord> ValidateAccessToken(const std::string& access_token, common::Timestamp now);
+  common::Result<store::SessionRecord> ValidateAccessToken(const std::string& access_token,
+                                                           common::Timestamp now) override;
 
   common::Result<TokenPair> RefreshTokens(const std::string& refresh_token,
                                           const common::DeviceId& device_id,
-                                          common::Timestamp now);
+                                          common::Timestamp now) override;
 
-  common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now);
-  common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now);
-  common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now);
+  common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) override;
+  common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) override;
+  common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) override;
 
   static std::string HashToken(const std::string& token);
 
 private:
   static std::string GenerateToken();
 
-  store::SessionRepository& sessions_;
+  store::ISessionRepository& sessions_;
   common::Timestamp access_lifetime_seconds_;
   common::Timestamp refresh_lifetime_seconds_;
 };

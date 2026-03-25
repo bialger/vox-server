@@ -18,33 +18,55 @@ struct InitUploadResponse {
   std::string blob_path;
 };
 
-class AttachmentService {
+class IAttachmentService {
 public:
-  AttachmentService(store::AttachmentRepository& attachments,
-                    store::ConversationRepository& conversations,
+  virtual ~IAttachmentService() = default;
+  virtual common::Result<InitUploadResponse> InitUpload(const common::UserId& user_id,
+                                                          const common::ConversationId& conversation_id,
+                                                          std::int64_t file_size,
+                                                          const std::string& mime_hint) = 0;
+
+  virtual common::VoidResult WriteChunk(const common::AttachmentId& attachment_id,
+                                        std::int64_t offset,
+                                        const std::string& data) = 0;
+
+  virtual common::VoidResult FinalizeUpload(const common::AttachmentId& attachment_id,
+                                            const std::string& ciphertext_hash) = 0;
+
+  virtual common::Result<std::filesystem::path> GetAttachment(const common::AttachmentId& attachment_id,
+                                                              const common::UserId& user_id) = 0;
+
+  virtual int DeleteExpired() = 0;
+};
+
+class AttachmentService : public IAttachmentService {
+public:
+  AttachmentService(store::IAttachmentRepository& attachments,
+                    store::IConversationRepository& conversations,
                     common::ServerConfig config);
 
   common::Result<InitUploadResponse> InitUpload(const common::UserId& user_id,
                                                 const common::ConversationId& conversation_id,
                                                 std::int64_t file_size,
-                                                const std::string& mime_hint);
+                                                const std::string& mime_hint) override;
 
   common::VoidResult WriteChunk(const common::AttachmentId& attachment_id,
                                 std::int64_t offset,
-                                const std::string& data);
+                                const std::string& data) override;
 
-  common::VoidResult FinalizeUpload(const common::AttachmentId& attachment_id, const std::string& ciphertext_hash);
+  common::VoidResult FinalizeUpload(const common::AttachmentId& attachment_id,
+                                    const std::string& ciphertext_hash) override;
 
   common::Result<std::filesystem::path> GetAttachment(const common::AttachmentId& attachment_id,
-                                                      const common::UserId& user_id);
+                                                      const common::UserId& user_id) override;
 
-  int DeleteExpired();
+  int DeleteExpired() override;
 
 private:
   common::Timestamp Now();
 
-  store::AttachmentRepository& attachments_;
-  store::ConversationRepository& conversations_;
+  store::IAttachmentRepository& attachments_;
+  store::IConversationRepository& conversations_;
   common::ServerConfig config_;
 };
 

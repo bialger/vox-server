@@ -11,7 +11,7 @@ constexpr int kCreatedAtParam = 5;
 
 } // namespace
 
-UserRepository::UserRepository(Database& db) : db_(db) {
+UserRepository::UserRepository(IDatabase& db) : db_(db) {
 }
 
 common::VoidResult UserRepository::CreateUser(const UserRecord& user) {

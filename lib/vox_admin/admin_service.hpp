@@ -21,20 +21,28 @@ struct ServerStats {
   std::int64_t total_storage_bytes = 0;
 };
 
-class AdminService {
+class IAdminService {
 public:
-  AdminService(store::Database& db, store::UserRepository& users, store::SessionRepository& sessions);
+  virtual ~IAdminService() = default;
+  virtual ServerStats GetServerStats() = 0;
+  virtual common::VoidResult DeleteUser(const common::UserId& user_id) = 0;
+  virtual common::VoidResult ForceLogout(const common::UserId& user_id) = 0;
+};
 
-  ServerStats GetServerStats();
-  common::VoidResult DeleteUser(const common::UserId& user_id);
-  common::VoidResult ForceLogout(const common::UserId& user_id);
+class AdminService : public IAdminService {
+public:
+  AdminService(store::IDatabase& db, store::IUserRepository& users, store::ISessionRepository& sessions);
+
+  ServerStats GetServerStats() override;
+  common::VoidResult DeleteUser(const common::UserId& user_id) override;
+  common::VoidResult ForceLogout(const common::UserId& user_id) override;
 
 private:
   common::Timestamp Now();
 
-  store::Database& db_;
-  store::UserRepository& users_;
-  store::SessionRepository& sessions_;
+  store::IDatabase& db_;
+  store::IUserRepository& users_;
+  store::ISessionRepository& sessions_;
 };
 
 } // namespace vox::admin

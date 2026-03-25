@@ -28,34 +28,59 @@ struct DeliveryStateRecord {
   std::optional<common::Timestamp> acked_at;
 };
 
-class EnvelopeRepository {
+class IEnvelopeRepository {
 public:
-  explicit EnvelopeRepository(Database& db);
-
-  common::VoidResult StoreEnvelope(const EnvelopeRecord& envelope);
-  common::VoidResult AddDeliveryState(const common::EnvelopeId& envelope_id,
-                                      const common::DeviceId& target_device_id,
-                                      common::Timestamp now);
-  std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id, std::size_t limit = 100);
+  virtual ~IEnvelopeRepository() = default;
+  virtual common::VoidResult StoreEnvelope(const EnvelopeRecord& envelope) = 0;
+  virtual common::VoidResult AddDeliveryState(const common::EnvelopeId& envelope_id,
+                                              const common::DeviceId& target_device_id,
+                                              common::Timestamp now) = 0;
+  virtual std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id,
+                                                           std::size_t limit = 100) = 0;
 
   /// Returns envelopes in `conversation_id` with server_timestamp strictly greater than `since_exclusive`.
   /// Pass `since_exclusive == 0` to start from the first stored message (all timestamps are expected positive).
+  virtual std::vector<EnvelopeRecord> ListForConversation(const common::ConversationId& conversation_id,
+                                                          common::Timestamp since_exclusive,
+                                                          std::size_t limit) = 0;
+  virtual common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
+                                           const common::DeviceId& device_id,
+                                           common::Timestamp now) = 0;
+  virtual common::VoidResult MarkAcked(const common::EnvelopeId& envelope_id,
+                                         const common::DeviceId& device_id,
+                                         common::Timestamp now) = 0;
+  virtual int DeleteExpired(common::Timestamp now) = 0;
+  virtual bool CheckDuplicate(const common::EnvelopeId& envelope_id) = 0;
+  virtual std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id) = 0;
+  virtual std::size_t CountPendingForDevice(const common::DeviceId& device_id) = 0;
+};
+
+class EnvelopeRepository : public IEnvelopeRepository {
+public:
+  explicit EnvelopeRepository(IDatabase& db);
+
+  common::VoidResult StoreEnvelope(const EnvelopeRecord& envelope) override;
+  common::VoidResult AddDeliveryState(const common::EnvelopeId& envelope_id,
+                                      const common::DeviceId& target_device_id,
+                                      common::Timestamp now) override;
+  std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id, std::size_t limit = 100) override;
+
   std::vector<EnvelopeRecord> ListForConversation(const common::ConversationId& conversation_id,
                                                   common::Timestamp since_exclusive,
-                                                  std::size_t limit);
+                                                  std::size_t limit) override;
   common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
                                    const common::DeviceId& device_id,
-                                   common::Timestamp now);
+                                   common::Timestamp now) override;
   common::VoidResult MarkAcked(const common::EnvelopeId& envelope_id,
                                const common::DeviceId& device_id,
-                               common::Timestamp now);
-  int DeleteExpired(common::Timestamp now);
-  bool CheckDuplicate(const common::EnvelopeId& envelope_id);
-  std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id);
-  std::size_t CountPendingForDevice(const common::DeviceId& device_id);
+                               common::Timestamp now) override;
+  int DeleteExpired(common::Timestamp now) override;
+  bool CheckDuplicate(const common::EnvelopeId& envelope_id) override;
+  std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id) override;
+  std::size_t CountPendingForDevice(const common::DeviceId& device_id) override;
 
 private:
-  Database& db_;
+  IDatabase& db_;
 };
 
 } // namespace vox::store

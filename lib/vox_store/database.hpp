@@ -9,13 +9,20 @@
 
 namespace vox::store {
 
-class Database {
+class IDatabase {
+public:
+  virtual ~IDatabase() = default;
+  virtual SQLite::Database& Connection() = 0;
+  virtual std::unique_lock<std::mutex> WriteLock() = 0;
+};
+
+class Database : public IDatabase {
 public:
   explicit Database(const std::string& db_path);
 
-  SQLite::Database& Connection();
+  SQLite::Database& Connection() override;
 
-  std::unique_lock<std::mutex> WriteLock();
+  std::unique_lock<std::mutex> WriteLock() override;
 
 private:
   void CreateSchema();
