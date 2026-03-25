@@ -1,6 +1,7 @@
 #include "NetApiTestSuite.hpp"
 
 #include <filesystem>
+#include <stdexcept>
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -20,8 +21,27 @@ constexpr std::size_t kCpuPoolThreads = 2;
 constexpr std::size_t kCpuQueue = 64;
 constexpr std::size_t kNetThreads = 2;
 constexpr unsigned kHttp11 = 11;
+constexpr unsigned kHttpOk = 200;
 
 } // namespace
+
+NetApiTestSuite::RegisteredUser NetApiTestSuite::RegisterUser(const std::string& username,
+                                                                const std::string& device_id) {
+  boost::json::object reg;
+  reg["username"] = username;
+  reg["password_derived_value"] = "pw";
+  reg["device_id"] = device_id;
+  reg["identity_key_public"] = "ik";
+  reg["signed_prekey_public"] = "spk";
+  reg["signed_prekey_signature"] = "sig";
+  auto [st, body] = HttpPost("/v1/register", boost::json::serialize(reg));
+  if (st != kHttpOk) {
+    throw std::runtime_error(std::string("RegisterUser failed: ") + body);
+  }
+  auto o = boost::json::parse(body).as_object();
+  return {std::string(o["user_id"].as_string().c_str()), std::string(o["access_token"].as_string().c_str()),
+          std::string(o["refresh_token"].as_string().c_str())};
+}
 
 void NetApiTestSuite::SetUp() {
   ProjectIntegrationTestSuite::SetUp();
@@ -30,6 +50,8 @@ void NetApiTestSuite::SetUp() {
   config_.listen_port = 0;
   config_.network_thread_count = kNetThreads;
   config_.admin_token = "test-admin-secret";
+  /// Small queue so a second message to the same device overflows to DB-backed offline delivery (sync/ack).
+  config_.max_queue_depth_per_device = 1;
 
   db_path_ = kTemporaryDirectoryName / "net_test.db";
   blob_path_ = kTemporaryDirectoryName / "blobs";
@@ -167,6 +189,66 @@ std::pair<unsigned, std::string> NetApiTestSuite::HttpGet(const std::string& pat
   net::connect(socket, endpoints);
 
   http::request<http::string_body> req{http::verb::get, path, kHttp11};
+  req.set(http::field::host, "127.0.0.1");
+  if (!bearer.empty()) {
+    req.set(http::field::authorization, "Bearer " + bearer);
+  }
+  if (!admin_token.empty()) {
+    req.set("X-Admin-Token", admin_token);
+  }
+  req.prepare_payload();
+  http::write(socket, req);
+
+  beast::flat_buffer buffer;
+  http::response<http::string_body> res;
+  http::read(socket, buffer, res);
+  beast::error_code ec;
+  ec = socket.shutdown(tcp::socket::shutdown_both, ec);
+  return {static_cast<unsigned>(res.result()), std::string(res.body())};
+}
+
+std::pair<unsigned, std::string> NetApiTestSuite::HttpPut(const std::string& path,
+                                                          const std::string& body,
+                                                          const std::string& bearer,
+                                                          const std::string& admin_token,
+                                                          const std::string& content_type) {
+  net::io_context cioc;
+  tcp::resolver resolver(cioc);
+  tcp::socket socket(cioc);
+  auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
+  net::connect(socket, endpoints);
+
+  http::request<http::string_body> req{http::verb::put, path, kHttp11};
+  req.set(http::field::host, "127.0.0.1");
+  req.set(http::field::content_type, content_type);
+  if (!bearer.empty()) {
+    req.set(http::field::authorization, "Bearer " + bearer);
+  }
+  if (!admin_token.empty()) {
+    req.set("X-Admin-Token", admin_token);
+  }
+  req.body() = body;
+  req.prepare_payload();
+  http::write(socket, req);
+
+  beast::flat_buffer buffer;
+  http::response<http::string_body> res;
+  http::read(socket, buffer, res);
+  beast::error_code ec;
+  ec = socket.shutdown(tcp::socket::shutdown_both, ec);
+  return {static_cast<unsigned>(res.result()), std::string(res.body())};
+}
+
+std::pair<unsigned, std::string> NetApiTestSuite::HttpDelete(const std::string& path,
+                                                             const std::string& bearer,
+                                                             const std::string& admin_token) {
+  net::io_context cioc;
+  tcp::resolver resolver(cioc);
+  tcp::socket socket(cioc);
+  auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
+  net::connect(socket, endpoints);
+
+  http::request<http::string_body> req{http::verb::delete_, path, kHttp11};
   req.set(http::field::host, "127.0.0.1");
   if (!bearer.empty()) {
     req.set(http::field::authorization, "Bearer " + bearer);

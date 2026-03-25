@@ -39,6 +39,15 @@ protected:
   void SetUp() override;
   void TearDown() override;
 
+  struct RegisteredUser {
+    std::string user_id;
+    std::string access_token;
+    std::string refresh_token;
+  };
+
+  /// Registers a user via `POST /v1/register` with fixed crypto fields; asserts HTTP 200.
+  RegisteredUser RegisterUser(const std::string& username, const std::string& device_id);
+
   /// HTTP status code and response body.
   std::pair<unsigned, std::string> HttpPost(const std::string& path,
                                             const std::string& body,
@@ -48,6 +57,16 @@ protected:
   std::pair<unsigned, std::string> HttpGet(const std::string& path,
                                            const std::string& bearer = {},
                                            const std::string& admin_token = {});
+
+  std::pair<unsigned, std::string> HttpPut(const std::string& path,
+                                           const std::string& body,
+                                           const std::string& bearer = {},
+                                           const std::string& admin_token = {},
+                                           const std::string& content_type = "application/octet-stream");
+
+  std::pair<unsigned, std::string> HttpDelete(const std::string& path,
+                                              const std::string& bearer = {},
+                                              const std::string& admin_token = {});
 
   std::uint16_t Port() const {
     return port_;
