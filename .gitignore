@@ -16,6 +16,7 @@
 build/
 .clangd
 CMakePresets.json
+compile_commands.json
 
 # mpeltonen/sbt-idea plugin
 **.idea_modules/
