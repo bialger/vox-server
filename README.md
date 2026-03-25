@@ -128,9 +128,9 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 
 ### GitHub Actions: when deploy runs
 
-**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** and on **`pull_request`** to **`master`**.
+**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** to **any** branch and on **`pull_request`** targeting **`master`**. The workflow uses **concurrency** so that for the same head commit you do not get two full runs when both **push** and **pull_request** fire (e.g. branch with an open PR).
 
-**Image build** — job **`docker-publish`** (runs only after all three CI jobs succeed, and only for the same branch conditions as deploy below):
+**Image build** — job **`docker-publish`** (after the three CI jobs; only on **`push`** to **`master`** or **`pull_request`** into **`master`** from **this** repo — not from forks, and not from pushes to other branches alone):
 
 - Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`** and updates **`:latest`** to that image (including PR builds).
 
