@@ -36,7 +36,8 @@ class TokenManager : public ITokenManager {
 public:
   TokenManager(store::ISessionRepository& sessions,
                common::Timestamp access_lifetime_seconds,
-               common::Timestamp refresh_lifetime_seconds);
+               common::Timestamp refresh_lifetime_seconds,
+               std::string session_token_pepper);
 
   common::Result<TokenPair> IssueTokens(const common::UserId& user_id,
                                         const common::DeviceId& device_id,
@@ -53,7 +54,7 @@ public:
   common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) override;
   common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) override;
 
-  static std::string HashToken(const std::string& token);
+  [[nodiscard]] std::string HashToken(const std::string& token) const;
 
 private:
   static std::string GenerateToken();
@@ -61,6 +62,7 @@ private:
   store::ISessionRepository& sessions_;
   common::Timestamp access_lifetime_seconds_;
   common::Timestamp refresh_lifetime_seconds_;
+  std::string session_token_pepper_;
 };
 
 } // namespace vox::auth

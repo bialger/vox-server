@@ -48,6 +48,7 @@ enum class ErrorCode : std::uint16_t {
   kQueueFull = 10,
   kExpired = 11,
   kDuplicate = 12,
+  kPayloadTooLarge = 13,
 };
 
 struct Error {

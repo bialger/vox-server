@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 
 #include <boost/beast/http.hpp>
 
@@ -17,7 +18,8 @@ using HttpResponse = boost::beast::http::response<boost::beast::http::string_bod
 /// Handles one HTTP request (except WebSocket upgrade, which is handled in the session).
 HttpResponse DispatchHttp(ServerContext& ctx,
                           const HttpRequest& req,
-                          const std::optional<vox::store::SessionRecord>& session);
+                          const std::optional<vox::store::SessionRecord>& session,
+                          std::string_view client_ip = {});
 
 std::string PathOnly(std::string_view target);
 std::optional<std::string> QueryParam(std::string_view target, std::string_view key);

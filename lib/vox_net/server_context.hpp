@@ -15,6 +15,8 @@
 
 namespace vox::net {
 
+class AuthRateLimiter;
+
 /// Non-owning references to services shared by HTTP/WebSocket handlers.
 struct ServerContext {
   common::ServerConfig& config;
@@ -28,6 +30,8 @@ struct ServerContext {
   vox::store::IDeviceRepository& devices;
   vox::attachments::IAttachmentService& attachments;
   vox::admin::IAdminService& admin;
+  /// Optional; when non-null, limits auth endpoint frequency per client IP.
+  AuthRateLimiter* auth_rate_limiter = nullptr;
 };
 
 } // namespace vox::net

@@ -1,11 +1,12 @@
 #include "lib/vox_auth/password_hasher.hpp"
 
-#include <array>
-#include <random>
+#include <span>
 #include <vector>
 
 #include <argon2.h>
 #include <fmt/format.h>
+
+#include "lib/vox_common/random_bytes.hpp"
 
 namespace vox::auth {
 
@@ -14,7 +15,6 @@ namespace {
 constexpr std::size_t kSaltLength = 16;
 constexpr std::size_t kHashLength = 32;
 constexpr int kHexRadix = 16;
-constexpr unsigned int kMaxUint8 = 255;
 
 std::string BytesToHex(const std::vector<std::uint8_t>& bytes) {
   std::string hex;
@@ -34,13 +34,11 @@ std::vector<std::uint8_t> HexToBytes(const std::string& hex) {
   return bytes;
 }
 
-std::vector<std::uint8_t> GenerateRandomSalt() {
+common::Result<std::vector<std::uint8_t>> GenerateRandomSalt() {
   std::vector<std::uint8_t> salt(kSaltLength);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<unsigned int> dist(0, kMaxUint8);
-  for (auto& b : salt) {
-    b = static_cast<std::uint8_t>(dist(gen));
+  if (!vox::common::FillRandomBytes(std::span(salt.data(), salt.size()))) {
+    return std::unexpected(
+        common::Error{.code = common::ErrorCode::kInternal, .message = "Failed to generate random salt"});
   }
   return salt;
 }
@@ -52,7 +50,11 @@ PasswordHasher::PasswordHasher(std::uint32_t time_cost, std::uint32_t memory_cos
 }
 
 common::Result<HashResult> PasswordHasher::Hash(const std::string& password_derived_value) {
-  auto salt_bytes = GenerateRandomSalt();
+  auto salt_result = GenerateRandomSalt();
+  if (!salt_result) {
+    return std::unexpected(salt_result.error());
+  }
+  auto salt_bytes = std::move(*salt_result);
   std::vector<std::uint8_t> hash_bytes(kHashLength);
 
   int result = argon2id_hash_raw(time_cost_,

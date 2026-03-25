@@ -50,6 +50,9 @@ public:
                                        const common::DeviceId& device_id,
                                        common::Timestamp now) = 0;
   virtual int DeleteExpired(common::Timestamp now) = 0;
+  /// Removes pending delivery rows for any device owned by `user_id` for envelopes in `conversation_id`.
+  virtual common::VoidResult DeletePendingDeliveryForUserInConversation(const common::ConversationId& conversation_id,
+                                                                        const common::UserId& user_id) = 0;
   virtual bool CheckDuplicate(const common::EnvelopeId& envelope_id) = 0;
   virtual std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id) = 0;
   virtual std::size_t CountPendingForDevice(const common::DeviceId& device_id) = 0;
@@ -75,6 +78,8 @@ public:
                                const common::DeviceId& device_id,
                                common::Timestamp now) override;
   int DeleteExpired(common::Timestamp now) override;
+  common::VoidResult DeletePendingDeliveryForUserInConversation(const common::ConversationId& conversation_id,
+                                                                const common::UserId& user_id) override;
   bool CheckDuplicate(const common::EnvelopeId& envelope_id) override;
   std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id) override;
   std::size_t CountPendingForDevice(const common::DeviceId& device_id) override;

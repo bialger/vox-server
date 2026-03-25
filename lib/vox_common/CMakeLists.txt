@@ -28,10 +28,15 @@ add_library(vox_common STATIC
         uuid.cpp
         thread_pool.cpp
         logging.cpp
+        hmac_sha256.cpp
+        random_bytes.cpp
 )
 
 target_include_directories(vox_common PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_link_libraries(vox_common PUBLIC fmt::fmt spdlog::spdlog)
+if(WIN32)
+        target_link_libraries(vox_common PUBLIC bcrypt)
+endif()
 
 target_compile_features(vox_common PUBLIC cxx_std_23)

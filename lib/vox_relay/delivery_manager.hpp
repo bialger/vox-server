@@ -4,6 +4,7 @@
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <string>
 #include <vector>
 
 #include "lib/vox_common/shard_map.hpp"
@@ -31,6 +32,9 @@ public:
   virtual common::VoidResult Acknowledge(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id) = 0;
   virtual void SwitchToOffline(const common::DeviceId& device_id) = 0;
   virtual std::size_t QueueSize(const common::DeviceId& device_id) const = 0;
+  /// Drops queued envelopes for `device_id` that belong to `conversation_id` (e.g. after membership change).
+  virtual void PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                                const common::DeviceId& device_id) = 0;
 };
 
 class DeliveryManager : public IDeliveryManager {
@@ -44,6 +48,8 @@ public:
   common::VoidResult Acknowledge(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id) override;
   void SwitchToOffline(const common::DeviceId& device_id) override;
   std::size_t QueueSize(const common::DeviceId& device_id) const override;
+  void PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                        const common::DeviceId& device_id) override;
 
 private:
   struct DeviceQueue {

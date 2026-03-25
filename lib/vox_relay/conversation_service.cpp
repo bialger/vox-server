@@ -4,6 +4,8 @@
 #include <chrono>
 #include <unordered_set>
 
+#include <spdlog/spdlog.h>
+
 #include "lib/vox_common/uuid.hpp"
 
 namespace vox::relay {
@@ -16,8 +18,23 @@ common::Error Err(common::ErrorCode c, std::string m) {
 
 } // namespace
 
-ConversationService::ConversationService(store::IConversationRepository& conversations, common::ServerConfig config) :
-    conversations_(conversations), config_(std::move(config)) {
+ConversationService::ConversationService(store::IConversationRepository& conversations,
+                                         store::IEnvelopeRepository& envelopes,
+                                         store::IDeviceRepository& devices,
+                                         IDeliveryManager& delivery,
+                                         common::ServerConfig config) :
+    conversations_(conversations), envelopes_(envelopes), devices_(devices), delivery_(delivery),
+    config_(std::move(config)) {
+}
+
+void ConversationService::PurgeMemberDelivery(const common::ConversationId& conv_id, const common::UserId& user_id) {
+  if (auto r = envelopes_.DeletePendingDeliveryForUserInConversation(conv_id, user_id); !r) {
+    spdlog::warn("PurgeMemberDelivery DB delete failed: {}", r.error().message);
+  }
+  auto devs = devices_.GetDevicesForUser(user_id);
+  for (const auto& d : devs) {
+    delivery_.PurgeConversationFromDeviceQueue(conv_id, d.device_id);
+  }
 }
 
 void ConversationService::SortUnique(std::vector<common::UserId>& ids) {
@@ -222,7 +239,11 @@ common::VoidResult ConversationService::RemoveMember(const common::ConversationI
     return std::unexpected(Err(common::ErrorCode::kForbidden, "Insufficient permissions"));
   }
 
-  return conversations_.RemoveMember(conv_id, target_user_id, Now());
+  auto r = conversations_.RemoveMember(conv_id, target_user_id, Now());
+  if (r) {
+    PurgeMemberDelivery(conv_id, target_user_id);
+  }
+  return r;
 }
 
 common::VoidResult ConversationService::SubscribeChannel(const common::ConversationId& conv_id,
@@ -263,7 +284,11 @@ common::VoidResult ConversationService::UnsubscribeChannel(const common::Convers
     return std::unexpected(Err(common::ErrorCode::kForbidden, "Admins cannot unsubscribe; remove admin role first"));
   }
 
-  return conversations_.Unsubscribe(conv_id, user_id, Now());
+  auto r = conversations_.Unsubscribe(conv_id, user_id, Now());
+  if (r) {
+    PurgeMemberDelivery(conv_id, user_id);
+  }
+  return r;
 }
 
 std::vector<store::ConversationRecord> ConversationService::ListForUser(const common::UserId& user_id) {

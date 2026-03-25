@@ -168,7 +168,16 @@ void HttpSession::OnRead(beast::error_code ec, std::size_t) {
     }
   }
 
-  HttpResponse res = DispatchHttp(ctx_, req_, sess);
+  std::string client_ip;
+  {
+    boost::system::error_code ec;
+    const auto ep = stream_.socket().remote_endpoint(ec);
+    if (!ec) {
+      client_ip = ep.address().to_string();
+    }
+  }
+
+  HttpResponse res = DispatchHttp(ctx_, req_, sess, client_ip);
   bool keep_alive = res.keep_alive();
   res.keep_alive(keep_alive);
   res_ = std::move(res);

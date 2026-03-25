@@ -111,36 +111,13 @@ common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device
   }
 }
 
-common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::DeviceId& device_id) {
-  auto device = FindById(device_id);
-  if (!device) {
-    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
-  }
-
-  PrekeyBundle bundle;
-  bundle.identity_key_public = device->identity_key_public;
-  bundle.signed_prekey_public = device->signed_prekey_public;
-  bundle.signed_prekey_signature = device->signed_prekey_signature;
-
-  SQLite::Statement stmt(db_.Connection(),
-                         "SELECT prekey_id, prekey_public FROM one_time_prekeys "
-                         "WHERE device_id = ? AND consumed_at IS NULL LIMIT 1");
-  stmt.bind(1, device_id);
-  if (stmt.executeStep()) {
-    bundle.one_time_prekey_id = stmt.getColumn(0).getString();
-    bundle.one_time_prekey_public = stmt.getColumn(1).getString();
-  }
-  return bundle;
-}
-
-common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common::DeviceId& device_id) {
-  auto lock = db_.WriteLock();
+std::optional<PrekeyRecord> DeviceRepository::ConsumeOneAvailableOtpLocked(const common::DeviceId& device_id) {
   SQLite::Statement select(db_.Connection(),
                            "SELECT prekey_id, prekey_public FROM one_time_prekeys "
                            "WHERE device_id = ? AND consumed_at IS NULL LIMIT 1");
   select.bind(1, device_id);
   if (!select.executeStep()) {
-    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "No available prekeys"});
+    return std::nullopt;
   }
 
   PrekeyRecord record;
@@ -157,12 +134,54 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
   update.bind(2, record.prekey_id);
   int rows = update.exec();
   if (rows == 0) {
-    return std::unexpected(
-        common::Error{.code = common::ErrorCode::kNotFound, .message = "Prekey already consumed (race)"});
+    return std::nullopt;
   }
 
   record.consumed_at = now;
   return record;
+}
+
+common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::DeviceId& device_id) {
+  try {
+    auto lock = db_.WriteLock();
+    SQLite::Transaction txn(db_.Connection());
+
+    SQLite::Statement dev_stmt(db_.Connection(), "SELECT * FROM devices WHERE device_id = ?");
+    dev_stmt.bind(1, device_id);
+    if (!dev_stmt.executeStep()) {
+      return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
+    }
+
+    PrekeyBundle bundle;
+    bundle.identity_key_public = dev_stmt.getColumn("identity_key_public").getString();
+    bundle.signed_prekey_public = dev_stmt.getColumn("signed_prekey_public").getString();
+    bundle.signed_prekey_signature = dev_stmt.getColumn("signed_prekey_signature").getString();
+
+    if (auto otp = ConsumeOneAvailableOtpLocked(device_id)) {
+      bundle.one_time_prekey_id = otp->prekey_id;
+      bundle.one_time_prekey_public = otp->prekey_public;
+    }
+
+    txn.commit();
+    return bundle;
+  } catch (const SQLite::Exception& e) {
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
+  }
+}
+
+common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common::DeviceId& device_id) {
+  try {
+    auto lock = db_.WriteLock();
+    SQLite::Transaction txn(db_.Connection());
+    auto consumed = ConsumeOneAvailableOtpLocked(device_id);
+    if (!consumed) {
+      return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "No available prekeys"});
+    }
+    txn.commit();
+    return *consumed;
+  } catch (const SQLite::Exception& e) {
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
+  }
 }
 
 } // namespace vox::store

@@ -5,7 +5,10 @@
 
 #include "lib/vox_common/config.hpp"
 #include "lib/vox_common/types.hpp"
+#include "lib/vox_relay/delivery_manager.hpp"
 #include "lib/vox_store/conversation_repository.hpp"
+#include "lib/vox_store/device_repository.hpp"
+#include "lib/vox_store/envelope_repository.hpp"
 
 namespace vox::relay {
 
@@ -45,7 +48,11 @@ public:
 
 class ConversationService : public IConversationService {
 public:
-  ConversationService(store::IConversationRepository& conversations, common::ServerConfig config);
+  ConversationService(store::IConversationRepository& conversations,
+                      store::IEnvelopeRepository& envelopes,
+                      store::IDeviceRepository& devices,
+                      IDeliveryManager& delivery,
+                      common::ServerConfig config);
 
   common::Result<common::ConversationId> CreateDm(const common::UserId& user_a,
                                                   const common::UserId& user_b,
@@ -79,7 +86,12 @@ private:
 
   bool ActorCanManageMembers(const store::ConversationRecord& conv, const common::UserId& actor) const;
 
+  void PurgeMemberDelivery(const common::ConversationId& conv_id, const common::UserId& user_id);
+
   store::IConversationRepository& conversations_;
+  store::IEnvelopeRepository& envelopes_;
+  store::IDeviceRepository& devices_;
+  IDeliveryManager& delivery_;
   common::ServerConfig config_;
 };
 

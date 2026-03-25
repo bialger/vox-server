@@ -11,8 +11,9 @@ namespace vox::relay {
 RelayService::RelayService(store::IEnvelopeRepository& envelopes,
                            store::IConversationRepository& conversations,
                            store::IDeviceRepository& devices,
-                           IDeliveryManager& delivery) :
-    envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
+                           IDeliveryManager& delivery,
+                           const common::ServerConfig& config) :
+    envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery), config_(config) {
 }
 
 common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessageRequest& request) {
@@ -61,6 +62,9 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   envelope.ciphertext = request.ciphertext;
   envelope.server_timestamp = now;
   envelope.envelope_type = request.envelope_type;
+  if (config_.message_retention_seconds > 0) {
+    envelope.retention_until = now + config_.message_retention_seconds;
+  }
 
   auto store_result = envelopes_.StoreEnvelope(envelope);
   if (!store_result) {

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "lib/vox_common/config.hpp"
 #include "lib/vox_common/types.hpp"
 #include "lib/vox_relay/delivery_manager.hpp"
 #include "lib/vox_store/conversation_repository.hpp"
@@ -41,7 +42,8 @@ public:
   RelayService(store::IEnvelopeRepository& envelopes,
                store::IConversationRepository& conversations,
                store::IDeviceRepository& devices,
-               IDeliveryManager& delivery);
+               IDeliveryManager& delivery,
+               const common::ServerConfig& config);
 
   common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) override;
   std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100) override;
@@ -55,6 +57,7 @@ private:
   store::IConversationRepository& conversations_;
   store::IDeviceRepository& devices_;
   IDeliveryManager& delivery_;
+  const common::ServerConfig& config_;
 };
 
 } // namespace vox::relay

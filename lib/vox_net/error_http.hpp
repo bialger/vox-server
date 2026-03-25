@@ -27,6 +27,8 @@ inline unsigned HttpStatusForError(common::ErrorCode c) {
       return 409;
     case common::ErrorCode::kQueueFull:
       return 503;
+    case common::ErrorCode::kPayloadTooLarge:
+      return 413;
     default:
       return 500;
   }

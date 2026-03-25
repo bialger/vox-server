@@ -99,4 +99,17 @@ DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::De
   });
 }
 
+void DeliveryManager::PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                                       const common::DeviceId& device_id) {
+  auto found = queues_.Find(device_id);
+  if (!found) {
+    return;
+  }
+  auto& queue = *found;
+  std::lock_guard lock(queue->mutex);
+  const auto not_conv = [&](const QueuedEnvelope& q) { return q.conversation_id != conversation_id; };
+  const auto new_end = std::stable_partition(queue->pending.begin(), queue->pending.end(), not_conv);
+  queue->pending.erase(new_end, queue->pending.end());
+}
+
 } // namespace vox::relay

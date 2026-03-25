@@ -11,6 +11,7 @@
 #include <boost/json.hpp>
 
 #include "lib/vox_net/error_http.hpp"
+#include "lib/vox_net/rate_limiter.hpp"
 #include "lib/vox_store/device_repository.hpp"
 
 namespace vox::net {
@@ -727,11 +728,26 @@ std::optional<std::string> QueryParam(std::string_view target, std::string_view 
 
 HttpResponse DispatchHttp(ServerContext& ctx,
                           const HttpRequest& req,
-                          const std::optional<vox::store::SessionRecord>& session) {
+                          const std::optional<vox::store::SessionRecord>& session,
+                          std::string_view client_ip) {
   const unsigned ver = req.version();
   const http::verb m = req.method();
   const std::string path_owned = PathOnly(req.target());
   const std::string_view path(path_owned);
+
+  if (req.body().size() > ctx.config.max_http_body_bytes) {
+    common::Error e{.code = common::ErrorCode::kPayloadTooLarge, .message = "Request body too large"};
+    return detail::ErrRes(ver, HttpStatusForError(e.code), e);
+  }
+
+  if (ctx.auth_rate_limiter && m == http::verb::post &&
+      (path == "/v1/register" || path == "/v1/login" || path == "/v1/refresh")) {
+    const std::string key = client_ip.empty() ? std::string("unknown") : std::string(client_ip);
+    if (!ctx.auth_rate_limiter->Allow(key)) {
+      common::Error e{.code = common::ErrorCode::kRateLimited, .message = "Too many requests"};
+      return detail::ErrRes(ver, HttpStatusForError(e.code), e);
+    }
+  }
 
   auto parse_body = [&](boost::json::object& obj) -> std::optional<HttpResponse> {
     boost::json::value jv;

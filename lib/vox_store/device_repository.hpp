@@ -58,6 +58,9 @@ public:
   common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) override;
 
 private:
+  /// Caller must hold `db_.WriteLock()` and an active transaction when applicable.
+  std::optional<PrekeyRecord> ConsumeOneAvailableOtpLocked(const common::DeviceId& device_id);
+
   IDatabase& db_;
 };
 

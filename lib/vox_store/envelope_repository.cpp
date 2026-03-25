@@ -144,6 +144,24 @@ common::VoidResult EnvelopeRepository::MarkAcked(const common::EnvelopeId& envel
   return {};
 }
 
+common::VoidResult EnvelopeRepository::DeletePendingDeliveryForUserInConversation(
+    const common::ConversationId& conversation_id, const common::UserId& user_id) {
+  try {
+    auto lock = db_.WriteLock();
+    SQLite::Statement stmt(db_.Connection(),
+                           "DELETE FROM delivery_state WHERE target_device_id IN "
+                           "(SELECT device_id FROM devices WHERE user_id = ?) "
+                           "AND envelope_id IN "
+                           "(SELECT envelope_id FROM encrypted_envelopes WHERE conversation_id = ?)");
+    stmt.bind(1, user_id);
+    stmt.bind(2, conversation_id);
+    stmt.exec();
+    return {};
+  } catch (const SQLite::Exception& e) {
+    return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
+  }
+}
+
 int EnvelopeRepository::DeleteExpired(common::Timestamp now) {
   auto lock = db_.WriteLock();
   SQLite::Transaction txn(db_.Connection());

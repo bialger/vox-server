@@ -1,31 +1,21 @@
 #include "lib/vox_auth/token_manager.hpp"
 
 #include <array>
-#include <functional>
 #include <random>
-#include <sstream>
 
 #include <fmt/format.h>
 
+#include "lib/vox_common/hmac_sha256.hpp"
 #include "lib/vox_common/uuid.hpp"
 
 namespace vox::auth {
 
-namespace {
-
-std::string SimpleHash(const std::string& input) {
-  std::size_t h = std::hash<std::string>{}(input);
-  auto h2 = std::hash<std::string>{}(input + "vox_salt_suffix");
-  return fmt::format("{:016x}{:016x}", h, h2);
-}
-
-} // namespace
-
 TokenManager::TokenManager(store::ISessionRepository& sessions,
                            common::Timestamp access_lifetime_seconds,
-                           common::Timestamp refresh_lifetime_seconds) :
+                           common::Timestamp refresh_lifetime_seconds,
+                           std::string session_token_pepper) :
     sessions_(sessions), access_lifetime_seconds_(access_lifetime_seconds),
-    refresh_lifetime_seconds_(refresh_lifetime_seconds) {
+    refresh_lifetime_seconds_(refresh_lifetime_seconds), session_token_pepper_(std::move(session_token_pepper)) {
 }
 
 std::string TokenManager::GenerateToken() {
@@ -34,8 +24,8 @@ std::string TokenManager::GenerateToken() {
   return fmt::format("{:016x}{:016x}{:016x}{:016x}", dist(rng), dist(rng), dist(rng), dist(rng));
 }
 
-std::string TokenManager::HashToken(const std::string& token) {
-  return SimpleHash(token);
+std::string TokenManager::HashToken(const std::string& token) const {
+  return vox::common::HmacSha256Hex(session_token_pepper_, token);
 }
 
 common::Result<TokenPair> TokenManager::IssueTokens(const common::UserId& user_id,
