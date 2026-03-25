@@ -13,7 +13,7 @@ Vox is a privacy-first, end-to-end encrypted messenger designed for self-hosted 
 | `vox_auth` | Authentication service: Argon2id password hashing, opaque token management, registration/login/logout/refresh |
 | `vox_relay` | Message relay (`SendEnvelope`), `ConversationService` for DM/group/channel creation, sharded delivery queues, offline fallback, membership-checked fanout |
 | `vox_attachments` | Encrypted attachment management: chunked upload, quota enforcement, authorization, expiry cleanup |
-| `vox_admin` | Administration service: server stats, cascading user deletion, force logout |
+| `vox_admin` | Administration service: optional HTTP admin (`X-Admin-Token`), server stats, cascading user deletion, force logout |
 | `vox_net` | HTTP/1.1 (`Boost.Beast`) + JSON (`Boost.JSON`) API under `/v1/`, public `GET /v1/health`, WebSocket at `/v1/ws?access_token=...` for push notifications |
 
 ## Dependencies
@@ -42,19 +42,19 @@ Run the following commands from the project directory.
 ### 1. Create CMake cache
 
 ```shell
-cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
 ```
 
 ### 2. Build the server binary
 
 ```shell
-cmake --build cmake-build --target vox-server
+cmake --build build --target vox-server
 ```
 
 ### 3. Run the server
 
-- Windows: `.\cmake-build\bin\vox-server.exe`
-- Linux/macOS: `./cmake-build/bin/vox-server`
+- Windows: `.\build\bin\vox-server.exe`
+- Linux/macOS: `./build/bin/vox-server`
 
 ### Graceful shutdown
 
@@ -70,11 +70,16 @@ Press **Ctrl+C** in the terminal, or send **`SIGINT`** / **`SIGTERM`** (on Windo
 | `--db <path>` | SQLite database file path |
 | `--blobs <path>` | Directory for encrypted attachment blobs |
 | `--threads <n>` | Number of `io_context` worker threads (default: `network_thread_count` in config) |
+| `--session-pepper <secret>` | Secret used to HMAC session tokens in the database (required; can use env `VOX_SESSION_PEPPER` instead). Changing it invalidates existing sessions. |
 | `--admin-token <secret>` | Enables `GET /v1/admin/stats` and `DELETE /v1/admin/users/{id}` with header `X-Admin-Token` |
 
 ### TLS and reverse proxy
 
-The binary listens on plain TCP. For production, terminate HTTPS and WSS in a reverse proxy (e.g. Caddy or nginx) and forward to the local HTTP port.
+The binary listens on plain TCP. For production, terminate **HTTPS** and **WebSocket over TLS** in a reverse proxy (e.g. Caddy or nginx) and forward to the local HTTP port.
+
+**Is WSS automatic when the site uses HTTPS?** Not by magic: the **client** must open a WebSocket with a **`wss://`** URL (or a relative URL that resolves to `wss` on an HTTPS page). Serving the web app over HTTPS does not rewrite `ws://` to `wss://` by itself. Browsers treat `wss://host/v1/ws` like HTTPS to `host`—TLS to the proxy, then the proxy speaks plain HTTP/WebSocket to the app container. Configure TLS on **443** in the proxy; until then only `ws://` to the app (or unencrypted traffic) is possible from outside.
+
+**Access logs and query strings:** `GET /v1/ws?access_token=…` puts the token in the query string. Prefer **not** to log it: use a **custom log format** that logs **`$request_method`**, **`$uri`**, and **`$server_protocol`** instead of **`$request`** (which includes `?…`). The bundled Docker nginx uses **`log_format vox_noquery`** in **`deploy/nginx/nginx.conf`** so the default access log omits query strings. For other software: disable or redact query parameters in access logs, and keep TLS so the query is encrypted on the wire (still visible to proxies that log full URLs—hence log hygiene).
 
 ## Production deployment (Docker + nginx)
 
@@ -87,7 +92,7 @@ Default public hostname in the bundled nginx config is **`messenger.bialger.com`
 | Service     | Role |
 |-------------|------|
 | `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). |
-| `nginx`     | Reverse proxy to `vox-server:8080`, WebSocket upgrade headers, `client_max_body_size 100m`, ACME webroot for Let’s Encrypt. |
+| `nginx`     | Reverse proxy to `vox-server:8080`, WebSocket upgrade headers, `client_max_body_size 100m`, ACME webroot for Let’s Encrypt; **`deploy/nginx/nginx.conf`** sets access logging **without** query strings (see **TLS and reverse proxy** above). |
 | `certbot`   | Optional profile `certbot` — used for one-off certificate issuance (see below). |
 
 ### Server preparation (before the first workflow run)
@@ -167,14 +172,17 @@ docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml -
 
 ### Admin token: enable, change, and disable
 
-Automated deploy **only** updates **`VOX_IMAGE`** in **`deploy/.env`**; it does **not** set **`VOX_ADMIN_TOKEN`**.
+Automated deploy **only** updates **`VOX_IMAGE`** in **`deploy/.env`**; it does **not** set **`VOX_ADMIN_TOKEN`** or **`VOX_SESSION_PEPPER`**.
+
+**Session pepper (required for Docker):** set **`VOX_SESSION_PEPPER`** to a long random secret in **`deploy/.env`**. The server uses it to HMAC session tokens; changing it logs everyone out.
 
 **Enable or change** — on the server, edit **`deploy/.env`** (or use Compose overrides):
 
 ```shell
 cd /opt/vox-server/deploy
 cp -n .env.example .env
-# Add or edit: VOX_ADMIN_TOKEN=your-secret
+# Add: VOX_SESSION_PEPPER=your-long-random-secret
+# Optional: VOX_ADMIN_TOKEN=your-secret
 docker compose up -d --force-recreate vox-server
 ```
 
@@ -215,6 +223,15 @@ docker compose up -d --force-recreate vox-server
 
 Web clients should use **`https://`** and **`wss://`** for the same host and `/v1/...` paths.
 
+### nginx: omit query strings from access logs (bundled setup)
+
+The repo ships **`deploy/nginx/nginx.conf`**, mounted into the **`nginx`** service, with:
+
+- **`log_format vox_noquery`** — same idea as the common **`combined`** format, but the request line is logged as **`"$request_method $uri $server_protocol"`** instead of **`"$request"`**, so **`?access_token=…`** and other query parameters are **not** written to **`/var/log/nginx/access.log`**.
+- A single **`access_log`** at **`http`** level using that format (avoids the stock image’s default **`main`** format that would log full **`$request`**).
+
+If you add your own **`access_log`** directives in **`conf.d`**, avoid re-enabling a format that uses **`$request`**, or you will log tokens again. For **other** reverse proxies (Caddy, Traefik, Envoy, cloud load balancers), configure access logging to **drop or redact** the query part; many examples use a custom log line template analogous to nginx’s **`$uri`**-only style.
+
 ### Changing the public hostname
 
 Edit **`server_name`** in **`deploy/nginx/conf.d/10-vox.conf`** (and in the SSL example), update DNS, and re-issue certificates if you use Let’s Encrypt.
@@ -232,23 +249,23 @@ Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes 
 Useful for fast CI or when Boost is not built:
 
 ```shell
-cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DTESTS_ONLY=ON
-cmake --build cmake-build --target vox-server_tests
+cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DTESTS_ONLY=ON
+cmake --build build --target vox-server_tests
 ```
 
 Run:
 
-- Windows: `.\cmake-build\tests\vox-server_tests.exe`
-- Linux/macOS: `./cmake-build/tests/vox-server_tests`
+- Windows: `.\build\tests\vox-server_tests.exe`
+- Linux/macOS: `./build/tests/vox-server_tests`
 
 ### Full integration tests (including HTTP + Boost)
 
 Requires a full configure **without** `-DTESTS_ONLY=ON` so `vox_net` and Boost are available:
 
 ```shell
-cmake -S . -B cmake-build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-cmake --build cmake-build --target vox-server_tests
-cmake --build cmake-build --target vox-server_net_tests
+cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target vox-server_tests
+cmake --build build --target vox-server_net_tests
 ```
 
 Run:
@@ -258,7 +275,7 @@ Run:
 Or via CTest:
 
 ```shell
-cd cmake-build && ctest --output-on-failure
+cd build && ctest --output-on-failure
 ```
 
 ## Project structure
@@ -272,7 +289,7 @@ vox-server/
 │   ├── docker-compose.yml
 │   ├── docker-compose.build.yml  # optional local `docker compose build`
 │   ├── docker-entrypoint.sh
-│   ├── nginx/
+│   ├── nginx/                    # nginx.conf (access log without query) + conf.d/
 │   └── scripts/
 ├── lib/
 │   ├── boost/                    # Boost download and build scripts

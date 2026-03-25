@@ -368,6 +368,8 @@ Delete a user by id.
 
 Upgrade to WebSocket (same host as HTTP). Pass the **access token** as query parameter `access_token` (not `Authorization`).
 
+**Security note:** the `access_token` appears in the URL query string and may be recorded by reverse proxies, CDNs, or browser history. Configure your reverse proxy to **omit or redact query strings** from access logs, and prefer HTTPS/WSS so the token is not sent in plaintext. Treat this as a practical compromise for clients that cannot send custom headers on WebSocket upgrade; a future protocol may use a post-handshake auth message instead.
+
 After the upgrade, the server may push JSON messages such as:
 
 ```json

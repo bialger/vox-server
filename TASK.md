@@ -159,11 +159,10 @@ What the server must do and enforce.
 
 ### **Administration & Logging**
 
-1. **Server Admin Dashboard**
+1. **Server Admin (HTTP, optional)**
 
-   * View server status and user counts.
-   * Delete user accounts.
-   * Shown at server terminal.
+   * When enabled (e.g. `--admin-token` / `X-Admin-Token`), expose HTTP endpoints for server status, user counts, and account deletion.
+   * Does not replace a full SIEM or external monitoring; optional operational visibility only.
    * Optional logs (no decrypted content).
 
 2. **Logs**
