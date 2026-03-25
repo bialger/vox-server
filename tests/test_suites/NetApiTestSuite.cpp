@@ -48,8 +48,8 @@ void NetApiTestSuite::SetUp() {
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreads, kCpuQueue);
   hasher_ = std::make_unique<vox::auth::PasswordHasher>(
       config_.argon2_time_cost, config_.argon2_memory_cost, config_.argon2_parallelism);
-  tokens_ = std::make_unique<vox::auth::TokenManager>(*sessions_, config_.access_token_lifetime_seconds,
-                                                      config_.refresh_token_lifetime_seconds);
+  tokens_ = std::make_unique<vox::auth::TokenManager>(
+      *sessions_, config_.access_token_lifetime_seconds, config_.refresh_token_lifetime_seconds);
   auth_ = std::make_unique<vox::auth::AuthService>(*users_, *devices_, *hasher_, *tokens_, *cpu_pool_);
 
   delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, config_.max_queue_depth_per_device);

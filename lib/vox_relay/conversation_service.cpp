@@ -30,8 +30,8 @@ common::Timestamp ConversationService::Now() {
 }
 
 common::Result<common::ConversationId> ConversationService::CreateDm(const common::UserId& user_a,
-                                                                    const common::UserId& user_b,
-                                                                    const common::UserId& created_by) {
+                                                                     const common::UserId& user_b,
+                                                                     const common::UserId& created_by) {
   if (user_a == user_b) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "DM requires two distinct users"));
   }
@@ -75,8 +75,7 @@ common::Result<common::ConversationId> ConversationService::CreateGroup(const co
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Creator must be included in members"));
   }
   if (member_user_ids.size() > config_.max_group_size) {
-    return std::unexpected(
-        Err(common::ErrorCode::kQuotaExceeded, "Group exceeds configured maximum member count"));
+    return std::unexpected(Err(common::ErrorCode::kQuotaExceeded, "Group exceeds configured maximum member count"));
   }
 
   auto now = Now();
@@ -102,9 +101,10 @@ common::Result<common::ConversationId> ConversationService::CreateGroup(const co
   return conv_id;
 }
 
-common::Result<common::ConversationId> ConversationService::CreateChannel(const common::UserId& created_by,
-                                                                          const std::vector<common::UserId>& admin_user_ids,
-                                                                          const std::vector<common::UserId>& subscriber_user_ids) {
+common::Result<common::ConversationId> ConversationService::CreateChannel(
+    const common::UserId& created_by,
+    const std::vector<common::UserId>& admin_user_ids,
+    const std::vector<common::UserId>& subscriber_user_ids) {
   if (admin_user_ids.empty()) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Channel requires at least one admin"));
   }
@@ -189,8 +189,7 @@ common::VoidResult ConversationService::AddMember(const common::ConversationId& 
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Cannot add members to a DM"));
   }
   if (conv->type == common::ConversationType::kChannel) {
-    return std::unexpected(
-        Err(common::ErrorCode::kInvalidArgument, "Use channel subscribe for channel membership"));
+    return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Use channel subscribe for channel membership"));
   }
 
   if (!ActorCanManageMembers(*conv, actor_user_id)) {

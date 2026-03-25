@@ -39,7 +39,7 @@ TEST_F(NetApiTestSuite, RegisterAndLoginSuccess) {
 TEST_F(NetApiTestSuite, ProtectedRouteWithoutTokenReturns401) {
   auto [st, body] = HttpGet("/v1/conversations");
   ASSERT_EQ(st, 401u);
-  (void)body;
+  (void) body;
 }
 
 TEST_F(NetApiTestSuite, SendMessageFlow) {
@@ -78,7 +78,7 @@ TEST_F(NetApiTestSuite, SendMessageFlow) {
   send["ciphertext"] = "cipher_blob";
   auto [r4, b4] = HttpPost("/v1/messages/send", boost::json::serialize(send), tok_b);
   ASSERT_EQ(r4, 200u);
-  (void)b4;
+  (void) b4;
 }
 
 TEST_F(NetApiTestSuite, AdminStatsWithToken) {
@@ -92,5 +92,5 @@ TEST_F(NetApiTestSuite, AdminStatsWrongToken) {
   auto [st, body] = HttpGet("/v1/admin/stats", "", "wrong");
   // Wrong admin token does not satisfy admin branch; request then fails user auth.
   ASSERT_TRUE(st == 401u || st == 403u || st == 404u);
-  (void)body;
+  (void) body;
 }

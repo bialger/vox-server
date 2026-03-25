@@ -7,8 +7,10 @@
 namespace beast = boost::beast;
 namespace vox::net {
 
-HttpListener::HttpListener(net::io_context& ioc, const tcp::endpoint& endpoint, ServerContext& ctx, WsPushRegistry& ws_registry) :
-    acceptor_(ioc), ctx_(ctx), ws_registry_(ws_registry) {
+HttpListener::HttpListener(net::io_context& ioc,
+                           const tcp::endpoint& endpoint,
+                           ServerContext& ctx,
+                           WsPushRegistry& ws_registry) : acceptor_(ioc), ctx_(ctx), ws_registry_(ws_registry) {
   beast::error_code ec;
   ec = acceptor_.open(endpoint.protocol(), ec);
   if (ec) {

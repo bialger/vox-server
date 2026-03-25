@@ -87,8 +87,8 @@ std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common
 }
 
 std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common::ConversationId& conversation_id,
-                                                                     common::Timestamp since_exclusive,
-                                                                     std::size_t limit) {
+                                                                    common::Timestamp since_exclusive,
+                                                                    std::size_t limit) {
   std::vector<EnvelopeRecord> result;
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT * FROM encrypted_envelopes WHERE conversation_id = ? AND server_timestamp > ? "

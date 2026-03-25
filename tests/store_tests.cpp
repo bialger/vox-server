@@ -302,7 +302,8 @@ TEST_F(StoreTestSuite, ListForConversationPagination) {
   ASSERT_EQ(first.size(), 3u);
   ASSERT_EQ(first[0].ciphertext, "m1");
 
-  auto after_first = envelopes_->ListForConversation(conv.conversation_id, first[0].server_timestamp, kEnvelopeListPageSize);
+  auto after_first =
+      envelopes_->ListForConversation(conv.conversation_id, first[0].server_timestamp, kEnvelopeListPageSize);
   ASSERT_EQ(after_first.size(), 2u);
   ASSERT_EQ(after_first[0].ciphertext, "m2");
 

@@ -90,7 +90,8 @@ int main(int argc, char** argv) {
 
     vox::common::ThreadPool cpu_pool(config.cpu_pool_size, config.task_queue_capacity);
     vox::auth::PasswordHasher hasher(config.argon2_time_cost, config.argon2_memory_cost, config.argon2_parallelism);
-    vox::auth::TokenManager tokens(sessions, config.access_token_lifetime_seconds, config.refresh_token_lifetime_seconds);
+    vox::auth::TokenManager tokens(
+        sessions, config.access_token_lifetime_seconds, config.refresh_token_lifetime_seconds);
     vox::auth::AuthService auth(users, devices, hasher, tokens, cpu_pool);
 
     vox::relay::DeliveryManager delivery(envelopes, config.max_queue_depth_per_device);
@@ -100,16 +101,17 @@ int main(int argc, char** argv) {
     vox::admin::AdminService admin_service(db, users, sessions);
 
     vox::net::WsPushRegistry ws_registry;
-    delivery.SetEnqueueHook([&ws_registry](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
-      boost::json::object o;
-      o["type"] = "envelope";
-      o["envelope_id"] = q.envelope_id;
-      o["conversation_id"] = q.conversation_id;
-      o["sender_device_id"] = q.sender_device_id;
-      o["ciphertext"] = q.ciphertext;
-      o["server_timestamp"] = q.server_timestamp;
-      ws_registry.Notify(device_id, boost::json::serialize(o));
-    });
+    delivery.SetEnqueueHook(
+        [&ws_registry](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
+          boost::json::object o;
+          o["type"] = "envelope";
+          o["envelope_id"] = q.envelope_id;
+          o["conversation_id"] = q.conversation_id;
+          o["sender_device_id"] = q.sender_device_id;
+          o["ciphertext"] = q.ciphertext;
+          o["server_timestamp"] = q.server_timestamp;
+          ws_registry.Notify(device_id, boost::json::serialize(o));
+        });
 
     vox::net::ServerContext ctx{config,
                                 auth,

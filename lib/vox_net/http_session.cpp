@@ -39,17 +39,13 @@ std::optional<std::string> ParseBearer(const HttpRequest& req) {
 
 class WebSocketSession : public std::enable_shared_from_this<WebSocketSession> {
 public:
-  WebSocketSession(beast::tcp_stream&& stream,
-                   ServerContext& ctx,
-                   WsPushRegistry& registry,
-                   HttpRequest&& req) :
+  WebSocketSession(beast::tcp_stream&& stream, ServerContext& ctx, WsPushRegistry& registry, HttpRequest&& req) :
       ws_(std::move(stream)), ctx_(ctx), registry_(registry), req_(std::move(req)) {
   }
 
   void Run() {
-    ws_.set_option(websocket::stream_base::decorator([](websocket::response_type& res) {
-      res.set(http::field::server, "vox-server");
-    }));
+    ws_.set_option(websocket::stream_base::decorator(
+        [](websocket::response_type& res) { res.set(http::field::server, "vox-server"); }));
 
     ws_.async_accept(req_, [self = shared_from_this()](beast::error_code ec) { self->OnAccept(ec); });
   }
@@ -132,9 +128,8 @@ HttpSession::HttpSession(tcp::socket&& socket, ServerContext& ctx, WsPushRegistr
 
 void HttpSession::Run() {
   stream_.expires_after(std::chrono::seconds(kHttpStreamTimeoutSeconds));
-  http::async_read(stream_, buffer_, req_, [self = shared_from_this()](beast::error_code ec, std::size_t) {
-    self->OnRead(ec, 0);
-  });
+  http::async_read(
+      stream_, buffer_, req_, [self = shared_from_this()](beast::error_code ec, std::size_t) { self->OnRead(ec, 0); });
 }
 
 void HttpSession::OnRead(beast::error_code ec, std::size_t) {
