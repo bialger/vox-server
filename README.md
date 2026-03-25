@@ -133,7 +133,7 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 | Workflow | Trigger | Role |
 |---|---|---|
 | **`ci_tests.yml`** | **`push`** to any branch | Runs reusable CI, then **`docker-publish`** + **`deploy-server`** only when the branch is **`master`**. |
-| **`ci_deploy_pr_branch.yml`** | After **`CI tests`** completes successfully | If the push was to a **non-`master`** branch and there is an **open PR** from that branch into **`master`**, builds the image and deploys (no second full test run; reuses the artifact from **`CI tests`**). |
+| **`ci_deploy_pr_branch.yml`** | After **`CI tests`** succeeds **`push`**, or on **`pull_request`** (**opened** / **reopened** / **ready_for_review**) into **`master`** | Deploys a **non-`master`** branch when there is an **open PR** to **`master`**: either right after CI (**`workflow_run`**) or when the PR is opened **after** the last push (then it finds the successful **`CI tests`** run for **`head` SHA** and reuses its artifact). Same-repo only; not for forks. |
 
 **Image build** — job **`docker-publish`** in **`ci_tests.yml`** (**`push`** to **`master`** only) or in **`ci_deploy_pr_branch.yml`** (PR branch with open PR to **`master`**):
 
