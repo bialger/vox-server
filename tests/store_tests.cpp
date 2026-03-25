@@ -1,3 +1,6 @@
+#include <cstdint>
+#include <optional>
+
 #include <gtest/gtest.h>
 
 #include "lib/vox_common/uuid.hpp"
@@ -15,6 +18,7 @@ constexpr std::size_t kListUsersLimit = 10;
 constexpr std::size_t kEnvelopeListPageSize = 10;
 constexpr std::size_t kListUsersOffset = 0;
 constexpr int kPrekeyCount = 3;
+constexpr std::int64_t kTestOrderingEpoch = 7;
 constexpr vox::common::Timestamp kTestAccessExpiry = 9999999;
 constexpr vox::common::Timestamp kTestRefreshExpiry = 99999999;
 
@@ -252,12 +256,14 @@ TEST_F(StoreTestSuite, StoreAndRetrieveEnvelope) {
   env.sender_device_id = "env_dev";
   env.ciphertext = "encrypted_data";
   env.server_timestamp = kTestTimestampOffset1;
+  env.ordering_epoch = kTestOrderingEpoch;
   ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   auto found = envelopes_->FindById(env.envelope_id);
   ASSERT_TRUE(found.has_value());
   if (found) {
     ASSERT_EQ(found->ciphertext, "encrypted_data");
+    ASSERT_EQ(found->ordering_epoch, std::optional<std::int64_t>(kTestOrderingEpoch));
   }
 }
 

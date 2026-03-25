@@ -88,6 +88,7 @@ protected:
   std::unique_ptr<vox::store::EnvelopeRepository> envelopes_;
   std::unique_ptr<vox::store::AttachmentRepository> attachments_;
   std::unique_ptr<vox::common::ThreadPool> cpu_pool_;
+  std::unique_ptr<vox::common::ThreadPool> storage_pool_;
   std::unique_ptr<vox::auth::PasswordHasher> hasher_;
   std::unique_ptr<vox::auth::TokenManager> tokens_;
   std::unique_ptr<vox::auth::AuthService> auth_;

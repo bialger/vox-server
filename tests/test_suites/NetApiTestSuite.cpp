@@ -19,6 +19,8 @@ namespace {
 
 constexpr std::size_t kCpuPoolThreads = 2;
 constexpr std::size_t kCpuQueue = 64;
+constexpr std::size_t kStoragePoolThreads = 2;
+constexpr std::size_t kStorageQueue = 128;
 constexpr std::size_t kNetThreads = 2;
 constexpr unsigned kHttp11 = 11;
 constexpr unsigned kHttpOk = 200;
@@ -71,6 +73,7 @@ void NetApiTestSuite::SetUp() {
   attachments_ = std::make_unique<vox::store::AttachmentRepository>(*db_);
 
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreads, kCpuQueue);
+  storage_pool_ = std::make_unique<vox::common::ThreadPool>(kStoragePoolThreads, kStorageQueue);
   hasher_ = std::make_unique<vox::auth::PasswordHasher>(
       config_.argon2_time_cost, config_.argon2_memory_cost, config_.argon2_parallelism);
   tokens_ = std::make_unique<vox::auth::TokenManager>(*sessions_,
@@ -95,6 +98,9 @@ void NetApiTestSuite::SetUp() {
     o["sender_device_id"] = q.sender_device_id;
     o["ciphertext"] = q.ciphertext;
     o["server_timestamp"] = q.server_timestamp;
+    if (q.ordering_epoch) {
+      o["ordering_epoch"] = *q.ordering_epoch;
+    }
     ws_registry_->Notify(device_id, boost::json::serialize(o));
   });
 
@@ -113,6 +119,8 @@ void NetApiTestSuite::SetUp() {
   });
 
   ioc_ = std::make_unique<net::io_context>();
+  server_ctx_->ioc_for_dispatch = ioc_.get();
+  server_ctx_->storage_pool = storage_pool_.get();
   tcp::endpoint ep(net::ip::make_address(config_.listen_address), config_.listen_port);
   listener_ = std::make_shared<vox::net::HttpListener>(*ioc_, ep, *server_ctx_, *ws_registry_);
   listener_->run();
@@ -142,6 +150,7 @@ void NetApiTestSuite::TearDown() {
   auth_.reset();
   tokens_.reset();
   hasher_.reset();
+  storage_pool_.reset();
   cpu_pool_.reset();
   attachments_.reset();
   envelopes_.reset();
