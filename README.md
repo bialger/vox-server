@@ -221,34 +221,9 @@ Edit **`server_name`** in **`deploy/nginx/conf.d/10-vox.conf`** (and in the SSL 
 
 ## HTTP API (version `v1`)
 
-All JSON bodies use `Content-Type: application/json`. Authenticated routes expect `Authorization: Bearer <access_token>` unless noted.
+Full reference (request/response shapes, auth, errors, WebSocket): **[API.md](API.md)**.
 
-| Area | Method | Path | Notes |
-|------|--------|------|--------|
-| Auth | POST | `/v1/register` | Public |
-| Auth | POST | `/v1/login` | Public |
-| Auth | POST | `/v1/refresh` | Public (refresh token + device id in body) |
-| Auth | POST | `/v1/logout` | Bearer required; revokes current session |
-| Messages | POST | `/v1/messages/send` | `device_id` must match session |
-| Messages | POST | `/v1/messages/ack` | |
-| Sync | GET | `/v1/sync/pending?limit=` | Offline queue |
-| History | GET | `/v1/conversations/{id}/envelopes?since=&limit=` | |
-| Conversations | GET | `/v1/conversations` | |
-| Conversations | POST | `/v1/conversations` | Body: `type` = `dm` \| `group` \| `channel` (see code) |
-| Members | POST | `/v1/conversations/{id}/members` | |
-| Members | DELETE | `/v1/conversations/{id}/members/{user_id}` | |
-| Channel | POST | `/v1/conversations/{id}/subscribe` | |
-| Channel | POST | `/v1/conversations/{id}/unsubscribe` | |
-| Prekeys | POST | `/v1/devices/{device_id}/prekeys` | Own device only |
-| Prekeys | GET | `/v1/devices/{device_id}/prekey-bundle` | |
-| Attachments | POST | `/v1/attachments/upload-init` | |
-| Attachments | PUT | `/v1/attachments/{id}/chunk?offset=` | Raw body bytes |
-| Attachments | POST | `/v1/attachments/{id}/finalize` | Body: `ciphertext_hash` |
-| Attachments | GET | `/v1/attachments/{id}` | Binary |
-| Admin | GET | `/v1/admin/stats` | `X-Admin-Token` only (no Bearer) |
-| Admin | DELETE | `/v1/admin/users/{id}` | `X-Admin-Token` only |
-
-**WebSocket:** `GET /v1/ws?access_token=<access_token>` — after upgrade, the server sends JSON lines with `type: envelope` when a message is queued for the device (see `DeliveryManager` enqueue hook).
+Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes use `Authorization: Bearer <access_token>` unless noted. Admin routes use `X-Admin-Token` when the server is configured with an admin token.
 
 ## How to build and run tests
 
@@ -313,6 +288,7 @@ vox-server/
 │   ├── *_tests.cpp
 │   └── net_api_tests.cpp         # HTTP integration tests
 ├── .github/workflows/
+├── API.md                        # HTTP/WebSocket API reference (v1)
 ├── CMakeLists.txt
 └── README.md
 ```
