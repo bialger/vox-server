@@ -107,7 +107,7 @@ Do this once on the target machine (typical: Ubuntu 22.04/24.04 LTS).
 
    For a **private** repository, configure a [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys/deploy-keys) or HTTPS access so `git pull` on the server can reach GitHub without prompts.
 
-5. **GitHub Container Registry (GHCR)** — the application image is **built on GitHub Actions** (not on the VPS) and pushed to **`ghcr.io/<owner>/<repo>`** with tags **`:<commit-sha>`** and, on **`main`**, **`:latest`**.  
+5. **GitHub Container Registry (GHCR)** — the application image is **built on GitHub Actions** (not on the VPS) and pushed to **`ghcr.io/<owner>/<repo>`** with tags **`:<commit-sha>`** and **`:latest`** ( **`latest`** is updated on every successful build, including PRs).  
    - **Private packages**: the server must authenticate to `ghcr.io` when pulling. Add a **classic PAT** or fine-grained token with **`read:packages`** on the account that owns the package; store it as **`GHCR_READ_TOKEN`**. Optionally set **`GHCR_USERNAME`** to that GitHub username (defaults to the repository owner).  
    - **Public packages**: you can omit **`GHCR_READ_TOKEN`**; `docker compose pull` works without login.
 
@@ -128,11 +128,11 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 
 ### GitHub Actions: when deploy runs
 
-**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** and on **`pull_request`** to **`main`**.
+**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** and on **`pull_request`** to **`master`**.
 
 **Image build** — job **`docker-publish`** (runs only after all three CI jobs succeed, and only for the same branch conditions as deploy below):
 
-- Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`**. On **`main`**, it also updates **`:latest`** (PR builds do **not** overwrite **`latest`**).
+- Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`** and updates **`:latest`** to that image (including PR builds).
 
 **Deploy** — job **`deploy-server`**:
 
@@ -143,9 +143,17 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 
 **Manual** — **`.github/workflows/deploy.yml`** (**Actions → Deploy (Docker) → Run workflow**):
 
-- Inputs: **`server_host`**, **`deploy_path`**, **`branch`**, **`image_tag`** (use the commit SHA from the workflow that built the image, or **`latest`** if you only track **`main`**).
+- Inputs: **`server_host`**, **`deploy_path`**, **`branch`**, **`image_tag`** (use the commit SHA from the workflow that built the image, or **`latest`** if you only track **`master`**).
 
 The Docker **builder** in **`deploy/Dockerfile`** installs **Boost**, **fmt**, **spdlog**, **SQLiteCpp**, **GoogleTest**, and **libargon2** from apt with **`-DVOX_USE_SYSTEM_DEPS=ON`**. The **runtime** image installs matching shared libraries (e.g. Boost, `libfmt9`, `libspdlog1.12`, `libargon2-1`, SQLite).
+
+#### Troubleshooting: no deploy on a PR, or “Run workflow” is missing
+
+1. **PR from a fork** — **`docker-publish`** and **`deploy-server`** are **intentionally skipped** when `pull_request.head.repo` is not this repository (forks cannot use your repo’s secrets safely). Use a branch **in the same repository** (push a branch to `origin`, open a PR from it to **`master`**), or merge from a fork without expecting automatic deploy until the code is on **`master`** via push.
+
+2. **Manual run not listed** — GitHub only shows **Actions → Run workflow** for workflows whose YAML **already exists on the default branch** (`master`). If **`deploy.yml`** / CI changes exist only on a feature branch, merge them into **`master`** first; then **`Deploy (Docker)`** appears in the sidebar.
+
+3. **First-time Actions** — In **Settings → Actions → General**, ensure **Actions** are allowed for the repository (and for fork PRs, whether workflows need approval).
 
 ### Local / dev: build the image on your machine
 

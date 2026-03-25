@@ -3,7 +3,7 @@ name: "CI tests"
 on:
   push:
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build-matrix:
@@ -34,7 +34,7 @@ jobs:
         run: |
           cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -G "Ninja"
 
-      - name: Build main target
+      - name: Build vox-server target
         shell: bash
         run: |
           cmake --build cmake-build-release --target vox-server
@@ -299,8 +299,8 @@ jobs:
     if: |
       success() &&
       (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'pull_request' && github.base_ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository)
+        (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+        (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.full_name == github.repository)
       )
     permissions:
       contents: read
@@ -331,9 +331,8 @@ jobs:
           push: true
           tags: ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}
 
-      # Avoid overwriting :latest from PR builds — only main tracks latest.
-      - name: Tag latest (main branch only)
-        if: github.ref == 'refs/heads/main'
+      # Point :latest at this build (push to master, PR, or workflow_dispatch if added).
+      - name: Tag latest
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker pull "ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}"
@@ -349,8 +348,8 @@ jobs:
     if: |
       success() &&
       (
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-        (github.event_name == 'pull_request' && github.base_ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository)
+        (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+        (github.event_name == 'pull_request' && github.base_ref == 'master' && github.event.pull_request.head.repo.full_name == github.repository)
       )
     concurrency:
       group: deploy-production

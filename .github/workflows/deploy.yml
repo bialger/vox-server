@@ -14,9 +14,9 @@ on:
       branch:
         description: "Git branch to checkout (deploy configs/nginx from this ref)"
         required: true
-        default: "main"
+        default: "master"
       image_tag:
-        description: "GHCR image tag (use commit SHA from the workflow run that built the image, or latest on main)"
+        description: "GHCR image tag (use commit SHA from the workflow run that built the image, or latest on master)"
         required: true
         default: "latest"
 
