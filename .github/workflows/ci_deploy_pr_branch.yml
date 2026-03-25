@@ -200,7 +200,7 @@ jobs:
               printf '%s\n' "VOX_IMAGE=${IMAGE}" > .env
             elif grep -q '^VOX_IMAGE=' .env 2>/dev/null; then
               _d ".env: replace existing VOX_IMAGE line"
-              grep -v '^VOX_IMAGE=' .env > .env.tmp
+              grep -v '^VOX_IMAGE=' .env > .env.tmp || true
               mv .env.tmp .env
               printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
             else

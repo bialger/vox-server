@@ -1,0 +1,29 @@
+# After obtaining certificates (see README), copy this file to 20-ssl.conf and reload nginx.
+# Replace messenger.bialger.com if your certificate path differs.
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name messenger.bialger.com;
+
+    ssl_certificate     /etc/letsencrypt/live/messenger.bialger.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/messenger.bialger.com/privkey.pem;
+
+    client_max_body_size 100m;
+
+    location / {
+        proxy_pass http://vox_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+}
+
+# Optional: redirect HTTP to HTTPS (after SSL works, replace 10-vox.conf server block
+# or add a separate small server { listen 80; return 301 https://$host$request_uri; })
