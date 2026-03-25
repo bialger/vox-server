@@ -28,7 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN useradd --system --uid 1000 --home /data --shell /usr/sbin/nologin vox \
+# Avoid UID 1000: ubuntu:24.04 reserves it for the default "ubuntu" user.
+RUN useradd --system --uid 10001 --home /data --shell /usr/sbin/nologin vox \
     && mkdir -p /data/blobs \
     && chown -R vox:vox /data
 
