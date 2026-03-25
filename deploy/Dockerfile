@@ -37,7 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libboost-serialization1.83.0 \
     libboost-system1.83.0 \
     libboost-thread1.83.0 \
-    libboost-unit-test-framework1.83.0 \
+    libboost-test1.83.0 \
     libboost-wave1.83.0 \
     libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
