@@ -223,7 +223,7 @@ Edit **`server_name`** in **`deploy/nginx/conf.d/10-vox.conf`** (and in the SSL 
 
 Full reference (request/response shapes, auth, errors, WebSocket, health): **[API.md](API.md)**.
 
-Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes use `Authorization: Bearer <access_token>` unless noted. Admin routes use `X-Admin-Token` when the server is configured with an admin token.
+Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes use `Authorization: Bearer <access_token>` unless noted. Admin routes use `X-Admin-Token` when the server is configured with an admin token. Unauthenticated **`GET /v1/health`** returns `{"status":"ok"}` for probes (no Bearer).
 
 ## How to build and run tests
 
@@ -288,7 +288,7 @@ vox-server/
 │   ├── *_tests.cpp
 │   └── net_api_tests.cpp         # HTTP integration tests
 ├── .github/workflows/
-├── API.md                        # HTTP/WebSocket API reference (v1)
+├── API.md                        # HTTP/WebSocket API reference (v1), incl. GET /v1/health
 ├── CMakeLists.txt
 └── README.md
 ```

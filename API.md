@@ -67,13 +67,19 @@ JSON errors follow this shape:
 
 Liveness probe: no `Authorization` header and no request body.
 
-**200 response:**
+**200 response:** `Content-Type: application/json`
 
 ```json
 { "status": "ok" }
 ```
 
-Use this for load balancers, uptime checks, or a quick browser/curl sanity check. Auth routes such as `POST /v1/login` are **POST-only**; opening them in a tab issues **GET** and will not hit the login handler.
+Example:
+
+```bash
+curl -sS https://<host>/v1/health
+```
+
+Use this for load balancers, uptime checks, or a quick browser/curl sanity check. Auth routes such as `POST /v1/login` are **POST-only**; opening them in a tab issues **GET** and will not hit the login handler (you may see **404** for unknown paths without Bearer, not **401**).
 
 ---
 
