@@ -40,6 +40,9 @@ endif ()
 # Ensure compile_commands.json is generated for clangd/clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# In Docker, pass -DVOX_USE_SYSTEM_DEPS=ON and install *-dev packages to skip FetchContent builds.
+option(VOX_USE_SYSTEM_DEPS "Use system fmt/spdlog/SQLiteCpp/GTest/argon2 (e.g. apt in Docker)" OFF)
+
 add_subdirectory(lib)
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)

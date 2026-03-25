@@ -144,7 +144,7 @@ It SSHs to **`messenger.bialger.com`**, path **`/opt/vox-server`**, checks out t
 
 - Inputs: **`server_host`**, **`deploy_path`**, **`branch`** (defaults: **`messenger.bialger.com`**, **`/opt/vox-server`**, **`main`**).
 
-The Docker **builder** stage installs **Boost from apt** (`libboost-all-dev`), so the image build does not compile Boost from source. Later deploys benefit from layer caching.
+The Docker **builder** stage installs **Boost**, **fmt**, **spdlog**, **SQLiteCpp**, **GoogleTest**, and **libargon2** from apt and configures CMake with **`-DVOX_USE_SYSTEM_DEPS=ON`**, so FetchContent does not download or build those libraries (only Boost remains from the system when `find_package` succeeds). The **runtime** image installs matching shared-library packages (e.g. `libfmt9`, `libspdlog1.12`, `libargon2-1`) alongside Boost and SQLite. Later deploys benefit from layer caching.
 
 ### Admin token: enable, change, and disable
 
