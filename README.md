@@ -123,7 +123,8 @@ Define these in the repo: **Settings → Secrets and variables → Actions**.
 | **`SERVER_PASSWORD`** | Yes | SSH password for that user (used only by the deploy workflow). |
 | **`GHCR_READ_TOKEN`** | If the GHCR package is **private** | **GitHub PAT** with `read:packages` so the server can **`docker pull`** from `ghcr.io`. Not needed for **public** images. |
 | **`GHCR_USERNAME`** | No | GitHub username for `docker login`; defaults to the repository owner. |
-| **`VOX_ADMIN_TOKEN`** | No | If set, each deploy writes **`VOX_ADMIN_TOKEN`** into **`deploy/.env`** for the container. If unset or removed, admin routes stay **disabled**. |
+
+Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: set it only in **`deploy/.env`** on the server if needed.
 
 ### GitHub Actions: when deploy runs
 
@@ -136,7 +137,7 @@ Define these in the repo: **Settings → Secrets and variables → Actions**.
 **Deploy** — job **`deploy-server`**:
 
 - SSHs to **`messenger.bialger.com`**, **`git pull`** in **`/opt/vox-server`** (nginx / compose files only — **no C++ compile on the server**),
-- Writes **`deploy/.env`** with **`VOX_IMAGE=ghcr.io/...:<sha>`** matching that commit,
+- **`deploy/.env`**: only ensures **`VOX_IMAGE=ghcr.io/...:<sha>`** (creates the file if missing, or appends **`VOX_IMAGE`** if absent; if **`VOX_IMAGE`** was already present, removes the old line and appends the new value at the end). **Does not** change **`VOX_ADMIN_TOKEN`** or other variables.
 - **`docker login ghcr.io`** when **`GHCR_READ_TOKEN`** is set,
 - **`docker compose pull`** and **`docker compose up -d`**.
 
@@ -157,33 +158,23 @@ docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml -
 
 ### Admin token: enable, change, and disable
 
-**Enable or change** (recommended: set once in GitHub):
+Automated deploy **only** updates **`VOX_IMAGE`** in **`deploy/.env`**; it does **not** set **`VOX_ADMIN_TOKEN`**.
 
-1. Add or update repository secret **`VOX_ADMIN_TOKEN`** to your chosen shared secret.
-2. Run the **Deploy (Docker)** workflow (or redeploy manually on the server).
-
-**Enable locally on the server** (without storing the token in GitHub):
+**Enable or change** — on the server, edit **`deploy/.env`** (or use Compose overrides):
 
 ```shell
 cd /opt/vox-server/deploy
 cp -n .env.example .env
-# Edit .env: set VOX_ADMIN_TOKEN=your-secret
+# Add or edit: VOX_ADMIN_TOKEN=your-secret
 docker compose up -d --force-recreate vox-server
 ```
 
-Ensure `docker-compose.yml` passes `VOX_ADMIN_TOKEN` from the environment (it reads **`${VOX_ADMIN_TOKEN:-}`**). If you use a `.env` file in `deploy/`, Compose loads it automatically.
+**Disable admin** — remove **`VOX_ADMIN_TOKEN`** from **`deploy/.env`** (or leave it empty), then recreate the container:
 
-**Disable admin** (no `/v1/admin/*`):
-
-1. Remove **`VOX_ADMIN_TOKEN`** from GitHub Actions secrets (or clear it by deleting the secret in the UI).
-2. On the server, remove the line from **`deploy/.env`** or set `VOX_ADMIN_TOKEN=` empty, then:
-
-   ```shell
-   cd /opt/vox-server/deploy
-   docker compose up -d --force-recreate vox-server
-   ```
-
-3. Run the deploy workflow again if you rely on CI for env propagation.
+```shell
+cd /opt/vox-server/deploy
+docker compose up -d --force-recreate vox-server
+```
 
 ### HTTPS (Let’s Encrypt)
 

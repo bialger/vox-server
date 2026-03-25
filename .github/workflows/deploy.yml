@@ -31,7 +31,6 @@ jobs:
       - name: Deploy via SSH (git pull + pull image + compose up)
         uses: appleboy/ssh-action@v1.2.0
         env:
-          VOX_ADMIN_TOKEN: ${{ secrets.VOX_ADMIN_TOKEN }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GITHUB_REPO_OWNER: ${{ github.repository_owner }}
@@ -41,7 +40,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           command_timeout: 30m
-          envs: VOX_ADMIN_TOKEN,GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER
+          envs: GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER
           script_stop: true
           script: |
             set -euo pipefail
@@ -52,10 +51,15 @@ jobs:
             git checkout "${{ github.event.inputs.branch }}"
             git pull --ff-only origin "${{ github.event.inputs.branch }}"
             cd deploy
-            {
-              echo "VOX_IMAGE=${IMAGE}"
-              echo "VOX_ADMIN_TOKEN=${VOX_ADMIN_TOKEN:-}"
-            } > .env
+            if [ ! -f .env ]; then
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" > .env
+            elif grep -q '^VOX_IMAGE=' .env 2>/dev/null; then
+              grep -v '^VOX_IMAGE=' .env > .env.tmp
+              mv .env.tmp .env
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            else
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            fi
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
               U="${GHCR_USERNAME:-${GITHUB_REPO_OWNER}}"
               echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
