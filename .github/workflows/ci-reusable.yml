@@ -1,28 +1,13 @@
-# Shared tests and checks. Called from ci_tests.yml (push) only.
+# Windows build + style/tidy (Ubuntu Linux build + artifact live in ci_tests.yml as build-linux).
 name: CI reusable
 
 on:
   workflow_call:
 
 jobs:
-  build-matrix:
-    name: Tests and application run on ${{ matrix.config.name }}
-    runs-on: ${{ matrix.config.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {
-            name: "Windows Latest MinGW", artifact: "Windows-Ninja.tar.xz",
-            os: windows-latest,
-            build_type: "Release", cc: "gcc", cxx: "g++",
-          }
-          - {
-            name: "Ubuntu Latest GCC", artifact: "Linux.tar.xz",
-            os: ubuntu-latest,
-            build_type: "Release", cc: "gcc", cxx: "g++"
-          }
-
+  build-windows:
+    name: Tests and application run on Windows Latest MinGW
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -41,52 +26,25 @@ jobs:
       - name: Run program
         shell: bash
         working-directory: ./cmake-build-release/bin
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              ./vox-server.exe --help
-          else 
-              ./vox-server --help
-          fi
+        run: ./vox-server.exe --help
+
       - name: Build tests
         shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              cmake --build ./cmake-build-release --target vox-server_tests || echo "Built with errors"
-          else
-              cmake --build ./cmake-build-release --target vox-server_tests
-          fi
+        run: cmake --build ./cmake-build-release --target vox-server_tests || echo "Built with errors"
+
       - name: Run tests
         shell: bash
         working-directory: ./cmake-build-release/tests
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              ./vox-server_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
-          else
-              ./vox-server_tests
-          fi
+        run: ./vox-server_tests.exe || echo "Tests failed" # MinGW-related Github Actions issue
 
       - name: Build net integration tests
         shell: bash
-        run: |
-          cmake --build ./cmake-build-release --target vox-server_net_tests
+        run: cmake --build ./cmake-build-release --target vox-server_net_tests
 
       - name: Run net integration tests
         shell: bash
         working-directory: ./cmake-build-release/tests
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              ./vox-server_net_tests.exe || echo "Net tests failed"
-          else
-              ./vox-server_net_tests
-          fi
-
-      - name: Upload vox-server (Linux) for Docker image
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: vox-server-linux
-          path: cmake-build-release/bin/vox-server
-          retention-days: 1
+        run: ./vox-server_net_tests.exe || echo "Net tests failed"
 
   style-check:
     name: Code style check with clang-format

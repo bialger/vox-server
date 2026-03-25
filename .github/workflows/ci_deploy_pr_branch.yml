@@ -1,5 +1,4 @@
-# Deploy when: (1) CI tests finished on a push to a non-master branch with an open PR to master,
-# or (2) a PR to master was opened/reopened after CI already ran (push happened before the PR existed).
+# Same-repo PR branch: after CI (or on PR open), build image + deploy in one job — no skipped deploy-server job.
 name: "Deploy PR branch"
 
 on:
@@ -11,8 +10,8 @@ on:
     types: [opened, reopened, ready_for_review]
 
 jobs:
-  docker-publish:
-    name: Build and push image (GHCR)
+  deploy-pr:
+    name: Image (GHCR) + deploy
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_run' &&
@@ -28,12 +27,8 @@ jobs:
       packages: write
       pull-requests: read
     concurrency:
-      group: docker-publish-${{ github.workflow }}
+      group: deploy-pr-${{ github.workflow }}
       cancel-in-progress: false
-    outputs:
-      deploy: ${{ steps.resolve.outputs.deploy }}
-      sha: ${{ steps.resolve.outputs.sha }}
-      branch: ${{ steps.resolve.outputs.branch }}
     steps:
       - name: Resolve when to deploy (workflow_run vs pull_request)
         id: resolve
@@ -75,7 +70,6 @@ jobs:
                 return;
               }
               if (pr.draft) {
-                core.info('Draft PR; skip deploy (use ready_for_review when marked ready).');
                 core.setOutput('deploy', 'false');
                 return;
               }
@@ -93,7 +87,6 @@ jobs:
               });
               const wr = data.workflow_runs.find((r) => r.head_sha === sha && r.conclusion === 'success');
               if (!wr) {
-                core.info(`No successful CI tests run for head_sha=${sha}; skip (push again or wait for CI).`);
                 core.setOutput('deploy', 'false');
                 return;
               }
@@ -106,9 +99,9 @@ jobs:
 
             core.setOutput('deploy', 'false');
 
-      - name: Skip
+      - name: Nothing to deploy
         if: steps.resolve.outputs.deploy != 'true'
-        run: echo "Skipping image and deploy."
+        run: echo "No deploy for this event (no open PR to master or CI not ready)."
 
       - uses: actions/checkout@v4
         if: steps.resolve.outputs.deploy == 'true'
@@ -143,7 +136,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (prebuilt binary, image tagged with commit SHA)
+      - name: Build and push (prebuilt binary)
         if: steps.resolve.outputs.deploy == 'true'
         uses: docker/build-push-action@v6
         with:
@@ -161,18 +154,8 @@ jobs:
             "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
           docker push "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
 
-  deploy-server:
-    name: Deploy (pull image + compose up)
-    runs-on: ubuntu-latest
-    needs: [docker-publish]
-    if: >
-      needs.docker-publish.result == 'success' &&
-      needs.docker-publish.outputs.deploy == 'true'
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
       - name: Deploy via SSH
+        if: steps.resolve.outputs.deploy == 'true'
         uses: appleboy/ssh-action@v1.2.0
         env:
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
@@ -188,9 +171,9 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            BRANCH="${{ needs.docker-publish.outputs.branch }}"
+            BRANCH="${{ steps.resolve.outputs.branch }}"
             REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            SHA="${{ needs.docker-publish.outputs.sha }}"
+            SHA="${{ steps.resolve.outputs.sha }}"
             IMAGE="ghcr.io/${REPO_LC}:${SHA}"
             cd /opt/vox-server
             git fetch origin "${BRANCH}"

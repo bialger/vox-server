@@ -4,39 +4,82 @@ name: "CI tests"
 on:
   push:
 
-# upload-artifact in reusable workflow needs actions:write; default token is often read-only.
 permissions:
   contents: read
   actions: write
   packages: write
 
 jobs:
+  # Ubuntu matrix equivalent: artifact for Docker + gates release (does not wait for Windows/style/tidy).
+  build-linux:
+    name: Tests and application run on Ubuntu Latest GCC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Create CMake cache
+        shell: bash
+        run: |
+          cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -G "Ninja"
+
+      - name: Build vox-server target
+        shell: bash
+        run: |
+          cmake --build cmake-build-release --target vox-server
+
+      - name: Run program
+        shell: bash
+        working-directory: ./cmake-build-release/bin
+        run: ./vox-server --help
+
+      - name: Build tests
+        shell: bash
+        run: cmake --build ./cmake-build-release --target vox-server_tests
+
+      - name: Run tests
+        shell: bash
+        working-directory: ./cmake-build-release/tests
+        run: ./vox-server_tests
+
+      - name: Build net integration tests
+        shell: bash
+        run: cmake --build ./cmake-build-release --target vox-server_net_tests
+
+      - name: Run net integration tests
+        shell: bash
+        working-directory: ./cmake-build-release/tests
+        run: ./vox-server_net_tests
+
+      - name: Upload vox-server (Linux) for Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: vox-server-linux
+          path: cmake-build-release/bin/vox-server
+          retention-days: 1
+
   ci:
     uses: ./.github/workflows/ci-reusable.yml
     secrets: inherit
 
-  # Build image on GitHub-hosted runner, push to GHCR (no compile on the VPS).
-  docker-publish:
-    name: Build and push image (GHCR)
+  # Runs only after Ubuntu build+artifact; parallel Windows/style/tidy do not block this.
+  release:
+    name: Image (GHCR) + deploy
     runs-on: ubuntu-latest
-    needs: [ci]
-    # Avoid success(): with reusable workflows it can mis-report; use explicit needs result.
-    if: |
-      needs.ci.result == 'success' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/master'
+    needs: [build-linux]
+    if: needs.build-linux.result == 'success' && github.ref == 'refs/heads/master'
     permissions:
       contents: read
       actions: read
       packages: write
     concurrency:
-      # Do not share queue with "Deploy PR branch" (same name caused stuck/cancel behaviour).
-      group: docker-publish-${{ github.workflow }}
+      group: release-${{ github.workflow }}
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download vox-server from CI (Ubuntu matrix)
+      - name: Download vox-server from build-linux
         uses: actions/download-artifact@v4
         with:
           name: vox-server-linux
@@ -60,7 +103,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (prebuilt binary, image tagged with commit SHA)
+      - name: Build and push (prebuilt binary)
         uses: docker/build-push-action@v6
         with:
           context: docker-build-context
@@ -76,19 +119,6 @@ jobs:
             "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
           docker push "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
 
-  # Pull prebuilt image on the server (git pull only updates nginx/compose; app comes from GHCR).
-  deploy-server:
-    name: Deploy (pull image + compose up)
-    runs-on: ubuntu-latest
-    needs: [docker-publish]
-    if: |
-      needs.docker-publish.result == 'success' &&
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/master'
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.0
         env:

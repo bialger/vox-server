@@ -132,16 +132,12 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 
 | Workflow | Trigger | Role |
 |---|---|---|
-| **`ci_tests.yml`** | **`push`** to any branch | Runs reusable CI, then **`docker-publish`** + **`deploy-server`** only when the branch is **`master`**. |
-| **`ci_deploy_pr_branch.yml`** | After **`CI tests`** succeeds **`push`**, or on **`pull_request`** (**opened** / **reopened** / **ready_for_review**) into **`master`** | Deploys a **non-`master`** branch when there is an **open PR** to **`master`**: either right after CI (**`workflow_run`**) or when the PR is opened **after** the last push (then it finds the successful **`CI tests`** run for **`head` SHA** and reuses its artifact). Same-repo only; not for forks. |
+| **`ci_tests.yml`** | **`push`** to any branch | Job **`build-linux`** (Ubuntu) builds, runs tests, uploads **`vox-server-linux`**. Reusable **`ci`** runs Windows + style + tidy in parallel. On **`master`**, **`release`** runs **only after** **`build-linux`** (image from artifact + SSH deploy), without waiting for Windows or static checks. |
+| **`ci_deploy_pr_branch.yml`** | After **`CI tests`** succeeds **`push`**, or on **`pull_request`** into **`master`** | Job **`deploy-pr`**: image + SSH deploy in **one** job when there is an **open** (non-draft) PR to **`master`** from the same repo, or after CI when that PR already exists. Same-repo only; not for forks. |
 
-**Image build** — job **`docker-publish`** in **`ci_tests.yml`** (**`push`** to **`master`** only) or in **`ci_deploy_pr_branch.yml`** (PR branch with open PR to **`master`**):
+**Image + deploy** — jobs **`release`** (**`ci_tests.yml`**, **`master`** only) and **`deploy-pr`** (**`ci_deploy_pr_branch.yml`**, feature branch + PR to **`master`**):
 
-- The **`ubuntu-latest`** matrix job uploads **`vox-server`** as **`vox-server-linux`**. **`docker-publish`** downloads that artifact and builds **`deploy/Dockerfile.prebuilt`** (runtime image only — no compile in Docker). Pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`** and updates **`:latest`**.
-
-**Deploy** — job **`deploy-server`** (same conditions as the image build above):
-
-- SSHs to **`messenger.bialger.com`**, **`git pull`** in **`/opt/vox-server`** (nginx / compose files only — **no C++ compile on the server**),
+- Job **`build-linux`** uploads **`vox-server-linux`**. **`release`** / **`deploy-pr`** download it, build **`deploy/Dockerfile.prebuilt`**, push **`ghcr.io/<owner>/<repo>:<sha>`** and **`:latest`**, then SSH to **`messenger.bialger.com`**, **`git pull`** in **`/opt/vox-server`** (nginx / compose only — **no C++ compile on the server**).
 - **`deploy/.env`**: only ensures **`VOX_IMAGE=ghcr.io/...:<sha>`** (creates the file if missing, or appends **`VOX_IMAGE`** if absent; if **`VOX_IMAGE`** was already present, removes the old line and appends the new value at the end). **Does not** change **`VOX_ADMIN_TOKEN`** or other variables.
 - **`docker login ghcr.io`** when **`GHCR_READ_TOKEN`** is set,
 - **`docker compose pull`** and **`docker compose up -d`**.
