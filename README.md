@@ -144,7 +144,7 @@ It SSHs to **`messenger.bialger.com`**, path **`/opt/vox-server`**, checks out t
 
 - Inputs: **`server_host`**, **`deploy_path`**, **`branch`** (defaults: **`messenger.bialger.com`**, **`/opt/vox-server`**, **`main`**).
 
-The first image build can take a long time (Boost is compiled in Docker). Later deploys benefit from layer caching.
+The Docker **builder** stage installs **Boost from apt** (`libboost-all-dev`), so the image build does not compile Boost from source. Later deploys benefit from layer caching.
 
 ### Admin token: enable, change, and disable
 
