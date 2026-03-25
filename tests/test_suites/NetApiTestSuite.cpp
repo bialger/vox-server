@@ -26,7 +26,7 @@ constexpr unsigned kHttpOk = 200;
 } // namespace
 
 NetApiTestSuite::RegisteredUser NetApiTestSuite::RegisterUser(const std::string& username,
-                                                                const std::string& device_id) {
+                                                              const std::string& device_id) {
   boost::json::object reg;
   reg["username"] = username;
   reg["password_derived_value"] = "pw";
@@ -39,8 +39,9 @@ NetApiTestSuite::RegisteredUser NetApiTestSuite::RegisterUser(const std::string&
     throw std::runtime_error(std::string("RegisterUser failed: ") + body);
   }
   auto o = boost::json::parse(body).as_object();
-  return {std::string(o["user_id"].as_string().c_str()), std::string(o["access_token"].as_string().c_str()),
-          std::string(o["refresh_token"].as_string().c_str())};
+  return RegisteredUser{.user_id = std::string(o["user_id"].as_string().c_str()),
+                        .access_token = std::string(o["access_token"].as_string().c_str()),
+                        .refresh_token = std::string(o["refresh_token"].as_string().c_str())};
 }
 
 void NetApiTestSuite::SetUp() {

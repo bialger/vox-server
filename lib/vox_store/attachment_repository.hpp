@@ -29,7 +29,7 @@ public:
   virtual common::VoidResult CreateAttachmentMeta(const AttachmentRecord& record) = 0;
   virtual std::optional<AttachmentRecord> GetAttachmentMeta(const common::AttachmentId& attachment_id) = 0;
   virtual common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id,
-                                                  const std::string& ciphertext_hash) = 0;
+                                                const std::string& ciphertext_hash) = 0;
   virtual common::VoidResult DeleteAttachment(const common::AttachmentId& attachment_id) = 0;
   virtual std::int64_t GetStorageUsedByUser(const common::UserId& user_id) = 0;
   virtual std::vector<AttachmentRecord> GetExpired(common::Timestamp now) = 0;

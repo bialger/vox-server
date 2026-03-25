@@ -22,9 +22,9 @@ class IAttachmentService {
 public:
   virtual ~IAttachmentService() = default;
   virtual common::Result<InitUploadResponse> InitUpload(const common::UserId& user_id,
-                                                          const common::ConversationId& conversation_id,
-                                                          std::int64_t file_size,
-                                                          const std::string& mime_hint) = 0;
+                                                        const common::ConversationId& conversation_id,
+                                                        std::int64_t file_size,
+                                                        const std::string& mime_hint) = 0;
 
   virtual common::VoidResult WriteChunk(const common::AttachmentId& attachment_id,
                                         std::int64_t offset,

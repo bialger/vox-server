@@ -41,7 +41,7 @@ public:
   virtual std::vector<DeviceRecord> GetDevicesForUser(const common::UserId& user_id) = 0;
   virtual std::optional<DeviceRecord> FindById(const common::DeviceId& device_id) = 0;
   virtual common::VoidResult StorePrekeys(const common::DeviceId& device_id,
-                                            const std::vector<PrekeyRecord>& prekeys) = 0;
+                                          const std::vector<PrekeyRecord>& prekeys) = 0;
   virtual common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id) = 0;
   virtual common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) = 0;
 };

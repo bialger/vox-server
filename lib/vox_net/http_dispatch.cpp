@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <boost/json.hpp>
 
@@ -101,7 +102,7 @@ common::MemberRole ParseMemberRole(std::string_view s) {
 
 /// Parses `path` as `{prefix}{first_segment}/{rest...}`. `prefix` must end with `/`.
 std::optional<std::pair<std::string, std::string_view>> SplitPrefixedPath(std::string_view path,
-                                                                            std::string_view prefix) {
+                                                                          std::string_view prefix) {
   if (!path.starts_with(prefix)) {
     return std::nullopt;
   }
@@ -148,19 +149,15 @@ std::optional<std::string> SplitAttachmentSubPath(std::string_view path) {
 }
 
 template<typename ParseBody>
-OptRes TryPublicAuth(ServerContext& ctx,
-                     http::verb m,
-                     std::string_view path,
-                     unsigned ver,
-                     ParseBody&& parse_body) {
+OptRes TryPublicAuth(ServerContext& ctx, http::verb m, std::string_view path, unsigned ver, ParseBody&& parse_body) {
   if (m != http::verb::post) {
     return std::nullopt;
   }
 
   if (path == "/v1/register") {
     boost::json::object o;
-    if (auto br = parse_body(o)) {
-      return *br;
+    if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+      return std::move(br);
     }
     vox::auth::RegisterRequest rr;
     rr.username = JsonString(o, "username").value_or("");
@@ -182,8 +179,8 @@ OptRes TryPublicAuth(ServerContext& ctx,
 
   if (path == "/v1/login") {
     boost::json::object o;
-    if (auto br = parse_body(o)) {
-      return *br;
+    if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+      return std::move(br);
     }
     vox::auth::LoginRequest lr;
     lr.username = JsonString(o, "username").value_or("");
@@ -202,8 +199,8 @@ OptRes TryPublicAuth(ServerContext& ctx,
 
   if (path == "/v1/refresh") {
     boost::json::object o;
-    if (auto br = parse_body(o)) {
-      return *br;
+    if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+      return std::move(br);
     }
     vox::auth::RefreshRequest rr;
     rr.refresh_token = JsonString(o, "refresh_token").value_or("");
@@ -221,11 +218,7 @@ OptRes TryPublicAuth(ServerContext& ctx,
   return std::nullopt;
 }
 
-OptRes TryAdmin(ServerContext& ctx,
-                const HttpRequest& req,
-                http::verb m,
-                std::string_view path,
-                unsigned ver) {
+OptRes TryAdmin(ServerContext& ctx, const HttpRequest& req, http::verb m, std::string_view path, unsigned ver) {
   if (req.find("X-Admin-Token") == req.end() || ctx.config.admin_token.empty()) {
     return std::nullopt;
   }
@@ -335,8 +328,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
       if (path == "/v1/messages/send") {
         boost::json::object o;
-        if (auto br = parse_body(o)) {
-          return *br;
+        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+          return std::move(br);
         }
         std::string device_id = JsonString(o, "device_id").value_or("");
         if (device_id != sess.device_id) {
@@ -364,8 +357,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
       if (path == "/v1/messages/ack") {
         boost::json::object o;
-        if (auto br = parse_body(o)) {
-          return *br;
+        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+          return std::move(br);
         }
         std::string device_id = JsonString(o, "device_id").value_or("");
         if (device_id != sess.device_id) {
@@ -382,8 +375,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
       if (path == "/v1/conversations") {
         boost::json::object o;
-        if (auto br = parse_body(o)) {
-          return *br;
+        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+          return std::move(br);
         }
         std::string type = JsonString(o, "type").value_or("");
         if (type == "dm") {
@@ -448,8 +441,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
         if (tail == "members") {
           boost::json::object o;
-          if (auto br = parse_body(o)) {
-            return *br;
+          if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+            return std::move(br);
           }
           std::string new_user = JsonString(o, "user_id").value_or("");
           std::string role_s = JsonString(o, "role").value_or("member");
@@ -484,8 +477,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           return ErrRes(ver, kHttpForbidden, e);
         }
         boost::json::object o;
-        if (auto br = parse_body(o)) {
-          return *br;
+        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+          return std::move(br);
         }
         std::vector<vox::store::PrekeyRecord> prekeys;
         if (o.contains("prekeys") && o["prekeys"].is_array()) {
@@ -510,8 +503,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
       if (path == "/v1/attachments/upload-init") {
         boost::json::object o;
-        if (auto br = parse_body(o)) {
-          return *br;
+        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+          return std::move(br);
         }
         std::string conv_id = JsonString(o, "conversation_id").value_or("");
         std::int64_t file_size = JsonInt(o, "file_size").value_or(0);
@@ -529,8 +522,8 @@ OptRes HandleAuthenticated(ServerContext& ctx,
       if (path.starts_with("/v1/attachments/") && path.ends_with("/finalize")) {
         if (auto attachment_id = SplitAttachmentSubPath(path)) {
           boost::json::object o;
-          if (auto br = parse_body(o)) {
-            return *br;
+          if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+            return std::move(br);
           }
           std::string hash = JsonString(o, "ciphertext_hash").value_or("");
           auto result = ctx.attachments.FinalizeUpload(*attachment_id, hash);

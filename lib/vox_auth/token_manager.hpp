@@ -17,15 +17,15 @@ class ITokenManager {
 public:
   virtual ~ITokenManager() = default;
   virtual common::Result<TokenPair> IssueTokens(const common::UserId& user_id,
-                                                  const common::DeviceId& device_id,
-                                                  common::Timestamp now) = 0;
+                                                const common::DeviceId& device_id,
+                                                common::Timestamp now) = 0;
 
   virtual common::Result<store::SessionRecord> ValidateAccessToken(const std::string& access_token,
-                                                                     common::Timestamp now) = 0;
+                                                                   common::Timestamp now) = 0;
 
   virtual common::Result<TokenPair> RefreshTokens(const std::string& refresh_token,
-                                                    const common::DeviceId& device_id,
-                                                    common::Timestamp now) = 0;
+                                                  const common::DeviceId& device_id,
+                                                  common::Timestamp now) = 0;
 
   virtual common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) = 0;
   virtual common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) = 0;

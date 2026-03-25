@@ -37,8 +37,8 @@ public:
                                        common::MemberRole role,
                                        common::Timestamp now) = 0;
   virtual common::VoidResult RemoveMember(const common::ConversationId& conv_id,
-                                            const common::UserId& user_id,
-                                            common::Timestamp now) = 0;
+                                          const common::UserId& user_id,
+                                          common::Timestamp now) = 0;
   virtual std::vector<MemberRecord> GetMembers(const common::ConversationId& conv_id) = 0;
   virtual std::vector<ConversationRecord> GetConversationsForUser(const common::UserId& user_id) = 0;
   virtual bool IsUserInConversation(const common::ConversationId& conv_id, const common::UserId& user_id) = 0;
@@ -49,8 +49,8 @@ public:
                                        const common::UserId& user_id,
                                        common::Timestamp now) = 0;
   virtual common::VoidResult Unsubscribe(const common::ConversationId& conv_id,
-                                           const common::UserId& user_id,
-                                           common::Timestamp now) = 0;
+                                         const common::UserId& user_id,
+                                         common::Timestamp now) = 0;
   virtual std::vector<common::UserId> GetSubscribers(const common::ConversationId& conv_id) = 0;
   virtual std::size_t GetMemberCount(const common::ConversationId& conv_id) = 0;
 };
@@ -72,8 +72,7 @@ public:
   std::vector<MemberRecord> GetMembers(const common::ConversationId& conv_id) override;
   std::vector<ConversationRecord> GetConversationsForUser(const common::UserId& user_id) override;
   bool IsUserInConversation(const common::ConversationId& conv_id, const common::UserId& user_id) override;
-  std::optional<MemberRecord> GetMember(const common::ConversationId& conv_id,
-                                        const common::UserId& user_id) override;
+  std::optional<MemberRecord> GetMember(const common::ConversationId& conv_id, const common::UserId& user_id) override;
 
   common::VoidResult Subscribe(const common::ConversationId& conv_id,
                                const common::UserId& user_id,

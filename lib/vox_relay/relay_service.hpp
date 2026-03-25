@@ -31,7 +31,7 @@ public:
   virtual ~IRelayService() = default;
   virtual common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) = 0;
   virtual std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id,
-                                                          std::size_t limit = 100) = 0;
+                                                         std::size_t limit = 100) = 0;
   virtual common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
                                                  const common::EnvelopeId& envelope_id) = 0;
 };

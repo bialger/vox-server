@@ -14,17 +14,18 @@ class IConversationService {
 public:
   virtual ~IConversationService() = default;
   virtual common::Result<common::ConversationId> CreateDm(const common::UserId& user_a,
-                                                           const common::UserId& user_b,
-                                                           const common::UserId& created_by) = 0;
+                                                          const common::UserId& user_b,
+                                                          const common::UserId& created_by) = 0;
 
   /// `member_user_ids` must include `created_by`. Duplicates are ignored. Minimum two distinct users.
   virtual common::Result<common::ConversationId> CreateGroup(const common::UserId& created_by,
                                                              std::vector<common::UserId> member_user_ids) = 0;
 
   /// Admins are recorded in `conversation_members` with admin/owner roles; all recipients must be subscribed.
-  virtual common::Result<common::ConversationId> CreateChannel(const common::UserId& created_by,
-                                                               const std::vector<common::UserId>& admin_user_ids,
-                                                               const std::vector<common::UserId>& subscriber_user_ids) = 0;
+  virtual common::Result<common::ConversationId> CreateChannel(
+      const common::UserId& created_by,
+      const std::vector<common::UserId>& admin_user_ids,
+      const std::vector<common::UserId>& subscriber_user_ids) = 0;
 
   virtual common::VoidResult AddMember(const common::ConversationId& conv_id,
                                        const common::UserId& actor_user_id,
@@ -35,8 +36,7 @@ public:
                                           const common::UserId& actor_user_id,
                                           const common::UserId& target_user_id) = 0;
 
-  virtual common::VoidResult SubscribeChannel(const common::ConversationId& conv_id,
-                                              const common::UserId& user_id) = 0;
+  virtual common::VoidResult SubscribeChannel(const common::ConversationId& conv_id, const common::UserId& user_id) = 0;
   virtual common::VoidResult UnsubscribeChannel(const common::ConversationId& conv_id,
                                                 const common::UserId& user_id) = 0;
 
@@ -68,8 +68,7 @@ public:
                                   const common::UserId& target_user_id) override;
 
   common::VoidResult SubscribeChannel(const common::ConversationId& conv_id, const common::UserId& user_id) override;
-  common::VoidResult UnsubscribeChannel(const common::ConversationId& conv_id,
-                                        const common::UserId& user_id) override;
+  common::VoidResult UnsubscribeChannel(const common::ConversationId& conv_id, const common::UserId& user_id) override;
 
   std::vector<store::ConversationRecord> ListForUser(const common::UserId& user_id) override;
 

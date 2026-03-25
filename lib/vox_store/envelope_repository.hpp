@@ -36,7 +36,7 @@ public:
                                               const common::DeviceId& target_device_id,
                                               common::Timestamp now) = 0;
   virtual std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id,
-                                                           std::size_t limit = 100) = 0;
+                                                          std::size_t limit = 100) = 0;
 
   /// Returns envelopes in `conversation_id` with server_timestamp strictly greater than `since_exclusive`.
   /// Pass `since_exclusive == 0` to start from the first stored message (all timestamps are expected positive).
@@ -47,8 +47,8 @@ public:
                                            const common::DeviceId& device_id,
                                            common::Timestamp now) = 0;
   virtual common::VoidResult MarkAcked(const common::EnvelopeId& envelope_id,
-                                         const common::DeviceId& device_id,
-                                         common::Timestamp now) = 0;
+                                       const common::DeviceId& device_id,
+                                       common::Timestamp now) = 0;
   virtual int DeleteExpired(common::Timestamp now) = 0;
   virtual bool CheckDuplicate(const common::EnvelopeId& envelope_id) = 0;
   virtual std::optional<EnvelopeRecord> FindById(const common::EnvelopeId& envelope_id) = 0;

@@ -424,8 +424,7 @@ TEST_F(NetApiTestSuite, InvalidJsonBodyOnRegister) {
 
 TEST_F(NetApiTestSuite, UnknownConversationEnvelopesReturns404) {
   auto u = RegisterUser("nf_u", "nfd");
-  auto [st, body] =
-      HttpGet("/v1/conversations/00000000-0000-0000-0000-000000000000/envelopes", u.access_token);
+  auto [st, body] = HttpGet("/v1/conversations/00000000-0000-0000-0000-000000000000/envelopes", u.access_token);
   ASSERT_TRUE(st == 404u || st == 403u);
   (void) body;
 }
