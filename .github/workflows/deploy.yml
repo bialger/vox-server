@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       server_host:
-        description: "SSH host (DNS name or IP — same machine as messenger.bialger.com or a bastion)"
+        description: "SSH host (DNS name or IP)"
         required: true
         default: "messenger.bialger.com"
       deploy_path:
@@ -12,9 +12,13 @@ on:
         required: true
         default: "/opt/vox-server"
       branch:
-        description: "Git branch to checkout and deploy"
+        description: "Git branch to checkout (deploy configs/nginx from this ref)"
         required: true
         default: "main"
+      image_tag:
+        description: "GHCR image tag (use commit SHA from the workflow run that built the image, or latest on main)"
+        required: true
+        default: "latest"
 
 concurrency:
   group: deploy-production
@@ -24,25 +28,37 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH (git pull + docker compose)
+      - name: Deploy via SSH (git pull + pull image + compose up)
         uses: appleboy/ssh-action@v1.2.0
         env:
           VOX_ADMIN_TOKEN: ${{ secrets.VOX_ADMIN_TOKEN }}
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
         with:
           host: ${{ github.event.inputs.server_host }}
           username: ${{ secrets.SERVER_LOGIN }}
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
-          command_timeout: 45m
-          envs: VOX_ADMIN_TOKEN
+          command_timeout: 30m
+          envs: VOX_ADMIN_TOKEN,GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER
           script_stop: true
           script: |
             set -euo pipefail
+            REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE="ghcr.io/${REPO_LC}:${{ github.event.inputs.image_tag }}"
             cd "${{ github.event.inputs.deploy_path }}"
             git fetch origin "${{ github.event.inputs.branch }}"
             git checkout "${{ github.event.inputs.branch }}"
             git pull --ff-only origin "${{ github.event.inputs.branch }}"
             cd deploy
-            export VOX_ADMIN_TOKEN="${VOX_ADMIN_TOKEN:-}"
-            docker compose build
+            {
+              echo "VOX_IMAGE=${IMAGE}"
+              echo "VOX_ADMIN_TOKEN=${VOX_ADMIN_TOKEN:-}"
+            } > .env
+            if [ -n "${GHCR_READ_TOKEN:-}" ]; then
+              U="${GHCR_USERNAME:-${GITHUB_REPO_OWNER}}"
+              echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
+            fi
+            docker compose pull vox-server
             docker compose up -d

@@ -1,8 +1,8 @@
 services:
   vox-server:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+    # Production: set VOX_IMAGE in deploy/.env (ghcr.io/owner/repo:<sha>). Local: omit and use docker-compose.build.yml.
+    image: ${VOX_IMAGE:-vox-server:local}
+    pull_policy: always
     restart: unless-stopped
     volumes:
       - vox_data:/data

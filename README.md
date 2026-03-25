@@ -107,15 +107,9 @@ Do this once on the target machine (typical: Ubuntu 22.04/24.04 LTS).
 
    For a **private** repository, configure a [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys/deploy-keys) or HTTPS access so `git pull` on the server can reach GitHub without prompts.
 
-5. **First manual deploy** (optional sanity check):
-
-   ```shell
-   cd /opt/vox-server/deploy
-   docker compose build
-   docker compose up -d
-   ```
-
-   Open `http://messenger.bialger.com` — you should reach the API (e.g. `404` on `/` is normal if no route is defined; try a documented `/v1/...` path).
+5. **GitHub Container Registry (GHCR)** — the application image is **built on GitHub Actions** (not on the VPS) and pushed to **`ghcr.io/<owner>/<repo>`** with tags **`:<commit-sha>`** and, on **`main`**, **`:latest`**.  
+   - **Private packages**: the server must authenticate to `ghcr.io` when pulling. Add a **classic PAT** or fine-grained token with **`read:packages`** on the account that owns the package; store it as **`GHCR_READ_TOKEN`**. Optionally set **`GHCR_USERNAME`** to that GitHub username (defaults to the repository owner).  
+   - **Public packages**: you can omit **`GHCR_READ_TOKEN`**; `docker compose pull` works without login.
 
 6. **SSH access for GitHub Actions**: the deploy workflow uses **password** authentication. Create a dedicated Linux user with Docker permissions (e.g. membership in group `docker`) and a strong password; store that password only in **`SERVER_PASSWORD`** (see below).
 
@@ -127,24 +121,39 @@ Define these in the repo: **Settings → Secrets and variables → Actions**.
 |--------|----------|---------|
 | **`SERVER_LOGIN`** | Yes | SSH username on the server (e.g. `deploy` or your admin user). |
 | **`SERVER_PASSWORD`** | Yes | SSH password for that user (used only by the deploy workflow). |
-| **`VOX_ADMIN_TOKEN`** | No | If set, each deploy passes **`--admin-token`** to `vox-server`, enabling `GET /v1/admin/stats` and `DELETE /v1/admin/users/{id}` with header **`X-Admin-Token`**. If unset or removed, admin routes stay **disabled**. |
+| **`GHCR_READ_TOKEN`** | If the GHCR package is **private** | **GitHub PAT** with `read:packages` so the server can **`docker pull`** from `ghcr.io`. Not needed for **public** images. |
+| **`GHCR_USERNAME`** | No | GitHub username for `docker login`; defaults to the repository owner. |
+| **`VOX_ADMIN_TOKEN`** | No | If set, each deploy writes **`VOX_ADMIN_TOKEN`** into **`deploy/.env`** for the container. If unset or removed, admin routes stay **disabled**. |
 
 ### GitHub Actions: when deploy runs
 
-**Automatic (after CI succeeds)** — job **`deploy`** in **`.github/workflows/ci_tests.yml`**:
+**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** and on **`pull_request`** to **`main`**.
 
-- Triggers with the rest of CI: **`push`** (any branch) and **`pull_request`** targeting **`main`**.
-- The deploy step runs **only if** all of **`build-matrix`**, **`style-check`**, and **`code-quality-check`** completed **successfully**, **and** one of:
-  - **`push`** to **`main`**, or
-  - **`pull_request`** into **`main`** from **this repository** (not from a fork; fork PRs skip deploy so secrets are not exposed).
+**Image build** — job **`docker-publish`** (runs only after all three CI jobs succeed, and only for the same branch conditions as deploy below):
 
-It SSHs to **`messenger.bialger.com`**, path **`/opt/vox-server`**, checks out the relevant branch (**`main`** on push to main, or the **PR head branch** on pull requests), then runs **`docker compose build`** and **`docker compose up -d`** in **`deploy/`**.
+- Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`**. On **`main`**, it also updates **`:latest`** (PR builds do **not** overwrite **`latest`**).
+
+**Deploy** — job **`deploy-server`**:
+
+- SSHs to **`messenger.bialger.com`**, **`git pull`** in **`/opt/vox-server`** (nginx / compose files only — **no C++ compile on the server**),
+- Writes **`deploy/.env`** with **`VOX_IMAGE=ghcr.io/...:<sha>`** matching that commit,
+- **`docker login ghcr.io`** when **`GHCR_READ_TOKEN`** is set,
+- **`docker compose pull`** and **`docker compose up -d`**.
 
 **Manual** — **`.github/workflows/deploy.yml`** (**Actions → Deploy (Docker) → Run workflow**):
 
-- Inputs: **`server_host`**, **`deploy_path`**, **`branch`** (defaults: **`messenger.bialger.com`**, **`/opt/vox-server`**, **`main`**).
+- Inputs: **`server_host`**, **`deploy_path`**, **`branch`**, **`image_tag`** (use the commit SHA from the workflow that built the image, or **`latest`** if you only track **`main`**).
 
-The Docker **builder** stage installs **Boost**, **fmt**, **spdlog**, **SQLiteCpp**, **GoogleTest**, and **libargon2** from apt and configures CMake with **`-DVOX_USE_SYSTEM_DEPS=ON`**, so FetchContent does not download or build those libraries (only Boost remains from the system when `find_package` succeeds). The **runtime** image installs matching shared-library packages (e.g. `libfmt9`, `libspdlog1.12`, `libargon2-1`) alongside Boost and SQLite. Later deploys benefit from layer caching.
+The Docker **builder** in **`deploy/Dockerfile`** installs **Boost**, **fmt**, **spdlog**, **SQLiteCpp**, **GoogleTest**, and **libargon2** from apt with **`-DVOX_USE_SYSTEM_DEPS=ON`**. The **runtime** image installs matching shared libraries (e.g. Boost, `libfmt9`, `libspdlog1.12`, `libargon2-1`, SQLite).
+
+### Local / dev: build the image on your machine
+
+Use **`deploy/docker-compose.build.yml`** so Compose still has a **`build:`** section:
+
+```shell
+cd /opt/vox-server
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --project-directory deploy up --build
+```
 
 ### Admin token: enable, change, and disable
 
@@ -285,6 +294,7 @@ vox-server/
 ├── deploy/                       # Docker + nginx + deploy scripts
 │   ├── Dockerfile
 │   ├── docker-compose.yml
+│   ├── docker-compose.build.yml  # optional local `docker compose build`
 │   ├── docker-entrypoint.sh
 │   ├── nginx/
 │   └── scripts/
