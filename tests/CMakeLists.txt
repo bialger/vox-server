@@ -46,3 +46,20 @@ target_include_directories(${PROJECT_NAME}_tests PUBLIC ${PROJECT_SOURCE_DIR})
 include(GoogleTest)
 
 gtest_discover_tests(${PROJECT_NAME}_tests)
+
+if(NOT TESTS_ONLY)
+    add_executable(
+            ${PROJECT_NAME}_net_tests
+            test_suites/ProjectIntegrationTestSuite.cpp
+            test_suites/NetApiTestSuite.cpp
+            net_api_tests.cpp
+    )
+    target_link_libraries(
+            ${PROJECT_NAME}_net_tests
+            GTest::gtest_main
+            vox_net
+            boost
+    )
+    target_include_directories(${PROJECT_NAME}_net_tests PUBLIC ${PROJECT_SOURCE_DIR})
+    gtest_discover_tests(${PROJECT_NAME}_net_tests)
+endif()

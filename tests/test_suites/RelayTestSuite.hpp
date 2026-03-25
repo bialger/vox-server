@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include "lib/vox_common/uuid.hpp"
+#include "lib/vox_relay/conversation_service.hpp"
 #include "lib/vox_relay/delivery_manager.hpp"
 #include "lib/vox_relay/relay_service.hpp"
 #include "lib/vox_store/conversation_repository.hpp"
@@ -23,6 +24,7 @@ protected:
   std::unique_ptr<vox::store::EnvelopeRepository> envelopes_;
   std::unique_ptr<vox::relay::DeliveryManager> delivery_;
   std::unique_ptr<vox::relay::RelayService> relay_;
+  std::unique_ptr<vox::relay::ConversationService> conv_service_;
 
   void SetUp() override;
   void TearDown() override;

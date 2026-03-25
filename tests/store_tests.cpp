@@ -12,6 +12,7 @@ constexpr vox::common::Timestamp kRemoveMemberTimestamp1 = 2000000;
 constexpr vox::common::Timestamp kRemoveMemberTimestamp2 = 3000000;
 constexpr vox::common::Timestamp kUnsubscribeTimestamp = 2000000;
 constexpr std::size_t kListUsersLimit = 10;
+constexpr std::size_t kEnvelopeListPageSize = 10;
 constexpr std::size_t kListUsersOffset = 0;
 constexpr int kPrekeyCount = 3;
 constexpr vox::common::Timestamp kTestAccessExpiry = 9999999;
@@ -272,6 +273,41 @@ TEST_F(StoreTestSuite, CheckDuplicateDetection) {
   ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   ASSERT_TRUE(envelopes_->CheckDuplicate(env_id));
+}
+
+TEST_F(StoreTestSuite, ListForConversationPagination) {
+  auto user = MakeUser("list_conv_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "list_conv_dev");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  vox::store::ConversationRecord conv;
+  conv.conversation_id = vox::common::GenerateUuid();
+  conv.type = vox::common::ConversationType::kDm;
+  conv.created_by = user.user_id;
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+
+  for (int i = 1; i <= 3; ++i) {
+    vox::store::EnvelopeRecord env;
+    env.envelope_id = vox::common::GenerateUuid();
+    env.conversation_id = conv.conversation_id;
+    env.sender_device_id = "list_conv_dev";
+    env.ciphertext = "m" + std::to_string(i);
+    env.server_timestamp = kTestTimestampOffset1 + i;
+    ASSERT_TRUE(envelopes_->StoreEnvelope(env));
+  }
+
+  auto first = envelopes_->ListForConversation(conv.conversation_id, 0, kEnvelopeListPageSize);
+  ASSERT_EQ(first.size(), 3u);
+  ASSERT_EQ(first[0].ciphertext, "m1");
+
+  auto after_first = envelopes_->ListForConversation(conv.conversation_id, first[0].server_timestamp, kEnvelopeListPageSize);
+  ASSERT_EQ(after_first.size(), 2u);
+  ASSERT_EQ(after_first[0].ciphertext, "m2");
+
+  auto other_conv = envelopes_->ListForConversation("other-id", 0, kEnvelopeListPageSize);
+  ASSERT_TRUE(other_conv.empty());
 }
 
 TEST_F(StoreTestSuite, ChannelSubscribeAndUnsubscribe) {
