@@ -208,9 +208,10 @@ docker compose up -d --force-recreate vox-server
    ```
 
 3. Copy **`deploy/nginx/conf.d/20-ssl.conf.example`** to **`deploy/nginx/conf.d/20-ssl.conf`**, adjust `server_name` and paths if needed.
-4. Add **`443:443`** under the `nginx` service **`ports:`** in **`deploy/docker-compose.yml`** if it is not already published.
-5. Reload nginx: **`docker compose exec nginx nginx -s reload`**
-6. Optionally add a small HTTP server block that returns **`301`** to HTTPS only after you confirm TLS works.
+4. Reload nginx (and recreate if needed so **`443:443`** is bound): **`docker compose up -d`** then **`docker compose exec nginx nginx -s reload`**
+5. Optionally add a small HTTP server block that returns **`301`** to HTTPS only after you confirm TLS works.
+
+**Note:** **`deploy/docker-compose.yml`** already maps **`80:80`** and **`443:443`** for nginx. Until **`20-ssl.conf`** exists, nothing listens on **443** inside the container; publishing the port is harmless and avoids editing compose only on the server.
 
 Web clients should use **`https://`** and **`wss://`** for the same host and `/v1/...` paths.
 
