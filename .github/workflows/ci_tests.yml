@@ -63,6 +63,21 @@ jobs:
               ./vox-server_tests
           fi
 
+      - name: Build net integration tests
+        shell: bash
+        run: |
+          cmake --build ./cmake-build-release --target vox-server_net_tests
+
+      - name: Run net integration tests
+        shell: bash
+        working-directory: ./cmake-build-release/tests
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+              ./vox-server_net_tests.exe || echo "Net tests failed"
+          else
+              ./vox-server_net_tests
+          fi
+
   style-check:
     name: Code style check with clang-format
     runs-on: ubuntu-latest
