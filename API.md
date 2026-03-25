@@ -63,6 +63,20 @@ JSON errors follow this shape:
 
 ## Public endpoints (no Bearer)
 
+### `GET /v1/health`
+
+Liveness probe: no `Authorization` header and no request body.
+
+**200 response:**
+
+```json
+{ "status": "ok" }
+```
+
+Use this for load balancers, uptime checks, or a quick browser/curl sanity check. Auth routes such as `POST /v1/login` are **POST-only**; opening them in a tab issues **GET** and will not hit the login handler.
+
+---
+
 ### `POST /v1/register`
 
 Create a user and device session.

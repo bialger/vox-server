@@ -747,6 +747,12 @@ HttpResponse DispatchHttp(ServerContext& ctx,
     return std::nullopt;
   };
 
+  if (m == http::verb::get && path == "/v1/health") {
+    boost::json::object out;
+    out["status"] = "ok";
+    return detail::JsonRes(ver, detail::kHttpOk, out);
+  }
+
   if (auto r = detail::TryPublicAuth(ctx, m, path, ver, parse_body)) {
     return std::move(*r);
   }

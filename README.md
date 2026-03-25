@@ -14,7 +14,7 @@ Vox is a privacy-first, end-to-end encrypted messenger designed for self-hosted 
 | `vox_relay` | Message relay (`SendEnvelope`), `ConversationService` for DM/group/channel creation, sharded delivery queues, offline fallback, membership-checked fanout |
 | `vox_attachments` | Encrypted attachment management: chunked upload, quota enforcement, authorization, expiry cleanup |
 | `vox_admin` | Administration service: server stats, cascading user deletion, force logout |
-| `vox_net` | HTTP/1.1 (`Boost.Beast`) + JSON (`Boost.JSON`) API under `/v1/`, WebSocket at `/v1/ws?access_token=...` for push notifications |
+| `vox_net` | HTTP/1.1 (`Boost.Beast`) + JSON (`Boost.JSON`) API under `/v1/`, public `GET /v1/health`, WebSocket at `/v1/ws?access_token=...` for push notifications |
 
 ## Dependencies
 
@@ -221,7 +221,7 @@ Edit **`server_name`** in **`deploy/nginx/conf.d/10-vox.conf`** (and in the SSL 
 
 ## HTTP API (version `v1`)
 
-Full reference (request/response shapes, auth, errors, WebSocket): **[API.md](API.md)**.
+Full reference (request/response shapes, auth, errors, WebSocket, health): **[API.md](API.md)**.
 
 Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes use `Authorization: Bearer <access_token>` unless noted. Admin routes use `X-Admin-Token` when the server is configured with an admin token.
 

@@ -53,6 +53,12 @@ TEST_F(NetApiTestSuite, UnknownPathWithoutTokenReturns404) {
   (void) body;
 }
 
+TEST_F(NetApiTestSuite, HealthGetReturnsOkWithoutAuth) {
+  auto [st, body] = HttpGet("/v1/health");
+  ASSERT_EQ(st, 200u);
+  ASSERT_EQ(ParseObj(body).at("status").as_string(), "ok");
+}
+
 TEST_F(NetApiTestSuite, SendMessageFlow) {
   boost::json::object reg_a;
   reg_a["username"] = "sa";
