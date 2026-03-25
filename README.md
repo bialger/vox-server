@@ -128,13 +128,19 @@ Admin API token (**`VOX_ADMIN_TOKEN`**) is **not** a GitHub secret for deploy: s
 
 ### GitHub Actions: when deploy runs
 
-**CI** (`.github/workflows/ci_tests.yml`) runs **`build-matrix`**, **`style-check`**, and **`code-quality-check`** on **`push`** to **any** branch and on **`pull_request`** targeting **`master`**. The workflow uses **concurrency** so that for the same head commit you do not get two full runs when both **push** and **pull_request** fire (e.g. branch with an open PR).
+**CI** is defined in **`.github/workflows/ci-reusable.yml`** and runs **once per triggering event** (no duplicate **push** + **pull_request** for the same change):
 
-**Image build** — job **`docker-publish`** (after the three CI jobs; only on **`push`** to **`master`** or **`pull_request`** into **`master`** from **this** repo — not from forks, and not from pushes to other branches alone):
+| Workflow | Trigger | Role |
+|---|---|---|
+| **`ci_tests.yml`** | **`push`** to any branch | Runs reusable CI, then **`docker-publish`** + **`deploy-server`** only when the branch is **`master`**. |
+| **`ci_fork_pr.yml`** | **`pull_request`** into **`master`** | Runs the same reusable CI **only** when the PR head is a **fork** (forks do not get **`push`** events on your repo). |
+| **`ci_deploy_pr_branch.yml`** | After **`CI tests`** completes successfully | If the push was to a **non-`master`** branch and there is an **open PR** from that branch into **`master`**, builds the image and deploys (same idea as before, without a second full test run). |
 
-- Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`** and updates **`:latest`** to that image (including PR builds).
+**Image build** — job **`docker-publish`** in **`ci_tests.yml`** (after CI; **`push`** to **`master`** only) or in **`ci_deploy_pr_branch.yml`** (PR branch with open PR to **`master`**):
 
-**Deploy** — job **`deploy-server`**:
+- Builds **`deploy/Dockerfile`** on a **GitHub-hosted runner** and pushes to **`ghcr.io/<lowercase owner>/<lowercase repo>:<sha>`** and updates **`:latest`** to that image.
+
+**Deploy** — job **`deploy-server`** (same conditions as the image build above):
 
 - SSHs to **`messenger.bialger.com`**, **`git pull`** in **`/opt/vox-server`** (nginx / compose files only — **no C++ compile on the server**),
 - **`deploy/.env`**: only ensures **`VOX_IMAGE=ghcr.io/...:<sha>`** (creates the file if missing, or appends **`VOX_IMAGE`** if absent; if **`VOX_IMAGE`** was already present, removes the old line and appends the new value at the end). **Does not** change **`VOX_ADMIN_TOKEN`** or other variables.
@@ -149,7 +155,7 @@ The Docker **builder** in **`deploy/Dockerfile`** installs **Boost**, **fmt**, *
 
 #### Troubleshooting: no deploy on a PR, or “Run workflow” is missing
 
-1. **PR from a fork** — **`docker-publish`** and **`deploy-server`** are **intentionally skipped** when `pull_request.head.repo` is not this repository (forks cannot use your repo’s secrets safely). Use a branch **in the same repository** (push a branch to `origin`, open a PR from it to **`master`**), or merge from a fork without expecting automatic deploy until the code is on **`master`** via push.
+1. **PR from a fork** — CI runs via **`ci_fork_pr.yml`**; **`docker-publish`** / **`deploy-server`** do **not** run for forks (secrets / trust). Use a branch **in the same repository** for automatic image + deploy on PRs, or merge from a fork and deploy after the code is on **`master`** (or use **manual** **`deploy.yml`**).
 
 2. **Manual run not listed** — GitHub only shows **Actions → Run workflow** for workflows whose YAML **already exists on the default branch** (`master`). If **`deploy.yml`** / CI changes exist only on a feature branch, merge them into **`master`** first; then **`Deploy (Docker)`** appears in the sidebar.
 
