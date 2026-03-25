@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   # Ubuntu matrix equivalent: artifact for Docker + gates release (does not wait for Windows/style/tidy).
-  build-linux:
+  build_linux:
     name: Tests and application run on Ubuntu Latest GCC
     runs-on: ubuntu-latest
     steps:
@@ -64,11 +64,10 @@ jobs:
     secrets: inherit
 
   # Runs only after Ubuntu build+artifact; parallel Windows/style/tidy do not block this.
-  # Job IDs with "-" must use needs['build-linux'], NOT needs.build-linux (GitHub parses the latter wrong → always skip).
   release:
     name: Image (GHCR) + deploy
     runs-on: ubuntu-latest
-    needs: [build-linux]
+    needs: [build_linux]
     permissions:
       contents: read
       actions: read
@@ -79,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download vox-server from build-linux
+      - name: Download vox-server from build_linux
         uses: actions/download-artifact@v4
         with:
           name: vox-server-linux

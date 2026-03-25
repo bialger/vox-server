@@ -7,6 +7,7 @@ services:
     volumes:
       - vox_data:/data
     environment:
+      VOX_SESSION_PEPPER: ${VOX_SESSION_PEPPER:?set VOX_SESSION_PEPPER in .env}
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
     expose:
       - "8080"
@@ -20,6 +21,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt:ro

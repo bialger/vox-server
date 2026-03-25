@@ -1,4 +1,4 @@
-# Windows build + style/tidy (Ubuntu Linux build + artifact live in ci_tests.yml as build-linux).
+# Windows build + style/tidy (Ubuntu Linux build + artifact live in ci_tests.yml as build_linux).
 name: CI reusable
 
 on:
