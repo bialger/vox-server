@@ -333,6 +333,10 @@ TEST_F(NetApiTestSuite, UploadPrekeysAndGetPrekeyBundle) {
   pk1["prekey_id"] = "pk1";
   pk1["prekey_public"] = "pub1";
   pks.push_back(pk1);
+  boost::json::object pk2;
+  pk2["prekey_id"] = "pk2";
+  pk2["prekey_public"] = "pub2";
+  pks.push_back(pk2);
   body["prekeys"] = pks;
 
   std::string post_path = std::string("/v1/devices/") + "pkdev_a" + "/prekeys";
@@ -345,6 +349,18 @@ TEST_F(NetApiTestSuite, UploadPrekeysAndGetPrekeyBundle) {
   ASSERT_EQ(gst, 200u);
   auto o = ParseObj(gbody);
   ASSERT_FALSE(o["identity_key_public"].as_string().empty());
+  ASSERT_TRUE(o.contains("one_time_prekey_id"));
+  ASSERT_EQ(std::string(o["one_time_prekey_id"].as_string().c_str()), "pk1");
+
+  auto [gst2, gbody2] = HttpGet(get_path, b.access_token);
+  ASSERT_EQ(gst2, 200u);
+  auto o2 = ParseObj(gbody2);
+  ASSERT_EQ(std::string(o2["one_time_prekey_id"].as_string().c_str()), "pk2");
+
+  auto [gst3, gbody3] = HttpGet(get_path, b.access_token);
+  ASSERT_EQ(gst3, 200u);
+  auto o3 = ParseObj(gbody3);
+  ASSERT_FALSE(o3.contains("one_time_prekey_id"));
 }
 
 TEST_F(NetApiTestSuite, PrekeysWrongDeviceForbidden) {

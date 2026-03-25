@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "lib/vox_common/config.hpp"
 #include "lib/vox_common/uuid.hpp"
 #include "test_suites/RelayTestSuite.hpp"
 
@@ -158,7 +159,8 @@ TEST_F(RelayTestSuite, QueueOverflowReturnsError) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, kQueueOverflowMaxPerDevice);
-  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_);
+  auto cfg = vox::common::ServerConfig::Default();
+  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_, cfg);
 
   for (int i = 0; i < kQueueOverflowMaxPerDevice; ++i) {
     vox::relay::SendMessageRequest req;

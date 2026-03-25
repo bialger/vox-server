@@ -160,7 +160,7 @@ TEST_F(AuthTestSuite, LogoutRevokesSession) {
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
-  auto access_hash = vox::auth::TokenManager::HashToken(reg_result.value().tokens.access_token);
+  auto access_hash = tokens_->HashToken(reg_result.value().tokens.access_token);
 
   auto session = sessions_->FindByAccessToken(access_hash);
   ASSERT_TRUE(session.has_value());
@@ -181,7 +181,7 @@ TEST_F(AuthTestSuite, LogoutWithAccessTokenRevokesSession) {
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
   const std::string& token = reg_result->tokens.access_token;
-  auto access_hash = vox::auth::TokenManager::HashToken(token);
+  auto access_hash = tokens_->HashToken(token);
 
   ASSERT_TRUE(auth_->LogoutWithAccessToken(token).has_value());
 

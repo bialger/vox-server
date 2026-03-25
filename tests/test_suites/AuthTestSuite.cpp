@@ -18,8 +18,8 @@ void AuthTestSuite::SetUp() {
   sessions_ = std::make_unique<vox::store::SessionRepository>(*db_);
 
   hasher_ = std::make_unique<vox::auth::PasswordHasher>(1, kArgon2MemoryCost, kArgon2Parallelism);
-  tokens_ =
-      std::make_unique<vox::auth::TokenManager>(*sessions_, kAccessTokenLifetimeSeconds, kRefreshTokenLifetimeSeconds);
+  tokens_ = std::make_unique<vox::auth::TokenManager>(
+      *sessions_, kAccessTokenLifetimeSeconds, kRefreshTokenLifetimeSeconds, "auth-test-pepper");
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreadCount, kCpuPoolQueueCapacity);
   auth_ = std::make_unique<vox::auth::AuthService>(*users_, *devices_, *hasher_, *tokens_, *cpu_pool_);
 }

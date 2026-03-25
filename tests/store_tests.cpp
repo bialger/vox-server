@@ -132,6 +132,43 @@ TEST_F(StoreTestSuite, StorePrekeyAndConsume) {
   }
 }
 
+TEST_F(StoreTestSuite, GetPrekeyBundleConsumesOneTimePrekeys) {
+  auto user = MakeUser("bundle_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "dev_bundle");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  std::vector<vox::store::PrekeyRecord> prekeys;
+  for (int i = 0; i < 2; ++i) {
+    vox::store::PrekeyRecord pk;
+    pk.prekey_id = "bundle_pk_" + std::to_string(i);
+    pk.device_id = "dev_bundle";
+    pk.prekey_public = "bundle_pub_" + std::to_string(i);
+    prekeys.push_back(pk);
+  }
+  ASSERT_TRUE(devices_->StorePrekeys("dev_bundle", prekeys));
+
+  auto b1 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b1.has_value());
+  const auto& b1v = b1.value();
+  if (!b1v.one_time_prekey_id.has_value()) {
+    FAIL() << "expected one_time_prekey_id";
+  }
+  ASSERT_EQ(b1v.one_time_prekey_id.value(), "bundle_pk_0");
+
+  auto b2 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b2.has_value());
+  const auto& b2v = b2.value();
+  if (!b2v.one_time_prekey_id.has_value()) {
+    FAIL() << "expected one_time_prekey_id";
+  }
+  ASSERT_EQ(b2v.one_time_prekey_id.value(), "bundle_pk_1");
+
+  auto b3 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b3.has_value());
+  ASSERT_FALSE(b3->one_time_prekey_id.has_value());
+}
+
 TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
   auto user = MakeUser("henry");
   ASSERT_TRUE(users_->CreateUser(user));

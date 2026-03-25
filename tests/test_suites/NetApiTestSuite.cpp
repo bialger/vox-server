@@ -50,6 +50,8 @@ void NetApiTestSuite::SetUp() {
   config_.listen_address = "127.0.0.1";
   config_.listen_port = 0;
   config_.network_thread_count = kNetThreads;
+  config_.session_token_pepper = "net-test-pepper";
+  config_.auth_rate_limit_max = 0;
   config_.admin_token = "test-admin-secret";
   /// Small queue so a second message to the same device overflows to DB-backed offline delivery (sync/ack).
   config_.max_queue_depth_per_device = 1;
@@ -71,13 +73,16 @@ void NetApiTestSuite::SetUp() {
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreads, kCpuQueue);
   hasher_ = std::make_unique<vox::auth::PasswordHasher>(
       config_.argon2_time_cost, config_.argon2_memory_cost, config_.argon2_parallelism);
-  tokens_ = std::make_unique<vox::auth::TokenManager>(
-      *sessions_, config_.access_token_lifetime_seconds, config_.refresh_token_lifetime_seconds);
+  tokens_ = std::make_unique<vox::auth::TokenManager>(*sessions_,
+                                                      config_.access_token_lifetime_seconds,
+                                                      config_.refresh_token_lifetime_seconds,
+                                                      config_.session_token_pepper);
   auth_ = std::make_unique<vox::auth::AuthService>(*users_, *devices_, *hasher_, *tokens_, *cpu_pool_);
 
   delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, config_.max_queue_depth_per_device);
-  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_);
-  conv_service_ = std::make_unique<vox::relay::ConversationService>(*conversations_, config_);
+  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_, config_);
+  conv_service_ =
+      std::make_unique<vox::relay::ConversationService>(*conversations_, *envelopes_, *devices_, *delivery_, config_);
   attachment_service_ = std::make_unique<vox::attachments::AttachmentService>(*attachments_, *conversations_, config_);
   admin_service_ = std::make_unique<vox::admin::AdminService>(*db_, *users_, *sessions_);
 
