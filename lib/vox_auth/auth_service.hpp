@@ -54,6 +54,7 @@ public:
   common::Result<RegisterResponse> Register(const RegisterRequest& request);
   common::Result<LoginResponse> Login(const LoginRequest& request);
   common::VoidResult Logout(const std::string& session_id);
+  common::VoidResult LogoutWithAccessToken(const std::string& access_token);
   common::Result<TokenPair> Refresh(const RefreshRequest& request);
 
 private:

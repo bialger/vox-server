@@ -86,6 +86,32 @@ std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common
   return result;
 }
 
+std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common::ConversationId& conversation_id,
+                                                                     common::Timestamp since_exclusive,
+                                                                     std::size_t limit) {
+  std::vector<EnvelopeRecord> result;
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT * FROM encrypted_envelopes WHERE conversation_id = ? AND server_timestamp > ? "
+                         "ORDER BY server_timestamp ASC LIMIT ?");
+  stmt.bind(1, conversation_id);
+  stmt.bind(2, since_exclusive);
+  stmt.bind(3, static_cast<std::int64_t>(limit));
+  while (stmt.executeStep()) {
+    EnvelopeRecord rec;
+    rec.envelope_id = stmt.getColumn("envelope_id").getString();
+    rec.conversation_id = stmt.getColumn("conversation_id").getString();
+    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
+    rec.ciphertext = stmt.getColumn("ciphertext").getString();
+    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
+    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
+    if (!stmt.getColumn("retention_until").isNull()) {
+      rec.retention_until = stmt.getColumn("retention_until").getInt64();
+    }
+    result.push_back(std::move(rec));
+  }
+  return result;
+}
+
 common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& envelope_id,
                                                      const common::DeviceId& device_id,
                                                      common::Timestamp now) {

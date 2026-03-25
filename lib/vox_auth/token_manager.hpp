@@ -30,6 +30,7 @@ public:
                                           common::Timestamp now);
 
   common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now);
+  common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now);
   common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now);
 
   static std::string HashToken(const std::string& token);

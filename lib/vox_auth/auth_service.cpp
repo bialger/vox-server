@@ -117,6 +117,10 @@ common::VoidResult AuthService::Logout(const std::string& session_id) {
   return tokens_.RevokeSession(session_id, now);
 }
 
+common::VoidResult AuthService::LogoutWithAccessToken(const std::string& access_token) {
+  return tokens_.RevokeByAccessToken(access_token, Now());
+}
+
 common::Result<TokenPair> AuthService::Refresh(const RefreshRequest& request) {
   auto now = Now();
   return tokens_.RefreshTokens(request.refresh_token, request.device_id, now);

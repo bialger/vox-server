@@ -16,6 +16,12 @@ struct ServerConfig {
   std::filesystem::path db_path = "vox_server.db";
   std::filesystem::path blob_storage_path = "blobs";
 
+  std::string listen_address = "127.0.0.1";
+  std::uint16_t listen_port = 8080;
+  std::size_t network_thread_count = 4;
+  /// If empty, admin HTTP routes are disabled.
+  std::string admin_token;
+
   std::size_t max_group_size = 256;
   std::size_t max_channel_size = 10000;
   std::size_t max_queue_depth_per_device = 1000;

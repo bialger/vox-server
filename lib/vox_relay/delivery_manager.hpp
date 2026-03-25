@@ -2,6 +2,7 @@
 #define VOX_RELAY_DELIVERY_MANAGER_HPP
 
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <vector>
 
@@ -23,6 +24,9 @@ class DeliveryManager {
 public:
   DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device);
 
+  /// Optional hook invoked after a successful in-memory enqueue (e.g. WebSocket push).
+  void SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook);
+
   common::VoidResult Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope);
   std::vector<QueuedEnvelope> Dequeue(const common::DeviceId& device_id, std::size_t max_count = 50);
   common::VoidResult Acknowledge(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id);
@@ -40,6 +44,7 @@ private:
   store::EnvelopeRepository& envelopes_;
   std::size_t max_queue_per_device_;
   common::ShardMap<common::DeviceId, std::shared_ptr<DeviceQueue>> queues_;
+  std::function<void(const common::DeviceId&, const QueuedEnvelope&)> enqueue_hook_;
 };
 
 } // namespace vox::relay

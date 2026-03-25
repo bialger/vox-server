@@ -37,6 +37,12 @@ public:
                                       const common::DeviceId& target_device_id,
                                       common::Timestamp now);
   std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id, std::size_t limit = 100);
+
+  /// Returns envelopes in `conversation_id` with server_timestamp strictly greater than `since_exclusive`.
+  /// Pass `since_exclusive == 0` to start from the first stored message (all timestamps are expected positive).
+  std::vector<EnvelopeRecord> ListForConversation(const common::ConversationId& conversation_id,
+                                                  common::Timestamp since_exclusive,
+                                                  std::size_t limit);
   common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
                                    const common::DeviceId& device_id,
                                    common::Timestamp now);

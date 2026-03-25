@@ -15,7 +15,7 @@ RelayService::RelayService(store::EnvelopeRepository& envelopes,
     envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
 }
 
-common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageRequest& request) {
+common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessageRequest& request) {
   if (request.ciphertext.empty()) {
     return std::unexpected(
         common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Ciphertext is required"});

@@ -102,6 +102,14 @@ common::VoidResult TokenManager::RevokeSession(const std::string& session_id, co
   return sessions_.RevokeSession(session_id, now);
 }
 
+common::VoidResult TokenManager::RevokeByAccessToken(const std::string& access_token, common::Timestamp now) {
+  auto session = ValidateAccessToken(access_token, now);
+  if (!session) {
+    return std::unexpected(session.error());
+  }
+  return RevokeSession(session->session_id, now);
+}
+
 common::VoidResult TokenManager::RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) {
   return sessions_.RevokeAllForUser(user_id, now);
 }

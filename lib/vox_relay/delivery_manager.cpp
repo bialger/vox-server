@@ -10,6 +10,10 @@ DeliveryManager::DeliveryManager(store::EnvelopeRepository& envelopes, std::size
     envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
 }
 
+void DeliveryManager::SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook) {
+  enqueue_hook_ = std::move(hook);
+}
+
 common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) {
   auto& queue = GetOrCreateQueue(device_id);
   std::lock_guard lock(queue.mutex);
@@ -21,6 +25,9 @@ common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, c
   }
 
   queue.pending.push_back(envelope);
+  if (enqueue_hook_) {
+    enqueue_hook_(device_id, envelope);
+  }
   return {};
 }
 
