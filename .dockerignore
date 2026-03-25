@@ -1,0 +1,21 @@
+# Build artifacts
+build
+cmake-build
+cmake-build-*
+cmake-build-release
+**/CMakeFiles
+**/compile_commands.json
+
+# VCS / IDE
+.git
+.github
+.vscode
+.idea
+*.md
+!README.md
+
+# Misc
+**/.cache
+**/*.log
+.env
+deploy/.env

@@ -76,6 +76,139 @@ Press **Ctrl+C** in the terminal, or send **`SIGINT`** / **`SIGTERM`** (on Windo
 
 The binary listens on plain TCP. For production, terminate HTTPS and WSS in a reverse proxy (e.g. Caddy or nginx) and forward to the local HTTP port.
 
+## Production deployment (Docker + nginx)
+
+The repository includes a **multi-stage Dockerfile**, **`deploy/docker-compose.yml`** (application + **nginx** reverse proxy), and a **GitHub Actions** workflow that SSHs into your server, runs **`git pull`**, and rebuilds/restarts containers.
+
+Default public hostname in the bundled nginx config is **`messenger.bialger.com`** (HTTP on port **80**). The app listens on **`0.0.0.0:8080`** inside the Docker network only; nginx is the public entrypoint.
+
+### What runs in Compose
+
+| Service     | Role |
+|-------------|------|
+| `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). |
+| `nginx`     | Reverse proxy to `vox-server:8080`, WebSocket upgrade headers, `client_max_body_size 100m`, ACME webroot for Let’s Encrypt. |
+| `certbot`   | Optional profile `certbot` — used for one-off certificate issuance (see below). |
+
+### Server preparation (before the first workflow run)
+
+Do this once on the target machine (typical: Ubuntu 22.04/24.04 LTS).
+
+1. **Install Docker Engine** and the **Docker Compose plugin** ([official docs](https://docs.docker.com/engine/install/)).
+2. **Firewall**: allow inbound **22** (SSH), **80** (HTTP / ACME), and **443** when you enable HTTPS.
+3. **DNS**: create an **A** (or **AAAA**) record so **`messenger.bialger.com`** points to this server’s public IP (change the name in `deploy/nginx/conf.d/10-vox.conf` if you use another host).
+4. **Clone this repository** to a fixed path (the workflow default is **`/opt/vox-server`**):
+
+   ```shell
+   sudo mkdir -p /opt/vox-server
+   sudo chown "$USER":"$USER" /opt/vox-server
+   git clone https://github.com/<org>/vox-server.git /opt/vox-server
+   ```
+
+   For a **private** repository, configure a [deploy key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys/deploy-keys) or HTTPS access so `git pull` on the server can reach GitHub without prompts.
+
+5. **First manual deploy** (optional sanity check):
+
+   ```shell
+   cd /opt/vox-server/deploy
+   docker compose build
+   docker compose up -d
+   ```
+
+   Open `http://messenger.bialger.com` — you should reach the API (e.g. `404` on `/` is normal if no route is defined; try a documented `/v1/...` path).
+
+6. **SSH access for GitHub Actions**: the deploy workflow uses **password** authentication. Create a dedicated Linux user with Docker permissions (e.g. membership in group `docker`) and a strong password; store that password only in **`SERVER_PASSWORD`** (see below).
+
+### GitHub repository secrets
+
+Define these in the repo: **Settings → Secrets and variables → Actions**.
+
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| **`SERVER_LOGIN`** | Yes | SSH username on the server (e.g. `deploy` or your admin user). |
+| **`SERVER_PASSWORD`** | Yes | SSH password for that user (used only by the deploy workflow). |
+| **`VOX_ADMIN_TOKEN`** | No | If set, each deploy passes **`--admin-token`** to `vox-server`, enabling `GET /v1/admin/stats` and `DELETE /v1/admin/users/{id}` with header **`X-Admin-Token`**. If unset or removed, admin routes stay **disabled**. |
+
+### GitHub Actions: when deploy runs
+
+**Automatic (after CI succeeds)** — job **`deploy`** in **`.github/workflows/ci_tests.yml`**:
+
+- Triggers with the rest of CI: **`push`** (any branch) and **`pull_request`** targeting **`main`**.
+- The deploy step runs **only if** all of **`build-matrix`**, **`style-check`**, and **`code-quality-check`** completed **successfully**, **and** one of:
+  - **`push`** to **`main`**, or
+  - **`pull_request`** into **`main`** from **this repository** (not from a fork; fork PRs skip deploy so secrets are not exposed).
+
+It SSHs to **`messenger.bialger.com`**, path **`/opt/vox-server`**, checks out the relevant branch (**`main`** on push to main, or the **PR head branch** on pull requests), then runs **`docker compose build`** and **`docker compose up -d`** in **`deploy/`**.
+
+**Manual** — **`.github/workflows/deploy.yml`** (**Actions → Deploy (Docker) → Run workflow**):
+
+- Inputs: **`server_host`**, **`deploy_path`**, **`branch`** (defaults: **`messenger.bialger.com`**, **`/opt/vox-server`**, **`main`**).
+
+The first image build can take a long time (Boost is compiled in Docker). Later deploys benefit from layer caching.
+
+### Admin token: enable, change, and disable
+
+**Enable or change** (recommended: set once in GitHub):
+
+1. Add or update repository secret **`VOX_ADMIN_TOKEN`** to your chosen shared secret.
+2. Run the **Deploy (Docker)** workflow (or redeploy manually on the server).
+
+**Enable locally on the server** (without storing the token in GitHub):
+
+```shell
+cd /opt/vox-server/deploy
+cp -n .env.example .env
+# Edit .env: set VOX_ADMIN_TOKEN=your-secret
+docker compose up -d --force-recreate vox-server
+```
+
+Ensure `docker-compose.yml` passes `VOX_ADMIN_TOKEN` from the environment (it reads **`${VOX_ADMIN_TOKEN:-}`**). If you use a `.env` file in `deploy/`, Compose loads it automatically.
+
+**Disable admin** (no `/v1/admin/*`):
+
+1. Remove **`VOX_ADMIN_TOKEN`** from GitHub Actions secrets (or clear it by deleting the secret in the UI).
+2. On the server, remove the line from **`deploy/.env`** or set `VOX_ADMIN_TOKEN=` empty, then:
+
+   ```shell
+   cd /opt/vox-server/deploy
+   docker compose up -d --force-recreate vox-server
+   ```
+
+3. Run the deploy workflow again if you rely on CI for env propagation.
+
+### HTTPS (Let’s Encrypt)
+
+1. Ensure DNS and port **80** work (nginx serves `/.well-known/acme-challenge/` from the `certbot-www` volume).
+2. On the server:
+
+   ```shell
+   cd /opt/vox-server/deploy
+   chmod +x scripts/init-letsencrypt.sh
+   ./scripts/init-letsencrypt.sh your@email.example
+   ```
+
+   Or run certbot manually:
+
+   ```shell
+   docker compose --profile certbot run --rm certbot certonly \
+     --webroot -w /var/www/certbot \
+     -d messenger.bialger.com \
+     --email your@email.example \
+     --agree-tos \
+     --non-interactive
+   ```
+
+3. Copy **`deploy/nginx/conf.d/20-ssl.conf.example`** to **`deploy/nginx/conf.d/20-ssl.conf`**, adjust `server_name` and paths if needed.
+4. Add **`443:443`** under the `nginx` service **`ports:`** in **`deploy/docker-compose.yml`** if it is not already published.
+5. Reload nginx: **`docker compose exec nginx nginx -s reload`**
+6. Optionally add a small HTTP server block that returns **`301`** to HTTPS only after you confirm TLS works.
+
+Web clients should use **`https://`** and **`wss://`** for the same host and `/v1/...` paths.
+
+### Changing the public hostname
+
+Edit **`server_name`** in **`deploy/nginx/conf.d/10-vox.conf`** (and in the SSL example), update DNS, and re-issue certificates if you use Let’s Encrypt.
+
 ## HTTP API (version `v1`)
 
 All JSON bodies use `Content-Type: application/json`. Authenticated routes expect `Authorization: Bearer <access_token>` unless noted.
@@ -149,6 +282,12 @@ cd cmake-build && ctest --output-on-failure
 vox-server/
 ├── bin/                          # Server executable entry point
 │   └── main.cpp
+├── deploy/                       # Docker + nginx + deploy scripts
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── docker-entrypoint.sh
+│   ├── nginx/
+│   └── scripts/
 ├── lib/
 │   ├── boost/                    # Boost download and build scripts
 │   ├── vox_common/

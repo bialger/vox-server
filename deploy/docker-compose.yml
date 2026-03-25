@@ -1,0 +1,48 @@
+services:
+  vox-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - vox_data:/data
+    environment:
+      VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
+    expose:
+      - "8080"
+    networks:
+      - vox_net
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - certbot-www:/var/www/certbot
+      - certbot-conf:/etc/letsencrypt:ro
+    depends_on:
+      - vox-server
+    networks:
+      - vox_net
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot-www:/var/www/certbot
+      - certbot-conf:/etc/letsencrypt
+    # Obtain cert (run once from host, see README):
+    # docker compose run --rm certbot certonly --webroot -w /var/www/certbot \
+    #   -d messenger.bialger.com --email YOUR@EMAIL --agree-tos --non-interactive
+    profiles:
+      - certbot
+
+volumes:
+  vox_data:
+  certbot-www:
+  certbot-conf:
+
+networks:
+  vox_net:
+    driver: bridge
