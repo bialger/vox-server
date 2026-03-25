@@ -1,6 +1,7 @@
 #ifndef VOX_STORE_ENVELOPE_REPOSITORY_HPP
 #define VOX_STORE_ENVELOPE_REPOSITORY_HPP
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -18,6 +19,8 @@ struct EnvelopeRecord {
   common::Timestamp server_timestamp;
   int envelope_type = 0;
   std::optional<common::Timestamp> retention_until;
+  /// Optional MLS / control-plane epoch for ordering (opaque to server semantics).
+  std::optional<std::int64_t> ordering_epoch;
 };
 
 struct DeliveryStateRecord {

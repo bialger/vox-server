@@ -39,6 +39,7 @@ common::VoidResult ConversationRepository::CreateConversation(const Conversation
 }
 
 std::optional<ConversationRecord> ConversationRepository::FindById(const common::ConversationId& conv_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM conversations WHERE conversation_id = ?");
   stmt.bind(1, conv_id);
   if (stmt.executeStep()) {
@@ -92,6 +93,7 @@ common::VoidResult ConversationRepository::RemoveMember(const common::Conversati
 }
 
 std::vector<MemberRecord> ConversationRepository::GetMembers(const common::ConversationId& conv_id) {
+  auto lock = db_.ReadLock();
   std::vector<MemberRecord> result;
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT * FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
@@ -111,6 +113,7 @@ std::vector<MemberRecord> ConversationRepository::GetMembers(const common::Conve
 }
 
 std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(const common::UserId& user_id) {
+  auto lock = db_.ReadLock();
   std::vector<ConversationRecord> result;
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT c.* FROM conversations c "
@@ -131,12 +134,15 @@ std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(
 
 bool ConversationRepository::IsUserInConversation(const common::ConversationId& conv_id,
                                                   const common::UserId& user_id) {
-  auto conv = FindById(conv_id);
-  if (!conv) {
+  auto lock = db_.ReadLock();
+  SQLite::Statement conv_stmt(db_.Connection(), "SELECT type FROM conversations WHERE conversation_id = ?");
+  conv_stmt.bind(1, conv_id);
+  if (!conv_stmt.executeStep()) {
     return false;
   }
+  const auto typ = static_cast<common::ConversationType>(conv_stmt.getColumn("type").getInt());
 
-  if (conv->type == common::ConversationType::kChannel) {
+  if (typ == common::ConversationType::kChannel) {
     SQLite::Statement stmt(
         db_.Connection(),
         "SELECT 1 FROM channel_subscriptions WHERE conversation_id = ? AND user_id = ? AND unsubscribed_at IS NULL");
@@ -155,6 +161,7 @@ bool ConversationRepository::IsUserInConversation(const common::ConversationId& 
 
 std::optional<MemberRecord> ConversationRepository::GetMember(const common::ConversationId& conv_id,
                                                               const common::UserId& user_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(
       db_.Connection(),
       "SELECT * FROM conversation_members WHERE conversation_id = ? AND user_id = ? AND removed_at IS NULL");
@@ -207,6 +214,7 @@ common::VoidResult ConversationRepository::Unsubscribe(const common::Conversatio
 }
 
 std::vector<common::UserId> ConversationRepository::GetSubscribers(const common::ConversationId& conv_id) {
+  auto lock = db_.ReadLock();
   std::vector<common::UserId> result;
   SQLite::Statement stmt(
       db_.Connection(),
@@ -219,6 +227,7 @@ std::vector<common::UserId> ConversationRepository::GetSubscribers(const common:
 }
 
 std::size_t ConversationRepository::GetMemberCount(const common::ConversationId& conv_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT COUNT(*) FROM conversation_members WHERE conversation_id = ? AND removed_at IS NULL");
   stmt.bind(1, conv_id);

@@ -29,6 +29,9 @@ private:
   std::unordered_map<std::string, WindowState> by_key_;
 };
 
+/// Same fixed-window logic as `AuthRateLimiter`; use for per-account keys.
+using AccountRateLimiter = AuthRateLimiter;
+
 } // namespace vox::net
 
 #endif // VOX_NET_RATE_LIMITER_HPP

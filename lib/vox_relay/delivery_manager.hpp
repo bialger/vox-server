@@ -1,9 +1,11 @@
 #ifndef VOX_RELAY_DELIVERY_MANAGER_HPP
 #define VOX_RELAY_DELIVERY_MANAGER_HPP
 
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +21,7 @@ struct QueuedEnvelope {
   common::DeviceId sender_device_id;
   std::string ciphertext;
   common::Timestamp server_timestamp;
+  std::optional<std::int64_t> ordering_epoch;
 };
 
 class IDeliveryManager {
@@ -37,6 +40,8 @@ public:
                                                 const common::DeviceId& device_id) = 0;
 };
 
+/// In-memory per-device queues use `ShardMap` + mutexes (not Asio strands); ordering with WebSocket uses `post` on the
+/// connection executor.
 class DeliveryManager : public IDeliveryManager {
 public:
   DeliveryManager(store::IEnvelopeRepository& envelopes, std::size_t max_queue_per_device);

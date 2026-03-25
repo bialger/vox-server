@@ -37,6 +37,7 @@ common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
 }
 
 std::optional<UserRecord> UserRepository::FindByUsername(const std::string& username) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM users WHERE username = ?");
   stmt.bind(1, username);
   if (stmt.executeStep()) {
@@ -55,6 +56,7 @@ std::optional<UserRecord> UserRepository::FindByUsername(const std::string& user
 }
 
 std::optional<UserRecord> UserRepository::FindById(const common::UserId& user_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM users WHERE user_id = ?");
   stmt.bind(1, user_id);
   if (stmt.executeStep()) {
@@ -85,6 +87,7 @@ common::VoidResult UserRepository::DisableUser(const common::UserId& user_id, co
 }
 
 std::vector<UserRecord> UserRepository::ListUsers(std::size_t limit, std::size_t offset) {
+  auto lock = db_.ReadLock();
   std::vector<UserRecord> result;
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?");
   stmt.bind(1, static_cast<std::int64_t>(limit));

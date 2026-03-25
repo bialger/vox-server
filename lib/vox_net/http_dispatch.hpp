@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 #include <boost/beast/http.hpp>
 
@@ -12,8 +13,13 @@
 
 namespace vox::net {
 
-using HttpRequest = boost::beast::http::request<boost::beast::http::string_body>;
-using HttpResponse = boost::beast::http::response<boost::beast::http::string_body>;
+namespace beast = boost::beast;
+namespace http = beast::http;
+
+using HttpRequest = http::request<http::string_body>;
+using HttpResponseString = http::response<http::string_body>;
+using HttpResponseFile = http::response<http::file_body>;
+using HttpResponse = std::variant<HttpResponseString, HttpResponseFile>;
 
 /// Handles one HTTP request (except WebSocket upgrade, which is handled in the session).
 HttpResponse DispatchHttp(ServerContext& ctx,

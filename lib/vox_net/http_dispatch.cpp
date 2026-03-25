@@ -1,13 +1,12 @@
 #include "lib/vox_net/http_dispatch.hpp"
 
 #include <cstring>
-#include <fstream>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
 
+#include <boost/beast/http/file_body.hpp>
 #include <boost/json.hpp>
 
 #include "lib/vox_net/error_http.hpp"
@@ -39,11 +38,11 @@ boost::json::object ErrObj(const common::Error& e) {
 }
 
 HttpResponse JsonRes(unsigned version, unsigned status, const boost::json::value& v) {
-  HttpResponse res{static_cast<http::status>(status), version};
+  HttpResponseString res{static_cast<http::status>(status), version};
   res.set(http::field::content_type, "application/json");
   res.body() = boost::json::serialize(v);
   res.prepare_payload();
-  return res;
+  return HttpResponse{std::move(res)};
 }
 
 HttpResponse ErrRes(unsigned version, unsigned st, const common::Error& e) {
@@ -51,9 +50,9 @@ HttpResponse ErrRes(unsigned version, unsigned st, const common::Error& e) {
 }
 
 HttpResponse NotFoundRes(unsigned version) {
-  HttpResponse res{http::status::not_found, version};
+  HttpResponseString res{http::status::not_found, version};
   res.prepare_payload();
-  return res;
+  return HttpResponse{std::move(res)};
 }
 
 std::optional<std::string> JsonString(const boost::json::object& o, std::string_view key) {
@@ -345,6 +344,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         if (auto et = JsonInt(o, "envelope_type")) {
           sr.envelope_type = static_cast<int>(*et);
         }
+        sr.ordering_epoch = JsonInt(o, "ordering_epoch");
         auto result = ctx.relay.SendEnvelope(sr);
         if (!result) {
           return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
@@ -554,6 +554,9 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           eo["ciphertext"] = e.ciphertext;
           eo["server_timestamp"] = e.server_timestamp;
           eo["envelope_type"] = e.envelope_type;
+          if (e.ordering_epoch) {
+            eo["ordering_epoch"] = *e.ordering_epoch;
+          }
           arr.push_back(eo);
         }
         boost::json::object out;
@@ -586,6 +589,9 @@ OptRes HandleAuthenticated(ServerContext& ctx,
             eo["ciphertext"] = e.ciphertext;
             eo["server_timestamp"] = e.server_timestamp;
             eo["envelope_type"] = e.envelope_type;
+            if (e.ordering_epoch) {
+              eo["ordering_epoch"] = *e.ordering_epoch;
+            }
             arr.push_back(eo);
           }
           boost::json::object out;
@@ -637,14 +643,16 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           if (!result) {
             return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
           }
-          HttpResponse res{http::status::ok, ver};
+          HttpResponseFile res{http::status::ok, ver};
           res.set(http::field::content_type, "application/octet-stream");
-          std::ifstream file(*result, std::ios::binary);
-          std::ostringstream ss;
-          ss << file.rdbuf();
-          res.body() = std::move(ss).str();
+          beast::error_code fec;
+          res.body().open(result->string().c_str(), beast::file_mode::read, fec);
+          if (fec) {
+            common::Error e{.code = common::ErrorCode::kInternal, .message = "Cannot open attachment blob"};
+            return ErrRes(ver, HttpStatusForError(e.code), e);
+          }
           res.prepare_payload();
-          return res;
+          return HttpResponse{std::move(res)};
         }
       }
 
@@ -783,6 +791,16 @@ HttpResponse DispatchHttp(ServerContext& ctx,
     }
     common::Error e{.code = common::ErrorCode::kUnauthorized, .message = "Authentication required"};
     return detail::ErrRes(ver, detail::kHttpUnauthorized, e);
+  }
+
+  if (ctx.account_rate_limiter != nullptr) {
+    const bool heavy_route =
+        (m == http::verb::post && path == "/v1/messages/send") ||
+        (m == http::verb::put && path.starts_with("/v1/attachments/") && path.find("/chunk") != std::string_view::npos);
+    if (heavy_route && !ctx.account_rate_limiter->Allow(session->user_id)) {
+      common::Error e{.code = common::ErrorCode::kRateLimited, .message = "Too many requests"};
+      return detail::ErrRes(ver, HttpStatusForError(e.code), e);
+    }
   }
 
   if (auto r = detail::HandleAuthenticated(ctx, req, m, path, ver, session.value(), parse_body)) {

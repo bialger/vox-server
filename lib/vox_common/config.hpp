@@ -27,6 +27,8 @@ struct ServerConfig {
   std::size_t max_group_size = 256;
   std::size_t max_channel_size = 10000;
   std::size_t max_queue_depth_per_device = 1000;
+  /// Max pending outbound WebSocket frames per connection; 0 = unlimited. Overflow closes the session.
+  std::size_t max_ws_outbound_queue = 256;
   std::size_t max_upload_size_bytes = 100 * 1024 * 1024;       // 100 MB
   std::size_t max_storage_per_user_bytes = 1024 * 1024 * 1024; // 1 GB
   /// Max JSON/body size for a single HTTP request (Beast reads full body before dispatch).
@@ -34,6 +36,9 @@ struct ServerConfig {
   /// 0 = disabled. Applied to POST /v1/register, /login, /refresh per client IP.
   std::size_t auth_rate_limit_max = 60;
   std::int64_t auth_rate_limit_window_seconds = 60;
+  /// 0 = disabled. Applied to heavy authenticated routes (message send, attachment chunk upload) per user_id.
+  std::size_t account_rate_limit_max = 0;
+  std::int64_t account_rate_limit_window_seconds = 60;
   /// How often to run DB/blob expiry cleanup (also uses storage thread pool when non-zero interval).
   std::int64_t maintenance_purge_interval_seconds = 3600;
 

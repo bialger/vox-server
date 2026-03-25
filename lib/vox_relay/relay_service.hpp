@@ -1,6 +1,8 @@
 #ifndef VOX_RELAY_RELAY_SERVICE_HPP
 #define VOX_RELAY_RELAY_SERVICE_HPP
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +21,7 @@ struct SendMessageRequest {
   std::string ciphertext;
   std::string envelope_id;
   int envelope_type = 0;
+  std::optional<std::int64_t> ordering_epoch;
 };
 
 struct SendMessageResponse {

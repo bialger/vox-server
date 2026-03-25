@@ -12,6 +12,7 @@ AdminService::AdminService(store::IDatabase& db, store::IUserRepository& users, 
 }
 
 ServerStats AdminService::GetServerStats() {
+  auto lock = db_.ReadLock();
   ServerStats stats;
 
   auto get_count = [this](const std::string& table) -> std::size_t {

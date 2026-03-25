@@ -40,6 +40,7 @@ common::VoidResult SessionRepository::CreateSession(const SessionRecord& session
 }
 
 std::optional<SessionRecord> SessionRepository::FindByAccessToken(const std::string& access_token_hash) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM sessions WHERE access_token_hash = ? AND revoked_at IS NULL");
   stmt.bind(1, access_token_hash);
   if (stmt.executeStep()) {
@@ -61,6 +62,7 @@ std::optional<SessionRecord> SessionRepository::FindByAccessToken(const std::str
 }
 
 std::optional<SessionRecord> SessionRepository::FindByRefreshToken(const std::string& refresh_token_hash) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT * FROM sessions WHERE refresh_token_hash = ? AND revoked_at IS NULL");
   stmt.bind(1, refresh_token_hash);
@@ -115,6 +117,7 @@ int SessionRepository::CleanExpired(common::Timestamp now) {
 }
 
 std::size_t SessionRepository::CountActiveForUser(const common::UserId& user_id, common::Timestamp now) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(
       db_.Connection(),
       "SELECT COUNT(*) FROM sessions WHERE user_id = ? AND revoked_at IS NULL AND access_expires_at > ?");

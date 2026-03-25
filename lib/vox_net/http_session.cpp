@@ -1,6 +1,10 @@
 #include "lib/vox_net/http_session.hpp"
 
 #include <chrono>
+#include <deque>
+#include <variant>
+
+#include <spdlog/spdlog.h>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -39,8 +43,13 @@ std::optional<std::string> ParseBearer(const HttpRequest& req) {
 
 class WebSocketSession : public std::enable_shared_from_this<WebSocketSession> {
 public:
-  WebSocketSession(beast::tcp_stream&& stream, ServerContext& ctx, WsPushRegistry& registry, HttpRequest&& req) :
-      ws_(std::move(stream)), ctx_(ctx), registry_(registry), req_(std::move(req)) {
+  WebSocketSession(beast::tcp_stream&& stream,
+                   ServerContext& ctx,
+                   WsPushRegistry& registry,
+                   HttpRequest&& req,
+                   std::size_t max_ws_outbound_queue) :
+      ws_(std::move(stream)), ctx_(ctx), registry_(registry), req_(std::move(req)),
+      max_ws_outbound_queue_(max_ws_outbound_queue) {
   }
 
   void Run() {
@@ -80,11 +89,30 @@ private:
 
   void PostSend(std::string msg) {
     net::post(ws_.get_executor(), [self = shared_from_this(), msg = std::move(msg)]() mutable {
-      self->ws_.async_write(net::buffer(msg), [self](beast::error_code ec, std::size_t) {
-        if (ec) {
-          self->Shutdown();
-        }
-      });
+      if (self->max_ws_outbound_queue_ > 0 && self->outbound_.size() >= self->max_ws_outbound_queue_) {
+        spdlog::warn("WebSocket outbound queue full (device {}), closing session", self->device_id_);
+        self->Shutdown();
+        return;
+      }
+      self->outbound_.push_back(std::move(msg));
+      self->PumpOutbound();
+    });
+  }
+
+  void PumpOutbound() {
+    if (write_in_progress_ || outbound_.empty()) {
+      return;
+    }
+    write_in_progress_ = true;
+    std::string chunk = std::move(outbound_.front());
+    outbound_.pop_front();
+    ws_.async_write(net::buffer(chunk), [self = shared_from_this()](beast::error_code ec, std::size_t) {
+      self->write_in_progress_ = false;
+      if (ec) {
+        self->Shutdown();
+        return;
+      }
+      self->PumpOutbound();
     });
   }
 
@@ -114,6 +142,9 @@ private:
   HttpRequest req_;
   beast::flat_buffer buffer_;
   std::string device_id_;
+  std::deque<std::string> outbound_;
+  bool write_in_progress_ = false;
+  std::size_t max_ws_outbound_queue_;
 };
 
 bool IsWsPath(std::string_view path_only) {
@@ -145,17 +176,22 @@ void HttpSession::OnRead(beast::error_code ec, std::size_t) {
   if (websocket::is_upgrade(req_)) {
     std::string p = PathOnly(req_.target());
     if (!IsWsPath(p)) {
-      HttpResponse res{http::status::not_found, req_.version()};
+      HttpResponseString res{http::status::not_found, req_.version()};
       res.set(http::field::content_type, "text/plain");
       res.body() = "Not Found";
       res.prepare_payload();
-      res_ = std::move(res);
-      http::async_write(stream_, *res_, [self = shared_from_this()](beast::error_code ec, std::size_t n) {
-        self->OnWrite(ec, n, true, false);
-      });
+      res_ = HttpResponse{std::move(res)};
+      std::visit(
+          [this](auto& r) {
+            http::async_write(stream_, r, [self = shared_from_this()](beast::error_code ec, std::size_t n) {
+              self->OnWrite(ec, n, true, false);
+            });
+          },
+          *res_);
       return;
     }
-    auto ws = std::make_shared<WebSocketSession>(std::move(stream_), ctx_, ws_registry_, std::move(req_));
+    auto ws = std::make_shared<WebSocketSession>(
+        std::move(stream_), ctx_, ws_registry_, std::move(req_), ctx_.config.max_ws_outbound_queue);
     ws->Run();
     return;
   }
@@ -170,21 +206,48 @@ void HttpSession::OnRead(beast::error_code ec, std::size_t) {
 
   std::string client_ip;
   {
-    boost::system::error_code ec;
-    const auto ep = stream_.socket().remote_endpoint(ec);
-    if (!ec) {
+    boost::system::error_code ep_ec;
+    const auto ep = stream_.socket().remote_endpoint(ep_ec);
+    if (!ep_ec) {
       client_ip = ep.address().to_string();
     }
   }
 
+  if (ctx_.storage_pool != nullptr && ctx_.ioc_for_dispatch != nullptr) {
+    HttpRequest req_copy = std::move(req_);
+    auto self = shared_from_this();
+    auto* ioc = ctx_.ioc_for_dispatch;
+    ctx_.storage_pool->Submit(
+        [self, req_copy = std::move(req_copy), sess, client_ip = std::move(client_ip), ioc]() mutable {
+          HttpResponse res = DispatchHttp(self->ctx_, req_copy, sess, client_ip);
+          bool keep_alive = std::visit([](const auto& r) { return r.keep_alive(); }, res);
+          std::visit([keep_alive](auto& r) { r.keep_alive(keep_alive); }, res);
+          net::post(ioc->get_executor(), [self, res = std::move(res), keep_alive]() mutable {
+            self->res_ = std::move(res);
+            std::visit(
+                [self, keep_alive](auto& r) {
+                  http::async_write(self->stream_, r, [self, keep_alive](beast::error_code ec, std::size_t n) {
+                    self->OnWrite(ec, n, false, keep_alive);
+                  });
+                },
+                *self->res_);
+          });
+        });
+    return;
+  }
+
   HttpResponse res = DispatchHttp(ctx_, req_, sess, client_ip);
-  bool keep_alive = res.keep_alive();
-  res.keep_alive(keep_alive);
+  bool keep_alive = std::visit([](const auto& r) { return r.keep_alive(); }, res);
+  std::visit([keep_alive](auto& r) { r.keep_alive(keep_alive); }, res);
   res_ = std::move(res);
 
-  http::async_write(stream_, *res_, [self = shared_from_this(), keep_alive](beast::error_code ec, std::size_t n) {
-    self->OnWrite(ec, n, false, keep_alive);
-  });
+  std::visit(
+      [this, keep_alive](auto& r) {
+        http::async_write(stream_, r, [self = shared_from_this(), keep_alive](beast::error_code ec, std::size_t n) {
+          self->OnWrite(ec, n, false, keep_alive);
+        });
+      },
+      *res_);
 }
 
 void HttpSession::OnWrite(beast::error_code ec, std::size_t, bool close, bool keep_alive) {

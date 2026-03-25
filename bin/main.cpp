@@ -5,6 +5,7 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -14,7 +15,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/json.hpp>
 #include <spdlog/spdlog.h>
 
@@ -127,6 +127,11 @@ int main(int argc, char** argv) {
       auth_rate_limiter = std::make_unique<vox::net::AuthRateLimiter>(
           config.auth_rate_limit_max, std::chrono::seconds(config.auth_rate_limit_window_seconds));
     }
+    std::unique_ptr<vox::net::AccountRateLimiter> account_rate_limiter;
+    if (config.account_rate_limit_max > 0) {
+      account_rate_limiter = std::make_unique<vox::net::AccountRateLimiter>(
+          config.account_rate_limit_max, std::chrono::seconds(config.account_rate_limit_window_seconds));
+    }
 
     vox::net::WsPushRegistry ws_registry;
     delivery.SetEnqueueHook(
@@ -138,6 +143,9 @@ int main(int argc, char** argv) {
           o["sender_device_id"] = q.sender_device_id;
           o["ciphertext"] = q.ciphertext;
           o["server_timestamp"] = q.server_timestamp;
+          if (q.ordering_epoch) {
+            o["ordering_epoch"] = *q.ordering_epoch;
+          }
           ws_registry.Notify(device_id, boost::json::serialize(o));
         });
 
@@ -152,39 +160,41 @@ int main(int argc, char** argv) {
                                 .devices = devices,
                                 .attachments = attachment_service,
                                 .admin = admin_service,
-                                .auth_rate_limiter = auth_rate_limiter.get()};
+                                .auth_rate_limiter = auth_rate_limiter.get(),
+                                .account_rate_limiter = account_rate_limiter.get(),
+                                .ioc_for_dispatch = nullptr,
+                                .storage_pool = nullptr};
 
     net::io_context ioc;
+    ctx.ioc_for_dispatch = &ioc;
+    ctx.storage_pool = &storage_pool;
     tcp::endpoint endpoint(net::ip::make_address(config.listen_address), config.listen_port);
     auto listener = std::make_shared<vox::net::HttpListener>(ioc, endpoint, ctx, ws_registry);
     listener->run();
 
-    std::shared_ptr<net::steady_timer> purge_timer = std::make_shared<net::steady_timer>(ioc);
-    std::function<void(const boost::system::error_code&)> on_purge;
-    on_purge = [&, purge_timer](const boost::system::error_code& ec) {
-      if (ec == net::error::operation_aborted) {
-        return;
-      }
-      if (ec) {
-        return;
-      }
-      if (config.maintenance_purge_interval_seconds <= 0) {
-        return;
-      }
-      storage_pool.Submit([&envelopes, &attachment_service]() {
-        const auto now =
-            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-                .count();
-        const int env_n = envelopes.DeleteExpired(now);
-        const int att_n = attachment_service.DeleteExpired();
-        spdlog::info("Maintenance purge: envelope rows deleted {}, attachment rows {}", env_n, att_n);
-      });
-      purge_timer->expires_after(std::chrono::seconds(config.maintenance_purge_interval_seconds));
-      purge_timer->async_wait(on_purge);
-    };
+    std::optional<std::jthread> maintenance_thread;
     if (config.maintenance_purge_interval_seconds > 0) {
-      purge_timer->expires_after(std::chrono::seconds(config.maintenance_purge_interval_seconds));
-      purge_timer->async_wait(on_purge);
+      maintenance_thread.emplace([&envelopes,
+                                  &attachment_service,
+                                  &storage_pool,
+                                  interval = config.maintenance_purge_interval_seconds](const std::stop_token& st) {
+        while (!st.stop_requested()) {
+          for (std::int64_t i = 0; i < interval && !st.stop_requested(); ++i) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+          }
+          if (st.stop_requested()) {
+            break;
+          }
+          storage_pool.Submit([&envelopes, &attachment_service]() {
+            const auto now =
+                std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+            const int env_n = envelopes.DeleteExpired(now);
+            const int att_n = attachment_service.DeleteExpired();
+            spdlog::info("Maintenance purge: envelope rows deleted {}, attachment rows {}", env_n, att_n);
+          });
+        }
+      });
     }
 
     net::signal_set signals(ioc);
@@ -193,11 +203,14 @@ int main(int argc, char** argv) {
 #ifdef _WIN32
     signals.add(SIGBREAK);
 #endif
-    signals.async_wait([&ioc, listener](const boost::system::error_code& ec, int signo) {
+    signals.async_wait([&ioc, listener, &maintenance_thread](const boost::system::error_code& ec, int signo) {
       if (ec) {
         return;
       }
       std::cout << "Shutting down (signal " << signo << ")\n";
+      if (maintenance_thread) {
+        maintenance_thread->request_stop();
+      }
       listener->Shutdown();
       ioc.stop();
     });

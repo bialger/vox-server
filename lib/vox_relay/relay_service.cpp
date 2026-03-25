@@ -62,6 +62,7 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   envelope.ciphertext = request.ciphertext;
   envelope.server_timestamp = now;
   envelope.envelope_type = request.envelope_type;
+  envelope.ordering_epoch = request.ordering_epoch;
   if (config_.message_retention_seconds > 0) {
     envelope.retention_until = now + config_.message_retention_seconds;
   }
@@ -87,6 +88,7 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   queued.sender_device_id = request.sender_device_id;
   queued.ciphertext = request.ciphertext;
   queued.server_timestamp = now;
+  queued.ordering_epoch = request.ordering_epoch;
 
   std::size_t delivered_count = 0;
   for (const auto& uid : target_users) {

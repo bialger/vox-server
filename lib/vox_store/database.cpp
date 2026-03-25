@@ -1,5 +1,8 @@
 #include "lib/vox_store/database.hpp"
 
+#include <cstring>
+
+#include <SQLiteCpp/SQLiteCpp.h>
 #include <spdlog/spdlog.h>
 
 namespace vox::store {
@@ -17,8 +20,12 @@ SQLite::Database& Database::Connection() {
   return *db_;
 }
 
-std::unique_lock<std::mutex> Database::WriteLock() {
-  return std::unique_lock(write_mutex_);
+std::unique_lock<std::recursive_mutex> Database::WriteLock() {
+  return std::unique_lock(connection_mutex_);
+}
+
+std::unique_lock<std::recursive_mutex> Database::ReadLock() {
+  return std::unique_lock(connection_mutex_);
 }
 
 void Database::CreateSchema() {
@@ -107,9 +114,19 @@ void Database::CreateSchema() {
       ciphertext        BLOB NOT NULL,
       server_timestamp  INTEGER NOT NULL,
       envelope_type     INTEGER NOT NULL DEFAULT 0,
-      retention_until   INTEGER
+      retention_until   INTEGER,
+      ordering_epoch    INTEGER
     )
   )SQL");
+
+  try {
+    db_->exec("ALTER TABLE encrypted_envelopes ADD COLUMN ordering_epoch INTEGER");
+  } catch (const SQLite::Exception& e) {
+    const char* msg = e.what();
+    if (msg == nullptr || std::strstr(msg, "duplicate") == nullptr) {
+      throw;
+    }
+  }
 
   db_->exec(R"SQL(
     CREATE TABLE IF NOT EXISTS delivery_state (

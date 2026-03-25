@@ -41,6 +41,7 @@ common::VoidResult AttachmentRepository::CreateAttachmentMeta(const AttachmentRe
 }
 
 std::optional<AttachmentRecord> AttachmentRepository::GetAttachmentMeta(const common::AttachmentId& attachment_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM attachment_metadata WHERE attachment_id = ?");
   stmt.bind(1, attachment_id);
   if (stmt.executeStep()) {
@@ -90,6 +91,7 @@ common::VoidResult AttachmentRepository::DeleteAttachment(const common::Attachme
 }
 
 std::int64_t AttachmentRepository::GetStorageUsedByUser(const common::UserId& user_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(
       db_.Connection(),
       "SELECT COALESCE(SUM(file_size), 0) FROM attachment_metadata WHERE user_id = ? AND upload_complete = 1");
@@ -101,6 +103,7 @@ std::int64_t AttachmentRepository::GetStorageUsedByUser(const common::UserId& us
 }
 
 std::vector<AttachmentRecord> AttachmentRepository::GetExpired(common::Timestamp now) {
+  auto lock = db_.ReadLock();
   std::vector<AttachmentRecord> result;
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT * FROM attachment_metadata WHERE retention_until IS NOT NULL AND retention_until < ?");

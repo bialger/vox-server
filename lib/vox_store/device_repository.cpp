@@ -46,6 +46,7 @@ common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) 
 }
 
 std::vector<DeviceRecord> DeviceRepository::GetDevicesForUser(const common::UserId& user_id) {
+  auto lock = db_.ReadLock();
   std::vector<DeviceRecord> result;
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE user_id = ?");
   stmt.bind(1, user_id);
@@ -66,6 +67,7 @@ std::vector<DeviceRecord> DeviceRepository::GetDevicesForUser(const common::User
 }
 
 std::optional<DeviceRecord> DeviceRepository::FindById(const common::DeviceId& device_id) {
+  auto lock = db_.ReadLock();
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE device_id = ?");
   stmt.bind(1, device_id);
   if (stmt.executeStep()) {
