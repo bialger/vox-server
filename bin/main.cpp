@@ -113,17 +113,17 @@ int main(int argc, char** argv) {
           ws_registry.Notify(device_id, boost::json::serialize(o));
         });
 
-    vox::net::ServerContext ctx{config,
-                                auth,
-                                tokens,
-                                relay,
-                                conversation_service,
-                                delivery,
-                                envelopes,
-                                conversations,
-                                devices,
-                                attachment_service,
-                                admin_service};
+    vox::net::ServerContext ctx{.config = config,
+                                .auth = auth,
+                                .tokens = tokens,
+                                .relay = relay,
+                                .conversations = conversation_service,
+                                .delivery = delivery,
+                                .envelopes = envelopes,
+                                .conversations_store = conversations,
+                                .devices = devices,
+                                .attachments = attachment_service,
+                                .admin = admin_service};
 
     net::io_context ioc;
     tcp::endpoint endpoint(net::ip::make_address(config.listen_address), config.listen_port);

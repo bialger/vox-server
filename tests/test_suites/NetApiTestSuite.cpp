@@ -71,17 +71,17 @@ void NetApiTestSuite::SetUp() {
   });
 
   server_ctx_ = std::make_unique<vox::net::ServerContext>(vox::net::ServerContext{
-      config_,
-      *auth_,
-      *tokens_,
-      *relay_,
-      *conv_service_,
-      *delivery_,
-      *envelopes_,
-      *conversations_,
-      *devices_,
-      *attachment_service_,
-      *admin_service_,
+      .config = config_,
+      .auth = *auth_,
+      .tokens = *tokens_,
+      .relay = *relay_,
+      .conversations = *conv_service_,
+      .delivery = *delivery_,
+      .envelopes = *envelopes_,
+      .conversations_store = *conversations_,
+      .devices = *devices_,
+      .attachments = *attachment_service_,
+      .admin = *admin_service_,
   });
 
   ioc_ = std::make_unique<net::io_context>();

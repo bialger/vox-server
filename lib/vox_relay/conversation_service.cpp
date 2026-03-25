@@ -21,8 +21,9 @@ ConversationService::ConversationService(store::ConversationRepository& conversa
 }
 
 void ConversationService::SortUnique(std::vector<common::UserId>& ids) {
-  std::sort(ids.begin(), ids.end());
-  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+  std::ranges::sort(ids);
+  const auto duplicate_tail = std::ranges::unique(ids);
+  ids.erase(duplicate_tail.begin(), duplicate_tail.end());
 }
 
 common::Timestamp ConversationService::Now() {
@@ -71,7 +72,7 @@ common::Result<common::ConversationId> ConversationService::CreateGroup(const co
   if (member_user_ids.size() < 2) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Group requires at least two members"));
   }
-  if (std::find(member_user_ids.begin(), member_user_ids.end(), created_by) == member_user_ids.end()) {
+  if (std::ranges::find(member_user_ids, created_by) == member_user_ids.end()) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Creator must be included in members"));
   }
   if (member_user_ids.size() > config_.max_group_size) {
@@ -108,7 +109,7 @@ common::Result<common::ConversationId> ConversationService::CreateChannel(
   if (admin_user_ids.empty()) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Channel requires at least one admin"));
   }
-  if (std::find(admin_user_ids.begin(), admin_user_ids.end(), created_by) == admin_user_ids.end()) {
+  if (std::ranges::find(admin_user_ids, created_by) == admin_user_ids.end()) {
     return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "Creator must be listed as admin"));
   }
 
@@ -157,7 +158,7 @@ common::Result<common::ConversationId> ConversationService::CreateChannel(
   }
 
   for (const auto& uid : subscriber_user_ids) {
-    if (std::find(admin_user_ids.begin(), admin_user_ids.end(), uid) != admin_user_ids.end()) {
+    if (std::ranges::find(admin_user_ids, uid) != admin_user_ids.end()) {
       continue;
     }
     if (auto r = conversations_.Subscribe(conv_id, uid, now); !r) {

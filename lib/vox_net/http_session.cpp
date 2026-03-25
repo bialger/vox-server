@@ -31,7 +31,7 @@ std::optional<std::string> ParseBearer(const HttpRequest& req) {
   }
   std::string v = std::string(it->value());
   const std::string prefix = "Bearer ";
-  if (v.size() > prefix.size() && v.compare(0, prefix.size(), prefix) == 0) {
+  if (v.size() > prefix.size() && v.starts_with(prefix)) {
     return v.substr(prefix.size());
   }
   return std::nullopt;
