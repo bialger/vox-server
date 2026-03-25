@@ -16,6 +16,7 @@ jobs:
       github.event.workflow_run.head_branch != 'master'
     permissions:
       contents: read
+      actions: read
       packages: write
       pull-requests: read
     concurrency:
@@ -61,6 +62,20 @@ jobs:
         with:
           ref: ${{ steps.check.outputs.sha }}
 
+      - name: Download vox-server from triggering CI run
+        if: steps.check.outputs.deploy == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: vox-server-linux
+          path: docker-build-context
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Prepare Docker build context
+        if: steps.check.outputs.deploy == 'true'
+        run: cp deploy/docker-entrypoint.sh docker-build-context/docker-entrypoint.sh
+
       - name: Image name (lowercase for GHCR)
         id: meta
         if: steps.check.outputs.deploy == 'true'
@@ -75,12 +90,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (image tagged with commit SHA)
+      - name: Build and push (prebuilt binary, image tagged with commit SHA)
         if: steps.check.outputs.deploy == 'true'
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./deploy/Dockerfile
+          context: docker-build-context
+          file: ./deploy/Dockerfile.prebuilt
           push: true
           tags: ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ steps.check.outputs.sha }}
 

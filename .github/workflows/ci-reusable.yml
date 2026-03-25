@@ -1,4 +1,4 @@
-# Shared tests and checks. Called from ci_tests.yml (push) and ci_fork_pr.yml (fork PRs only).
+# Shared tests and checks. Called from ci_tests.yml (push) only.
 name: CI reusable
 
 on:
@@ -79,6 +79,14 @@ jobs:
           else
               ./vox-server_net_tests
           fi
+
+      - name: Upload vox-server (Linux) for Docker image
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vox-server-linux
+          path: cmake-build-release/bin/vox-server
+          retention-days: 1
 
   style-check:
     name: Code style check with clang-format

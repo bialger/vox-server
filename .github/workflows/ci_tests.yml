@@ -1,6 +1,6 @@
 name: "CI tests"
 
-# Push only: one full CI run per push (no duplicate pull_request). Fork PRs use ci_fork_pr.yml.
+# Push only: one full CI run per push (no duplicate pull_request).
 on:
   push:
 
@@ -20,12 +20,22 @@ jobs:
       github.ref == 'refs/heads/master'
     permissions:
       contents: read
+      actions: read
       packages: write
     concurrency:
       group: docker-publish
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download vox-server from CI (Ubuntu matrix)
+        uses: actions/download-artifact@v4
+        with:
+          name: vox-server-linux
+          path: docker-build-context
+
+      - name: Prepare Docker build context
+        run: cp deploy/docker-entrypoint.sh docker-build-context/docker-entrypoint.sh
 
       - name: Image name (lowercase for GHCR)
         id: meta
@@ -39,11 +49,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (image tagged with commit SHA)
+      - name: Build and push (prebuilt binary, image tagged with commit SHA)
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./deploy/Dockerfile
+          context: docker-build-context
+          file: ./deploy/Dockerfile.prebuilt
           push: true
           tags: ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}
 

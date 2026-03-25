@@ -72,6 +72,7 @@ endif()
 # When using our staged Boost, FindBoost does not set Boost_LIBRARIES; collect built libs from stage.
 # b2 --build-type=complete produces both release (-mt-s-) and debug (-mt-sd-) variants; link only one
 # to avoid multiple definition errors.
+set(_boost_link_libs "")
 if(Boost_FOUND AND EXISTS "${BOOST_STAGE_LIB_DIR}")
         file(GLOB_RECURSE _stage_libs "${BOOST_STAGE_LIB_DIR}/*.a" "${BOOST_STAGE_LIB_DIR}/*.lib")
         if(_stage_libs)
@@ -80,21 +81,37 @@ if(Boost_FOUND AND EXISTS "${BOOST_STAGE_LIB_DIR}")
                 else()
                         list(FILTER _stage_libs EXCLUDE REGEX "[-]mt[-]sd[-]|[-]sgd[-]")
                 endif()
-                set(Boost_LIBRARIES ${_stage_libs})
+                set(_boost_link_libs ${_stage_libs})
         endif()
 elseif(Boost_FOUND)
-        set(Boost_LIBRARIES boost_filesystem boost_system boost_chrono boost_date_time boost_regex boost_program_options boost_serialization boost_thread boost_wave boost_iostreams boost_locale boost_unit_test_framework boost_wave boost_iostreams boost_locale boost_unit_test_framework)
+        # System / preinstalled: link compiled libs (Boost.JSON is not header-only; order matters).
+        find_package(Boost 1.83 REQUIRED COMPONENTS json container filesystem system chrono date_time regex program_options serialization thread wave iostreams locale unit_test_framework)
         if(LINUX)
                 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/lib")
         endif()
+        set(_boost_link_libs
+                Boost::json
+                Boost::container
+                Boost::filesystem
+                Boost::system
+                Boost::chrono
+                Boost::date_time
+                Boost::regex
+                Boost::program_options
+                Boost::serialization
+                Boost::thread
+                Boost::wave
+                Boost::iostreams
+                Boost::locale
+                Boost::unit_test_framework
+        )
 endif()
-# Do not pass NOTFOUND to the linker
-if(Boost_LIBRARIES)
-        list(FILTER Boost_LIBRARIES EXCLUDE REGEX "NOTFOUND$")
+if(_boost_link_libs)
+        list(FILTER _boost_link_libs EXCLUDE REGEX "NOTFOUND$")
 endif()
 
 add_library(boost INTERFACE)
 target_include_directories(boost INTERFACE ${Boost_INCLUDE_DIRS})
-if(Boost_LIBRARIES)
-        target_link_libraries(boost INTERFACE ${Boost_LIBRARIES})
+if(_boost_link_libs)
+        target_link_libraries(boost INTERFACE ${_boost_link_libs})
 endif()
