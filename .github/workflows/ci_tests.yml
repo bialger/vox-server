@@ -131,30 +131,55 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           command_timeout: 30m
+          debug: true
           envs: GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER
           script_stop: true
           script: |
             set -euo pipefail
+            _d() { printf '%s\n' "[vox-deploy] $*"; }
+            # appleboy/ssh-action runs bash --noprofile --norc; docker/git often live in /usr/local/bin
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+            _d "whoami=$(whoami) pwd=$(pwd) PATH=$PATH"
+            _d "git=$(command -v git 2>/dev/null || echo MISSING) docker=$(command -v docker 2>/dev/null || echo MISSING)"
+            command -v docker >/dev/null && docker compose version 2>&1 | sed 's/^/[vox-deploy] /' || _d "docker compose: not available"
             BRANCH="${{ github.ref_name }}"
             REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             IMAGE="ghcr.io/${REPO_LC}:${{ github.sha }}"
+            _d "IMAGE=${IMAGE} branch=${BRANCH} deploy_path=/opt/vox-server"
             cd /opt/vox-server
+            _d "repo root $(pwd)"
             git fetch origin "${BRANCH}"
             git checkout "${BRANCH}"
             git pull --ff-only origin "${BRANCH}"
+            _d "--- after git pull ---"
+            git rev-parse HEAD && git status -sb || true
+            if [ ! -d deploy ]; then
+              _d "ERROR: $(pwd)/deploy is not a directory"; exit 1
+            fi
             cd deploy
+            _d "in deploy/: $(pwd)"; ls -la
             if [ ! -f .env ]; then
+              _d ".env: create new"
               printf '%s\n' "VOX_IMAGE=${IMAGE}" > .env
             elif grep -q '^VOX_IMAGE=' .env 2>/dev/null; then
+              _d ".env: replace existing VOX_IMAGE line"
               grep -v '^VOX_IMAGE=' .env > .env.tmp
               mv .env.tmp .env
               printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
             else
+              _d ".env: append VOX_IMAGE"
               printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
             fi
+            _d "VOX_IMAGE line: $(grep '^VOX_IMAGE=' .env || echo '(missing)')"
             if [ -n "${GHCR_READ_TOKEN:-}" ]; then
               U="${GHCR_USERNAME:-${GITHUB_REPO_OWNER}}"
+              _d "docker login ghcr.io user=${U}"
               echo "${GHCR_READ_TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
+            else
+              _d "skip docker login (GHCR_READ_TOKEN empty)"
             fi
+            _d "docker compose pull vox-server"
             docker compose pull vox-server
+            _d "docker compose up -d"
             docker compose up -d
+            _d "finished OK"
