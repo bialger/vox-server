@@ -92,7 +92,7 @@ Default public hostname in the bundled nginx config is **`messenger.bialger.com`
 
 | Service     | Role |
 |-------------|------|
-| `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). **`deploy/vox.conf`** is bind-mounted to **`/data/vox.conf`** (see **`deploy/vox.conf.example`** for a commented template); secrets **`VOX_SESSION_PEPPER`** / **`VOX_ADMIN_TOKEN`** stay in **`deploy/.env`**. |
+| `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). **`deploy/vox.conf`** is bind-mounted to **`/etc/vox.conf`** (see **`deploy/vox.conf.example`**); secrets **`VOX_SESSION_PEPPER`** / **`VOX_ADMIN_TOKEN`** stay in **`deploy/.env`**. |
 | `nginx`     | Reverse proxy to `vox-server:8080`, WebSocket upgrade headers, `client_max_body_size 100m`, ACME webroot for Let’s Encrypt; **`deploy/nginx/nginx.conf`** sets access logging **without** query strings (see **TLS and reverse proxy** above). |
 | `certbot`   | Optional profile `certbot` — used for one-off certificate issuance (see below). |
 

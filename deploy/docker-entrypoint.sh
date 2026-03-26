@@ -9,8 +9,8 @@ if [ -z "${VOX_SESSION_PEPPER}" ]; then
 fi
 
 extra=""
-if [ -f /data/vox.conf ]; then
-  extra="${extra} --config /data/vox.conf"
+if [ -f /etc/vox.conf ]; then
+  extra="${extra} --config /etc/vox.conf"
 fi
 
 if [ -n "${VOX_ADMIN_TOKEN}" ]; then

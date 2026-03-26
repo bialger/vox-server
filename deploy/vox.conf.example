@@ -1,4 +1,5 @@
 # Template for `vox.conf`. The repo ships `deploy/vox.conf` with the same defaults; copy or edit for your host.
+# In Docker Compose this file is mounted read-only at /etc/vox.conf (not under /data).
 # Precedence: file → VOX_SESSION_PEPPER / VOX_ADMIN_TOKEN → CLI flags (later wins for overlapping settings).
 # Secrets: prefer `deploy/.env` for session_pepper (required) and admin_token; you can also set them here.
 
