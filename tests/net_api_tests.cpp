@@ -475,3 +475,46 @@ TEST_F(NetApiTestSuite, AdminDeleteUser) {
   ASSERT_EQ(lst, 401u);
   (void) lbody;
 }
+
+// Explicit Boost.Asio + Beast client path (TCP connect per request via AsioHttpExchange).
+TEST_F(NetApiTestSuite, AsioTcpHealthGetViaExchange) {
+  auto [st, body] = AsioHttpExchange("GET", "/v1/health");
+  ASSERT_EQ(st, 200u);
+  ASSERT_EQ(ParseObj(body).at("status").as_string(), "ok");
+}
+
+TEST_F(NetApiTestSuite, AsioTcpRegisterAndLoginViaExchange) {
+  boost::json::object reg;
+  reg["username"] = "asio_tcp_user";
+  reg["password_derived_value"] = "derived_asio";
+  reg["device_id"] = "asio_dev";
+  reg["identity_key_public"] = "ik";
+  reg["signed_prekey_public"] = "spk";
+  reg["signed_prekey_signature"] = "sig";
+  auto [st, body] = AsioHttpExchange("POST", "/v1/register", boost::json::serialize(reg));
+  ASSERT_EQ(st, 200u);
+  ASSERT_FALSE(JsonString(body, "access_token").empty());
+
+  boost::json::object login;
+  login["username"] = "asio_tcp_user";
+  login["password_derived_value"] = "derived_asio";
+  login["device_id"] = "asio_dev";
+  auto [st2, body2] = AsioHttpExchange("POST", "/v1/login", boost::json::serialize(login));
+  ASSERT_EQ(st2, 200u);
+  ASSERT_FALSE(JsonString(body2, "access_token").empty());
+}
+
+TEST_F(NetApiTestSuite, AsioTcpSequentialIndependentConnections) {
+  auto [a1, b1] = AsioHttpExchange("GET", "/v1/health");
+  ASSERT_EQ(a1, 200u);
+  auto [a2, b2] = AsioHttpExchange("GET", "/v1/health");
+  ASSERT_EQ(a2, 200u);
+  ASSERT_EQ(ParseObj(b1).at("status").as_string(), "ok");
+  ASSERT_EQ(ParseObj(b2).at("status").as_string(), "ok");
+}
+
+TEST_F(NetApiTestSuite, AsioTcpProtectedRouteWithoutAuthViaExchange) {
+  auto [st, body] = AsioHttpExchange("GET", "/v1/conversations");
+  ASSERT_EQ(st, 401u);
+  (void) body;
+}

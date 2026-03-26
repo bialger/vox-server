@@ -48,6 +48,18 @@ protected:
   /// Registers a user via `POST /v1/register` with fixed crypto fields; asserts HTTP 200.
   RegisteredUser RegisterUser(const std::string& username, const std::string& device_id);
 
+  /// Opens a TCP connection to `127.0.0.1:Port()`, sends an HTTP/1.1 request, reads the response body,
+  /// then closes the socket. Uses Boost.Asio (sync resolver/connect) and Boost.Beast.
+  /// \param method  "GET", "POST", "PUT", "DELETE", etc.
+  /// \param content_type  If non-empty, sets `Content-Type`. For POST/PUT with a non-empty \p body
+  ///                      and empty \p content_type, defaults to `application/json`.
+  std::pair<unsigned, std::string> AsioHttpExchange(const std::string& method,
+                                                    const std::string& path,
+                                                    const std::string& body = {},
+                                                    const std::string& bearer = {},
+                                                    const std::string& admin_token = {},
+                                                    const std::string& content_type = {});
+
   /// HTTP status code and response body.
   std::pair<unsigned, std::string> HttpPost(const std::string& path,
                                             const std::string& body,

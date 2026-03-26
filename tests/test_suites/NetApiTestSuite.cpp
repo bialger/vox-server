@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <stdexcept>
+#include <string_view>
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -24,6 +25,31 @@ constexpr std::size_t kStorageQueue = 128;
 constexpr std::size_t kNetThreads = 2;
 constexpr unsigned kHttp11 = 11;
 constexpr unsigned kHttpOk = 200;
+
+http::verb ParseHttpMethod(std::string_view m) {
+  if (m == "GET") {
+    return http::verb::get;
+  }
+  if (m == "POST") {
+    return http::verb::post;
+  }
+  if (m == "PUT") {
+    return http::verb::put;
+  }
+  if (m == "DELETE") {
+    return http::verb::delete_;
+  }
+  if (m == "HEAD") {
+    return http::verb::head;
+  }
+  if (m == "OPTIONS") {
+    return http::verb::options;
+  }
+  if (m == "PATCH") {
+    return http::verb::patch;
+  }
+  throw std::invalid_argument(std::string("Unsupported HTTP method: ") + std::string(m));
+}
 
 } // namespace
 
@@ -163,24 +189,33 @@ void NetApiTestSuite::TearDown() {
   ProjectIntegrationTestSuite::TearDown();
 }
 
-std::pair<unsigned, std::string> NetApiTestSuite::HttpPost(const std::string& path,
-                                                           const std::string& body,
-                                                           const std::string& bearer,
-                                                           const std::string& admin_token) {
+std::pair<unsigned, std::string> NetApiTestSuite::AsioHttpExchange(const std::string& method,
+                                                                   const std::string& path,
+                                                                   const std::string& body,
+                                                                   const std::string& bearer,
+                                                                   const std::string& admin_token,
+                                                                   const std::string& content_type) {
+  const http::verb verb = ParseHttpMethod(method);
   net::io_context cioc;
   tcp::resolver resolver(cioc);
   tcp::socket socket(cioc);
   auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
   net::connect(socket, endpoints);
 
-  http::request<http::string_body> req{http::verb::post, path, kHttp11};
+  http::request<http::string_body> req{verb, path, kHttp11};
   req.set(http::field::host, "127.0.0.1");
-  req.set(http::field::content_type, "application/json");
   if (!bearer.empty()) {
     req.set(http::field::authorization, "Bearer " + bearer);
   }
   if (!admin_token.empty()) {
     req.set("X-Admin-Token", admin_token);
+  }
+  std::string ct = content_type;
+  if (ct.empty() && !body.empty() && (verb == http::verb::post || verb == http::verb::put || verb == http::verb::patch)) {
+    ct = "application/json";
+  }
+  if (!ct.empty()) {
+    req.set(http::field::content_type, ct);
   }
   req.body() = body;
   req.prepare_payload();
@@ -194,32 +229,17 @@ std::pair<unsigned, std::string> NetApiTestSuite::HttpPost(const std::string& pa
   return {static_cast<unsigned>(res.result()), std::string(res.body())};
 }
 
+std::pair<unsigned, std::string> NetApiTestSuite::HttpPost(const std::string& path,
+                                                           const std::string& body,
+                                                           const std::string& bearer,
+                                                           const std::string& admin_token) {
+  return AsioHttpExchange("POST", path, body, bearer, admin_token, "application/json");
+}
+
 std::pair<unsigned, std::string> NetApiTestSuite::HttpGet(const std::string& path,
                                                           const std::string& bearer,
                                                           const std::string& admin_token) {
-  net::io_context cioc;
-  tcp::resolver resolver(cioc);
-  tcp::socket socket(cioc);
-  auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
-  net::connect(socket, endpoints);
-
-  http::request<http::string_body> req{http::verb::get, path, kHttp11};
-  req.set(http::field::host, "127.0.0.1");
-  if (!bearer.empty()) {
-    req.set(http::field::authorization, "Bearer " + bearer);
-  }
-  if (!admin_token.empty()) {
-    req.set("X-Admin-Token", admin_token);
-  }
-  req.prepare_payload();
-  http::write(socket, req);
-
-  beast::flat_buffer buffer;
-  http::response<http::string_body> res;
-  http::read(socket, buffer, res);
-  beast::error_code ec;
-  ec = socket.shutdown(tcp::socket::shutdown_both, ec);
-  return {static_cast<unsigned>(res.result()), std::string(res.body())};
+  return AsioHttpExchange("GET", path, "", bearer, admin_token, {});
 }
 
 std::pair<unsigned, std::string> NetApiTestSuite::HttpPut(const std::string& path,
@@ -227,57 +247,11 @@ std::pair<unsigned, std::string> NetApiTestSuite::HttpPut(const std::string& pat
                                                           const std::string& bearer,
                                                           const std::string& admin_token,
                                                           const std::string& content_type) {
-  net::io_context cioc;
-  tcp::resolver resolver(cioc);
-  tcp::socket socket(cioc);
-  auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
-  net::connect(socket, endpoints);
-
-  http::request<http::string_body> req{http::verb::put, path, kHttp11};
-  req.set(http::field::host, "127.0.0.1");
-  req.set(http::field::content_type, content_type);
-  if (!bearer.empty()) {
-    req.set(http::field::authorization, "Bearer " + bearer);
-  }
-  if (!admin_token.empty()) {
-    req.set("X-Admin-Token", admin_token);
-  }
-  req.body() = body;
-  req.prepare_payload();
-  http::write(socket, req);
-
-  beast::flat_buffer buffer;
-  http::response<http::string_body> res;
-  http::read(socket, buffer, res);
-  beast::error_code ec;
-  ec = socket.shutdown(tcp::socket::shutdown_both, ec);
-  return {static_cast<unsigned>(res.result()), std::string(res.body())};
+  return AsioHttpExchange("PUT", path, body, bearer, admin_token, content_type);
 }
 
 std::pair<unsigned, std::string> NetApiTestSuite::HttpDelete(const std::string& path,
                                                              const std::string& bearer,
                                                              const std::string& admin_token) {
-  net::io_context cioc;
-  tcp::resolver resolver(cioc);
-  tcp::socket socket(cioc);
-  auto endpoints = resolver.resolve("127.0.0.1", std::to_string(port_));
-  net::connect(socket, endpoints);
-
-  http::request<http::string_body> req{http::verb::delete_, path, kHttp11};
-  req.set(http::field::host, "127.0.0.1");
-  if (!bearer.empty()) {
-    req.set(http::field::authorization, "Bearer " + bearer);
-  }
-  if (!admin_token.empty()) {
-    req.set("X-Admin-Token", admin_token);
-  }
-  req.prepare_payload();
-  http::write(socket, req);
-
-  beast::flat_buffer buffer;
-  http::response<http::string_body> res;
-  http::read(socket, buffer, res);
-  beast::error_code ec;
-  ec = socket.shutdown(tcp::socket::shutdown_both, ec);
-  return {static_cast<unsigned>(res.result()), std::string(res.body())};
+  return AsioHttpExchange("DELETE", path, "", bearer, admin_token, {});
 }
