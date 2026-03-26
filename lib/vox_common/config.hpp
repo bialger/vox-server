@@ -19,7 +19,8 @@ struct ServerConfig {
   std::string listen_address = "127.0.0.1";
   std::uint16_t listen_port = 8080;
   std::size_t network_thread_count = 4;
-  /// Server secret for HMAC-SHA256 of session tokens; must be set for production (e.g. VOX_SESSION_PEPPER).
+  /// Server secret for HMAC-SHA256 of session tokens; must be set for production (e.g. `vox.conf` or
+  /// VOX_SESSION_PEPPER).
   std::string session_token_pepper;
   /// If empty, admin HTTP routes are disabled.
   std::string admin_token;
@@ -53,6 +54,10 @@ struct ServerConfig {
 
   static ServerConfig Default();
 };
+
+/// Loads `key = value` lines (UTF-8). Lines starting with `#` and empty lines are skipped.
+/// Unknown keys are logged as warnings. Returns false on I/O error or invalid value.
+bool LoadServerConfigFile(const std::filesystem::path& path, ServerConfig& config, std::string* error_out = nullptr);
 
 } // namespace vox::common
 

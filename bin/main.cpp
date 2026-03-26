@@ -2,6 +2,7 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -50,6 +51,7 @@ void PrintUsage() {
   std::cout << "vox-server — Vox messenger server\n"
             << "Usage: vox-server [options]\n"
             << "  --help, -h              Show this help\n"
+            << "  --config <path>         Load key=value settings (default: vox.conf if present; or VOX_CONFIG_FILE)\n"
             << "  --listen <addr>         Bind address (default: 127.0.0.1)\n"
             << "  --port <n>              TCP port (default: 8080)\n"
             << "  --db <path>             SQLite database file\n"
@@ -63,17 +65,60 @@ void PrintUsage() {
 
 int main(int argc, char** argv) {
   vox::common::InitLogging();
+
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg = argv[i];
+    if (arg == "--help" || arg == "-h") {
+      PrintUsage();
+      return 0;
+    }
+  }
+
   vox::common::ServerConfig config = vox::common::ServerConfig::Default();
+
+  std::optional<std::filesystem::path> explicit_config_path;
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg == "--config" && i + 1 < argc) {
+      explicit_config_path = argv[++i];
+    }
+  }
+
+  std::optional<std::filesystem::path> config_to_load;
+  if (explicit_config_path.has_value()) {
+    config_to_load = *explicit_config_path;
+  } else if (const char* env_path = std::getenv("VOX_CONFIG_FILE")) {
+    if (env_path[0] != '\0') {
+      config_to_load = env_path;
+    }
+  }
+  if (!config_to_load.has_value()) {
+    const std::filesystem::path implicit = std::filesystem::current_path() / "vox.conf";
+    if (std::filesystem::exists(implicit)) {
+      config_to_load = implicit;
+    }
+  }
+
+  if (config_to_load.has_value()) {
+    std::string err;
+    if (!vox::common::LoadServerConfigFile(*config_to_load, config, &err)) {
+      std::cerr << "Fatal: config file " << config_to_load->string() << ": " << err << "\n";
+      return 1;
+    }
+  }
 
   if (const char* p = std::getenv("VOX_SESSION_PEPPER")) {
     config.session_token_pepper = p;
   }
+  if (const char* p = std::getenv("VOX_ADMIN_TOKEN")) {
+    config.admin_token = p;
+  }
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
-    if (arg == "--help" || arg == "-h") {
-      PrintUsage();
-      return 0;
+    if (arg == "--config" && i + 1 < argc) {
+      ++i;
+      continue;
     }
     if (arg == "--listen" && i + 1 < argc) {
       config.listen_address = argv[++i];
