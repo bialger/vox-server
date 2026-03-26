@@ -211,7 +211,8 @@ std::pair<unsigned, std::string> NetApiTestSuite::AsioHttpExchange(const std::st
     req.set("X-Admin-Token", admin_token);
   }
   std::string ct = content_type;
-  if (ct.empty() && !body.empty() && (verb == http::verb::post || verb == http::verb::put || verb == http::verb::patch)) {
+  if (ct.empty() && !body.empty() &&
+      (verb == http::verb::post || verb == http::verb::put || verb == http::verb::patch)) {
     ct = "application/json";
   }
   if (!ct.empty()) {
