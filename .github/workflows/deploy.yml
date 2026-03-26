@@ -1,0 +1,107 @@
+name: Deploy (Docker)
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_host:
+        description: "SSH host (DNS name or IP)"
+        required: true
+        default: "messenger.bialger.com"
+      deploy_path:
+        description: "Absolute path to this repository on the server"
+        required: true
+        default: "/opt/vox-server"
+      branch:
+        description: "Git branch to checkout (deploy configs/nginx from this ref)"
+        required: true
+        default: "master"
+      image_tag:
+        description: "GHCR image tag (use commit SHA from the workflow run that built the image, or latest on master)"
+        required: true
+        default: "latest"
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy via SSH (git pull + pull image + compose up)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GHCR_DEPLOY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR_DEPLOY: ${{ github.actor }}
+        with:
+          host: ${{ github.event.inputs.server_host }}
+          username: ${{ secrets.SERVER_LOGIN }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          command_timeout: 30m
+          debug: true
+          envs: GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER,GHCR_DEPLOY_TOKEN,GITHUB_ACTOR_DEPLOY
+          script_stop: true
+          script: |
+            set -euo pipefail
+            _d() { printf '%s\n' "[vox-deploy] $*"; }
+            # appleboy/ssh-action runs bash --noprofile --norc; docker/git often live in /usr/local/bin
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+            _d "whoami=$(whoami) pwd=$(pwd) PATH=$PATH"
+            _d "git=$(command -v git 2>/dev/null || echo MISSING) docker=$(command -v docker 2>/dev/null || echo MISSING)"
+            command -v docker >/dev/null && docker compose version 2>&1 | sed 's/^/[vox-deploy] /' || _d "docker compose: not available"
+            REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE="ghcr.io/${REPO_LC}:${{ github.event.inputs.image_tag }}"
+            _d "IMAGE=${IMAGE} branch=${{ github.event.inputs.branch }} deploy_path=${{ github.event.inputs.deploy_path }}"
+            cd "${{ github.event.inputs.deploy_path }}"
+            _d "repo root $(pwd)"
+            git fetch origin "${{ github.event.inputs.branch }}"
+            git checkout "${{ github.event.inputs.branch }}"
+            git pull --ff-only origin "${{ github.event.inputs.branch }}"
+            _d "--- after git pull ---"
+            git rev-parse HEAD && git status -sb || true
+            if [ ! -d deploy ]; then
+              _d "ERROR: $(pwd)/deploy is not a directory"; exit 1
+            fi
+            cd deploy
+            _d "in deploy/: $(pwd)"; ls -la
+            if [ ! -f .env ]; then
+              _d ".env: create new"
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" > .env
+            elif grep -q '^VOX_IMAGE=' .env 2>/dev/null; then
+              _d ".env: replace existing VOX_IMAGE line"
+              grep -v '^VOX_IMAGE=' .env > .env.tmp || true
+              mv .env.tmp .env
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            else
+              _d ".env: append VOX_IMAGE"
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            fi
+            _d "VOX_IMAGE line: $(grep '^VOX_IMAGE=' .env || echo '(missing)')"
+            TOKEN="${GHCR_READ_TOKEN:-}"
+            U="${GHCR_USERNAME:-${GITHUB_REPO_OWNER}}"
+            if [ -z "${TOKEN}" ] && [ -n "${GHCR_DEPLOY_TOKEN:-}" ]; then
+              TOKEN="${GHCR_DEPLOY_TOKEN}"
+              U="${GITHUB_ACTOR_DEPLOY}"
+              _d "docker login ghcr.io (GITHUB_TOKEN fallback, user=${U})"
+            elif [ -n "${TOKEN}" ]; then
+              _d "docker login ghcr.io (GHCR_READ_TOKEN, user=${U})"
+            else
+              _d "WARNING: no ghcr credentials — pull fails for private images"
+            fi
+            if [ -n "${TOKEN}" ]; then
+              echo "${TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
+            fi
+            _d "docker compose pull vox-server"
+            docker compose pull vox-server || { _d "ERROR: docker compose pull failed (see above)"; exit 1; }
+            _d "docker compose up -d"
+            docker compose up -d || { _d "ERROR: docker compose up failed"; exit 1; }
+            _d "nginx reload (conf.d bind mount)"
+            docker compose exec -T nginx nginx -s reload || { _d "ERROR: nginx reload failed"; exit 1; }
+            _d "finished OK"

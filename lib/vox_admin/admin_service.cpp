@@ -7,11 +7,12 @@
 
 namespace vox::admin {
 
-AdminService::AdminService(store::Database& db, store::UserRepository& users, store::SessionRepository& sessions) :
+AdminService::AdminService(store::IDatabase& db, store::IUserRepository& users, store::ISessionRepository& sessions) :
     db_(db), users_(users), sessions_(sessions) {
 }
 
 ServerStats AdminService::GetServerStats() {
+  auto lock = db_.ReadLock();
   ServerStats stats;
 
   auto get_count = [this](const std::string& table) -> std::size_t {

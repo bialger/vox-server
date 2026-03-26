@@ -9,8 +9,8 @@
 
 namespace vox::attachments {
 
-AttachmentService::AttachmentService(store::AttachmentRepository& attachments,
-                                     store::ConversationRepository& conversations,
+AttachmentService::AttachmentService(store::IAttachmentRepository& attachments,
+                                     store::IConversationRepository& conversations,
                                      common::ServerConfig config) :
     attachments_(attachments), conversations_(conversations), config_(std::move(config)) {
   std::filesystem::create_directories(config_.blob_storage_path);

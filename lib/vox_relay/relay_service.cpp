@@ -8,14 +8,15 @@
 
 namespace vox::relay {
 
-RelayService::RelayService(store::EnvelopeRepository& envelopes,
-                           store::ConversationRepository& conversations,
-                           store::DeviceRepository& devices,
-                           DeliveryManager& delivery) :
-    envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery) {
+RelayService::RelayService(store::IEnvelopeRepository& envelopes,
+                           store::IConversationRepository& conversations,
+                           store::IDeviceRepository& devices,
+                           IDeliveryManager& delivery,
+                           const common::ServerConfig& config) :
+    envelopes_(envelopes), conversations_(conversations), devices_(devices), delivery_(delivery), config_(config) {
 }
 
-common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageRequest& request) {
+common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessageRequest& request) {
   if (request.ciphertext.empty()) {
     return std::unexpected(
         common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Ciphertext is required"});
@@ -61,6 +62,10 @@ common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageR
   envelope.ciphertext = request.ciphertext;
   envelope.server_timestamp = now;
   envelope.envelope_type = request.envelope_type;
+  envelope.ordering_epoch = request.ordering_epoch;
+  if (config_.message_retention_seconds > 0) {
+    envelope.retention_until = now + config_.message_retention_seconds;
+  }
 
   auto store_result = envelopes_.StoreEnvelope(envelope);
   if (!store_result) {
@@ -83,6 +88,7 @@ common::Result<SendMessageResponse> RelayService::SendMessage(const SendMessageR
   queued.sender_device_id = request.sender_device_id;
   queued.ciphertext = request.ciphertext;
   queued.server_timestamp = now;
+  queued.ordering_epoch = request.ordering_epoch;
 
   std::size_t delivered_count = 0;
   for (const auto& uid : target_users) {

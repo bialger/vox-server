@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 add_library(vox_relay STATIC
+        conversation_service.cpp
         delivery_manager.cpp
         relay_service.cpp
 )

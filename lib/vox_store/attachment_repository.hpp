@@ -23,20 +23,34 @@ struct AttachmentRecord {
   std::optional<common::Timestamp> retention_until;
 };
 
-class AttachmentRepository {
+class IAttachmentRepository {
 public:
-  explicit AttachmentRepository(Database& db);
+  virtual ~IAttachmentRepository() = default;
+  virtual common::VoidResult CreateAttachmentMeta(const AttachmentRecord& record) = 0;
+  virtual std::optional<AttachmentRecord> GetAttachmentMeta(const common::AttachmentId& attachment_id) = 0;
+  virtual common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id,
+                                                const std::string& ciphertext_hash) = 0;
+  virtual common::VoidResult DeleteAttachment(const common::AttachmentId& attachment_id) = 0;
+  virtual std::int64_t GetStorageUsedByUser(const common::UserId& user_id) = 0;
+  virtual std::vector<AttachmentRecord> GetExpired(common::Timestamp now) = 0;
+  virtual int DeleteExpired(common::Timestamp now) = 0;
+};
 
-  common::VoidResult CreateAttachmentMeta(const AttachmentRecord& record);
-  std::optional<AttachmentRecord> GetAttachmentMeta(const common::AttachmentId& attachment_id);
-  common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id, const std::string& ciphertext_hash);
-  common::VoidResult DeleteAttachment(const common::AttachmentId& attachment_id);
-  std::int64_t GetStorageUsedByUser(const common::UserId& user_id);
-  std::vector<AttachmentRecord> GetExpired(common::Timestamp now);
-  int DeleteExpired(common::Timestamp now);
+class AttachmentRepository : public IAttachmentRepository {
+public:
+  explicit AttachmentRepository(IDatabase& db);
+
+  common::VoidResult CreateAttachmentMeta(const AttachmentRecord& record) override;
+  std::optional<AttachmentRecord> GetAttachmentMeta(const common::AttachmentId& attachment_id) override;
+  common::VoidResult MarkUploadComplete(const common::AttachmentId& attachment_id,
+                                        const std::string& ciphertext_hash) override;
+  common::VoidResult DeleteAttachment(const common::AttachmentId& attachment_id) override;
+  std::int64_t GetStorageUsedByUser(const common::UserId& user_id) override;
+  std::vector<AttachmentRecord> GetExpired(common::Timestamp now) override;
+  int DeleteExpired(common::Timestamp now) override;
 
 private:
-  Database& db_;
+  IDatabase& db_;
 };
 
 } // namespace vox::store

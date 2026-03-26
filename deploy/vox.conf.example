@@ -1,0 +1,47 @@
+# Template for `vox.conf`. The repo ships `deploy/vox.conf` with the same defaults; copy or edit for your host.
+# In Docker Compose this file is mounted read-only at /etc/vox.conf (not under /data).
+# Precedence: file → VOX_SESSION_PEPPER / VOX_ADMIN_TOKEN → CLI flags (later wins for overlapping settings).
+# Secrets: prefer `deploy/.env` for session_pepper (required) and admin_token; you can also set them here.
+
+# --- listen / storage (Docker entrypoint still passes --listen/--port/--db/--blobs after this file) ---
+listen_address = 0.0.0.0
+listen_port = 8080
+db_path = /data/vox_server.db
+blob_storage_path = /data/blobs
+
+# --- pools & networking ---
+cpu_pool_size = 2
+storage_pool_size = 2
+task_queue_capacity = 1024
+network_thread_count = 4
+
+# --- limits ---
+max_group_size = 256
+max_channel_size = 10000
+max_queue_depth_per_device = 1000
+max_ws_outbound_queue = 256
+max_upload_size_bytes = 104857600
+max_storage_per_user_bytes = 1073741824
+max_http_body_bytes = 2097152
+
+# --- rate limits (0 = disabled where applicable) ---
+auth_rate_limit_max = 60
+auth_rate_limit_window_seconds = 60
+account_rate_limit_max = 0
+account_rate_limit_window_seconds = 60
+
+# --- maintenance & retention ---
+maintenance_purge_interval_seconds = 3600
+access_token_lifetime_seconds = 900
+refresh_token_lifetime_seconds = 2592000
+message_retention_seconds = 7776000
+attachment_retention_seconds = 7776000
+
+# --- argon2 (password hashing) ---
+argon2_time_cost = 3
+argon2_memory_cost = 65536
+argon2_parallelism = 1
+
+# --- optional: leave empty and use VOX_SESSION_PEPPER / VOX_ADMIN_TOKEN in .env ---
+# session_token_pepper =
+# admin_token =

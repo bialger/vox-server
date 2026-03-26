@@ -1,3 +1,6 @@
+#include <cstdint>
+#include <optional>
+
 #include <gtest/gtest.h>
 
 #include "lib/vox_common/uuid.hpp"
@@ -12,8 +15,10 @@ constexpr vox::common::Timestamp kRemoveMemberTimestamp1 = 2000000;
 constexpr vox::common::Timestamp kRemoveMemberTimestamp2 = 3000000;
 constexpr vox::common::Timestamp kUnsubscribeTimestamp = 2000000;
 constexpr std::size_t kListUsersLimit = 10;
+constexpr std::size_t kEnvelopeListPageSize = 10;
 constexpr std::size_t kListUsersOffset = 0;
 constexpr int kPrekeyCount = 3;
+constexpr std::int64_t kTestOrderingEpoch = 7;
 constexpr vox::common::Timestamp kTestAccessExpiry = 9999999;
 constexpr vox::common::Timestamp kTestRefreshExpiry = 99999999;
 
@@ -131,6 +136,43 @@ TEST_F(StoreTestSuite, StorePrekeyAndConsume) {
   }
 }
 
+TEST_F(StoreTestSuite, GetPrekeyBundleConsumesOneTimePrekeys) {
+  auto user = MakeUser("bundle_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "dev_bundle");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  std::vector<vox::store::PrekeyRecord> prekeys;
+  for (int i = 0; i < 2; ++i) {
+    vox::store::PrekeyRecord pk;
+    pk.prekey_id = "bundle_pk_" + std::to_string(i);
+    pk.device_id = "dev_bundle";
+    pk.prekey_public = "bundle_pub_" + std::to_string(i);
+    prekeys.push_back(pk);
+  }
+  ASSERT_TRUE(devices_->StorePrekeys("dev_bundle", prekeys));
+
+  auto b1 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b1.has_value());
+  const auto& b1v = b1.value();
+  if (!b1v.one_time_prekey_id.has_value()) {
+    FAIL() << "expected one_time_prekey_id";
+  }
+  ASSERT_EQ(b1v.one_time_prekey_id.value(), "bundle_pk_0");
+
+  auto b2 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b2.has_value());
+  const auto& b2v = b2.value();
+  if (!b2v.one_time_prekey_id.has_value()) {
+    FAIL() << "expected one_time_prekey_id";
+  }
+  ASSERT_EQ(b2v.one_time_prekey_id.value(), "bundle_pk_1");
+
+  auto b3 = devices_->GetPrekeyBundle("dev_bundle");
+  ASSERT_TRUE(b3.has_value());
+  ASSERT_FALSE(b3->one_time_prekey_id.has_value());
+}
+
 TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
   auto user = MakeUser("henry");
   ASSERT_TRUE(users_->CreateUser(user));
@@ -214,12 +256,14 @@ TEST_F(StoreTestSuite, StoreAndRetrieveEnvelope) {
   env.sender_device_id = "env_dev";
   env.ciphertext = "encrypted_data";
   env.server_timestamp = kTestTimestampOffset1;
+  env.ordering_epoch = kTestOrderingEpoch;
   ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   auto found = envelopes_->FindById(env.envelope_id);
   ASSERT_TRUE(found.has_value());
   if (found) {
     ASSERT_EQ(found->ciphertext, "encrypted_data");
+    ASSERT_EQ(found->ordering_epoch, std::optional<std::int64_t>(kTestOrderingEpoch));
   }
 }
 
@@ -272,6 +316,42 @@ TEST_F(StoreTestSuite, CheckDuplicateDetection) {
   ASSERT_TRUE(envelopes_->StoreEnvelope(env));
 
   ASSERT_TRUE(envelopes_->CheckDuplicate(env_id));
+}
+
+TEST_F(StoreTestSuite, ListForConversationPagination) {
+  auto user = MakeUser("list_conv_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "list_conv_dev");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  vox::store::ConversationRecord conv;
+  conv.conversation_id = vox::common::GenerateUuid();
+  conv.type = vox::common::ConversationType::kDm;
+  conv.created_by = user.user_id;
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+
+  for (int i = 1; i <= 3; ++i) {
+    vox::store::EnvelopeRecord env;
+    env.envelope_id = vox::common::GenerateUuid();
+    env.conversation_id = conv.conversation_id;
+    env.sender_device_id = "list_conv_dev";
+    env.ciphertext = "m" + std::to_string(i);
+    env.server_timestamp = kTestTimestampOffset1 + i;
+    ASSERT_TRUE(envelopes_->StoreEnvelope(env));
+  }
+
+  auto first = envelopes_->ListForConversation(conv.conversation_id, 0, kEnvelopeListPageSize);
+  ASSERT_EQ(first.size(), 3u);
+  ASSERT_EQ(first[0].ciphertext, "m1");
+
+  auto after_first =
+      envelopes_->ListForConversation(conv.conversation_id, first[0].server_timestamp, kEnvelopeListPageSize);
+  ASSERT_EQ(after_first.size(), 2u);
+  ASSERT_EQ(after_first[0].ciphertext, "m2");
+
+  auto other_conv = envelopes_->ListForConversation("other-id", 0, kEnvelopeListPageSize);
+  ASSERT_TRUE(other_conv.empty());
 }
 
 TEST_F(StoreTestSuite, ChannelSubscribeAndUnsubscribe) {

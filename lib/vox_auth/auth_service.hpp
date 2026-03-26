@@ -43,26 +43,37 @@ struct RefreshRequest {
   std::string device_id;
 };
 
-class AuthService {
+class IAuthService {
 public:
-  AuthService(store::UserRepository& users,
-              store::DeviceRepository& devices,
+  virtual ~IAuthService() = default;
+  virtual common::Result<RegisterResponse> Register(const RegisterRequest& request) = 0;
+  virtual common::Result<LoginResponse> Login(const LoginRequest& request) = 0;
+  virtual common::VoidResult Logout(const std::string& session_id) = 0;
+  virtual common::VoidResult LogoutWithAccessToken(const std::string& access_token) = 0;
+  virtual common::Result<TokenPair> Refresh(const RefreshRequest& request) = 0;
+};
+
+class AuthService : public IAuthService {
+public:
+  AuthService(store::IUserRepository& users,
+              store::IDeviceRepository& devices,
               PasswordHasher& hasher,
-              TokenManager& tokens,
+              ITokenManager& tokens,
               common::ThreadPool& cpu_pool);
 
-  common::Result<RegisterResponse> Register(const RegisterRequest& request);
-  common::Result<LoginResponse> Login(const LoginRequest& request);
-  common::VoidResult Logout(const std::string& session_id);
-  common::Result<TokenPair> Refresh(const RefreshRequest& request);
+  common::Result<RegisterResponse> Register(const RegisterRequest& request) override;
+  common::Result<LoginResponse> Login(const LoginRequest& request) override;
+  common::VoidResult Logout(const std::string& session_id) override;
+  common::VoidResult LogoutWithAccessToken(const std::string& access_token) override;
+  common::Result<TokenPair> Refresh(const RefreshRequest& request) override;
 
 private:
   common::Timestamp Now();
 
-  store::UserRepository& users_;
-  store::DeviceRepository& devices_;
+  store::IUserRepository& users_;
+  store::IDeviceRepository& devices_;
   PasswordHasher& hasher_;
-  TokenManager& tokens_;
+  ITokenManager& tokens_;
   common::ThreadPool& cpu_pool_;
 };
 

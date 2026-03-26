@@ -160,7 +160,7 @@ TEST_F(AuthTestSuite, LogoutRevokesSession) {
   reg.device_id = "dev1";
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
-  auto access_hash = vox::auth::TokenManager::HashToken(reg_result.value().tokens.access_token);
+  auto access_hash = tokens_->HashToken(reg_result.value().tokens.access_token);
 
   auto session = sessions_->FindByAccessToken(access_hash);
   ASSERT_TRUE(session.has_value());
@@ -171,6 +171,27 @@ TEST_F(AuthTestSuite, LogoutRevokesSession) {
 
   auto found = sessions_->FindByAccessToken(access_hash);
   ASSERT_FALSE(found.has_value());
+}
+
+TEST_F(AuthTestSuite, LogoutWithAccessTokenRevokesSession) {
+  vox::auth::RegisterRequest reg;
+  reg.username = "ida";
+  reg.password_derived_value = "pw";
+  reg.device_id = "dev1";
+  auto reg_result = auth_->Register(reg);
+  ASSERT_TRUE(reg_result.has_value());
+  const std::string& token = reg_result->tokens.access_token;
+  auto access_hash = tokens_->HashToken(token);
+
+  ASSERT_TRUE(auth_->LogoutWithAccessToken(token).has_value());
+
+  ASSERT_FALSE(sessions_->FindByAccessToken(access_hash).has_value());
+}
+
+TEST_F(AuthTestSuite, LogoutWithAccessTokenInvalidFails) {
+  auto result = auth_->LogoutWithAccessToken("not-a-valid-token");
+  ASSERT_FALSE(result.has_value());
+  ASSERT_EQ(result.error().code, vox::common::ErrorCode::kUnauthorized);
 }
 
 TEST_F(AuthTestSuite, ConcurrentRegistrationsSameUsername) {

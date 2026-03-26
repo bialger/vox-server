@@ -1,26 +1,19 @@
 name: "CI tests"
 
-on: [ push ]
+# Push only: one full CI run per push (no duplicate pull_request).
+on:
+  push:
+
+permissions:
+  contents: read
+  actions: write
+  packages: write
 
 jobs:
-  build-matrix:
-    name: Tests and application run on ${{ matrix.config.name }}
-    runs-on: ${{ matrix.config.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {
-            name: "Windows Latest MinGW", artifact: "Windows-Ninja.tar.xz",
-            os: windows-latest,
-            build_type: "Release", cc: "gcc", cxx: "g++",
-          }
-          - {
-            name: "Ubuntu Latest GCC", artifact: "Linux.tar.xz",
-            os: ubuntu-latest,
-            build_type: "Release", cc: "gcc", cxx: "g++"
-          }
-
+  # Ubuntu matrix equivalent: artifact for Docker + gates release (does not wait for Windows/style/tidy).
+  build_linux:
+    name: Tests and application run on Ubuntu Latest GCC
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +24,7 @@ jobs:
         run: |
           cmake -S . -B cmake-build-release -DCMAKE_BUILD_TYPE=Release -G "Ninja"
 
-      - name: Build main target
+      - name: Build vox-server target
         shell: bash
         run: |
           cmake --build cmake-build-release --target vox-server
@@ -39,236 +32,164 @@ jobs:
       - name: Run program
         shell: bash
         working-directory: ./cmake-build-release/bin
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              ./vox-server.exe --help
-          else 
-              ./vox-server --help
-          fi
+        run: ./vox-server --help
+
       - name: Build tests
         shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              cmake --build ./cmake-build-release --target vox-server_tests || echo "Built with errors"
-          else
-              cmake --build ./cmake-build-release --target vox-server_tests
-          fi
+        run: cmake --build ./cmake-build-release --target vox-server_tests
+
       - name: Run tests
         shell: bash
         working-directory: ./cmake-build-release/tests
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-              ./vox-server_tests.exe || echo "Tests failed" # Due to a specific MinGW-related Github Actions issue
-          else
-              ./vox-server_tests
-          fi
+        run: ./vox-server_tests
 
-  style-check:
-    name: Code style check with clang-format
+      - name: Build net integration tests
+        shell: bash
+        run: cmake --build ./cmake-build-release --target vox-server_net_tests
+
+      - name: Run net integration tests
+        shell: bash
+        working-directory: ./cmake-build-release/tests
+        run: ./vox-server_net_tests
+
+      - name: Upload vox-server (Linux) for Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: vox-server-linux
+          path: cmake-build-release/bin/vox-server
+          retention-days: 1
+
+  ci:
+    uses: ./.github/workflows/ci-reusable.yml
+    secrets: inherit
+
+  # Runs only after Ubuntu build+artifact; parallel Windows/style/tidy do not block this.
+  release:
+    name: Image (GHCR) + deploy
     runs-on: ubuntu-latest
+    needs: [build_linux]
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    concurrency:
+      group: release-${{ github.workflow }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install clang-format
-        run: |
-          sudo apt-get update && sudo apt-get -y install clang-format
-
-      - name: Check code style
-        shell: bash
-        run: |
-          mapfile -t files < <(git ls-files '*.c' '*.cpp' '*.h' '*.hpp')
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No C/C++ files to check."
-            exit 0
-          fi
-
-          clang-format --dry-run --Werror "${files[@]}" 2>format_output.txt || {
-            cat format_output.txt
-            exit 1
-          }
-
-      - name: Comment on style issues
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Download vox-server from build_linux
+        uses: actions/download-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const { execSync } = require('child_process');
+          name: vox-server-linux
+          path: docker-build-context
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
 
-            try {
-              // Get list of files that need formatting
-              const rawFiles = execSync('git ls-files "*.c" "*.cpp" "*.h" "*.hpp"', { encoding: 'utf8' }).trim();
+      - name: Prepare Docker build context
+        run: cp deploy/docker-entrypoint.sh docker-build-context/docker-entrypoint.sh
 
-              if (!rawFiles) {
-                console.log('No files require formatting checks.');
-                return;
-              }
-
-              const files = rawFiles.split('\n');
-
-              let comment = '## 🎨 Code Style Issues Found\n\n';
-              comment += 'The following files have formatting issues:\n\n';
-              let hasIssues = false;
-
-              for (const file of files) {
-                try {
-                  const result = execSync(`clang-format --dry-run --Werror "${file}" 2>&1`, { encoding: 'utf8' });
-                } catch (error) {
-                  comment += `- \`${file}\`: Formatting issues detected\n`;
-                  hasIssues = true;
-                }
-              }
-
-              if (!hasIssues) {
-                comment += 'No files with formatting issues were detected.';
-              } else {
-                comment += '\nPlease run `clang-format -i <file>` to fix formatting issues.';
-              }
-
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            } catch (error) {
-              console.log('Could not create comment:', error.message);
-            }
-
-  code-quality-check:
-    name: Code quality check with clang-tidy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install clang-tidy and GCC 13
+      - name: Image name (lowercase for GHCR)
+        id: meta
         run: |
-          sudo apt-get update
-          # Install a C++23-capable toolchain and clang-tidy-19 for better C++23 support
-          sudo apt-get -y install clang-19 clang-tidy-19
-      - name: Install Boost
-        run: |
-          sudo apt update
-          sudo apt install libboost-all-dev
+          echo "repository_lower=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Create CMake cache
-        run: |
-          cmake -S . -B cmake-build-tidy \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-      - name: Run clang-tidy
-        shell: bash
-        run: |
-          mapfile -t files < <(git ls-files '*.c' '*.cpp')
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No C/C++ files to analyze."
-            echo "" > tidy_output.txt
-            exit 0
-          fi
-
-          echo "Running clang-tidy-19 on ${#files[@]} files..."
-          # Use clang-tidy-19 for better C++23 support and --extra-arg-before to ensure C++23 standard is set before other flags
-          clang-tidy-19 "${files[@]}" -p cmake-build-tidy --format-style=file > tidy_output.txt 2>&1 || true
-
-          # Ensure file exists and is readable
-          if [ ! -f tidy_output.txt ]; then
-            echo "" > tidy_output.txt
-          fi
-
-      - name: Count warnings and errors
-        id: count_issues
-        run: |
-          # Count errors and warnings - handle empty file case
-          if [ ! -s tidy_output.txt ]; then
-            errors=0
-            warnings=0
-          else
-            errors=$(grep -c "error:" tidy_output.txt 2>/dev/null || echo "0")
-            warnings=$(grep -c "warning:" tidy_output.txt 2>/dev/null || echo "0")
-          fi
-
-          # Ensure we have clean integer values
-          errors=$(echo "$errors" | tr -d '\n' | head -c 10)
-          warnings=$(echo "$warnings" | tr -d '\n' | head -c 10)
-
-          # Default to 0 if empty or non-numeric
-          errors=${errors:-0}
-          warnings=${warnings:-0}
-
-          echo "errors=$errors" >> $GITHUB_OUTPUT
-          echo "warnings=$warnings" >> $GITHUB_OUTPUT
-
-          echo "Found $errors errors and $warnings warnings"
-
-          if [ "$errors" -eq 0 ] && [ "$warnings" -le 3 ]; then
-            echo "clang-tidy found $warnings warnings"
-            cat tidy_output.txt
-            exit 0
-          fi
-
-          # Fail if more than 3 warnings or any errors
-          if [ "$errors" -gt 0 ] || [ "$warnings" -gt 3 ]; then
-            echo "clang-tidy found $errors errors and $warnings warnings"
-            cat tidy_output.txt
-            exit 1
-          fi
-
-      - name: Comment on quality issues
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          script: |
-            const fs = require('fs');
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            try {
-              let comment = '## 🔍 Code Quality Issues Found\n\n';
-              
-              if (fs.existsSync('tidy_output.txt')) {
-                const output = fs.readFileSync('tidy_output.txt', 'utf8');
-                const lines = output.split('\n');
-                
-                let currentFile = '';
-                let hasIssues = false;
-                
-                for (const line of lines) {
-                  if (line.includes('error:') || line.includes('warning:')) {
-                    const parts = line.split(':');
-                    if (parts.length >= 4) {
-                      const file = parts[0];
-                      const lineNum = parts[1];
-                      const message = parts.slice(3).join(':').trim();
-                      
-                      if (file !== currentFile) {
-                        if (hasIssues) comment += '\n';
-                        comment += `### \`${file}\`\n\n`;
-                        currentFile = file;
-                        hasIssues = true;
-                      }
-                      
-                      const issueType = line.includes('error:') ? '❌ Error' : '⚠️ Warning';
-                      comment += `- **Line ${lineNum}**: ${issueType} - ${message}\n`;
-                    }
-                  }
-                }
-                
-                if (!hasIssues) {
-                  comment += 'No specific issues found in the output.';
-                }
-              } else {
-                comment += 'Could not read clang-tidy output.';
-              }
-              
-              comment += '\n\nPlease review and fix the issues above.';
-              
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            } catch (error) {
-              console.log('Could not create comment:', error.message);
-            }
+      - name: Build and push (prebuilt binary)
+        uses: docker/build-push-action@v6
+        with:
+          context: docker-build-context
+          file: ./deploy/Dockerfile.prebuilt
+          push: true
+          tags: ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}
+
+      - name: Tag latest
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull "ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}"
+          docker tag "ghcr.io/${{ steps.meta.outputs.repository_lower }}:${{ github.sha }}" \
+            "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
+          docker push "ghcr.io/${{ steps.meta.outputs.repository_lower }}:latest"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GITHUB_REPO_OWNER: ${{ github.repository_owner }}
+          GHCR_DEPLOY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR_DEPLOY: ${{ github.actor }}
+        with:
+          host: messenger.bialger.com
+          username: ${{ secrets.SERVER_LOGIN }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          command_timeout: 30m
+          debug: true
+          envs: GHCR_READ_TOKEN,GHCR_USERNAME,GITHUB_REPO_OWNER,GHCR_DEPLOY_TOKEN,GITHUB_ACTOR_DEPLOY
+          script_stop: true
+          script: |
+            set -euo pipefail
+            _d() { printf '%s\n' "[vox-deploy] $*"; }
+            # appleboy/ssh-action runs bash --noprofile --norc; docker/git often live in /usr/local/bin
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+            _d "whoami=$(whoami) pwd=$(pwd) PATH=$PATH"
+            _d "git=$(command -v git 2>/dev/null || echo MISSING) docker=$(command -v docker 2>/dev/null || echo MISSING)"
+            command -v docker >/dev/null && docker compose version 2>&1 | sed 's/^/[vox-deploy] /' || _d "docker compose: not available"
+            BRANCH="${{ github.ref_name }}"
+            REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            IMAGE="ghcr.io/${REPO_LC}:${{ github.sha }}"
+            _d "IMAGE=${IMAGE} branch=${BRANCH} deploy_path=/opt/vox-server"
+            cd /opt/vox-server
+            _d "repo root $(pwd)"
+            git fetch origin "${BRANCH}"
+            git checkout "${BRANCH}"
+            git pull --ff-only origin "${BRANCH}"
+            _d "--- after git pull ---"
+            git rev-parse HEAD && git status -sb || true
+            if [ ! -d deploy ]; then
+              _d "ERROR: $(pwd)/deploy is not a directory"; exit 1
+            fi
+            cd deploy
+            _d "in deploy/: $(pwd)"; ls -la
+            if [ ! -f .env ]; then
+              _d ".env: create new"
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" > .env
+            elif grep -q '^VOX_IMAGE=' .env 2>/dev/null; then
+              _d ".env: replace existing VOX_IMAGE line"
+              grep -v '^VOX_IMAGE=' .env > .env.tmp || true
+              mv .env.tmp .env
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            else
+              _d ".env: append VOX_IMAGE"
+              printf '%s\n' "VOX_IMAGE=${IMAGE}" >> .env
+            fi
+            _d "VOX_IMAGE line: $(grep '^VOX_IMAGE=' .env || echo '(missing)')"
+            TOKEN="${GHCR_READ_TOKEN:-}"
+            U="${GHCR_USERNAME:-${GITHUB_REPO_OWNER}}"
+            if [ -z "${TOKEN}" ] && [ -n "${GHCR_DEPLOY_TOKEN:-}" ]; then
+              TOKEN="${GHCR_DEPLOY_TOKEN}"
+              U="${GITHUB_ACTOR_DEPLOY}"
+              _d "docker login ghcr.io (GITHUB_TOKEN fallback, user=${U})"
+            elif [ -n "${TOKEN}" ]; then
+              _d "docker login ghcr.io (GHCR_READ_TOKEN, user=${U})"
+            else
+              _d "WARNING: no ghcr credentials — pull fails for private images"
+            fi
+            if [ -n "${TOKEN}" ]; then
+              echo "${TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
+            fi
+            _d "docker compose pull vox-server"
+            docker compose pull vox-server || { _d "ERROR: docker compose pull failed (see above)"; exit 1; }
+            _d "docker compose up -d"
+            docker compose up -d || { _d "ERROR: docker compose up failed"; exit 1; }
+            _d "nginx reload (conf.d bind mount)"
+            docker compose exec -T nginx nginx -s reload || { _d "ERROR: nginx reload failed"; exit 1; }
+            _d "finished OK"

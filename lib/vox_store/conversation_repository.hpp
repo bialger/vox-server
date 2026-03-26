@@ -26,36 +26,65 @@ struct MemberRecord {
   std::optional<common::Timestamp> removed_at;
 };
 
-class ConversationRepository {
+class IConversationRepository {
 public:
-  explicit ConversationRepository(Database& db);
+  virtual ~IConversationRepository() = default;
+  virtual common::VoidResult CreateConversation(const ConversationRecord& conv) = 0;
+  virtual std::optional<ConversationRecord> FindById(const common::ConversationId& conv_id) = 0;
 
-  common::VoidResult CreateConversation(const ConversationRecord& conv);
-  std::optional<ConversationRecord> FindById(const common::ConversationId& conv_id);
+  virtual common::VoidResult AddMember(const common::ConversationId& conv_id,
+                                       const common::UserId& user_id,
+                                       common::MemberRole role,
+                                       common::Timestamp now) = 0;
+  virtual common::VoidResult RemoveMember(const common::ConversationId& conv_id,
+                                          const common::UserId& user_id,
+                                          common::Timestamp now) = 0;
+  virtual std::vector<MemberRecord> GetMembers(const common::ConversationId& conv_id) = 0;
+  virtual std::vector<ConversationRecord> GetConversationsForUser(const common::UserId& user_id) = 0;
+  virtual bool IsUserInConversation(const common::ConversationId& conv_id, const common::UserId& user_id) = 0;
+  virtual std::optional<MemberRecord> GetMember(const common::ConversationId& conv_id,
+                                                const common::UserId& user_id) = 0;
+
+  virtual common::VoidResult Subscribe(const common::ConversationId& conv_id,
+                                       const common::UserId& user_id,
+                                       common::Timestamp now) = 0;
+  virtual common::VoidResult Unsubscribe(const common::ConversationId& conv_id,
+                                         const common::UserId& user_id,
+                                         common::Timestamp now) = 0;
+  virtual std::vector<common::UserId> GetSubscribers(const common::ConversationId& conv_id) = 0;
+  virtual std::size_t GetMemberCount(const common::ConversationId& conv_id) = 0;
+};
+
+class ConversationRepository : public IConversationRepository {
+public:
+  explicit ConversationRepository(IDatabase& db);
+
+  common::VoidResult CreateConversation(const ConversationRecord& conv) override;
+  std::optional<ConversationRecord> FindById(const common::ConversationId& conv_id) override;
 
   common::VoidResult AddMember(const common::ConversationId& conv_id,
                                const common::UserId& user_id,
                                common::MemberRole role,
-                               common::Timestamp now);
+                               common::Timestamp now) override;
   common::VoidResult RemoveMember(const common::ConversationId& conv_id,
                                   const common::UserId& user_id,
-                                  common::Timestamp now);
-  std::vector<MemberRecord> GetMembers(const common::ConversationId& conv_id);
-  std::vector<ConversationRecord> GetConversationsForUser(const common::UserId& user_id);
-  bool IsUserInConversation(const common::ConversationId& conv_id, const common::UserId& user_id);
-  std::optional<MemberRecord> GetMember(const common::ConversationId& conv_id, const common::UserId& user_id);
+                                  common::Timestamp now) override;
+  std::vector<MemberRecord> GetMembers(const common::ConversationId& conv_id) override;
+  std::vector<ConversationRecord> GetConversationsForUser(const common::UserId& user_id) override;
+  bool IsUserInConversation(const common::ConversationId& conv_id, const common::UserId& user_id) override;
+  std::optional<MemberRecord> GetMember(const common::ConversationId& conv_id, const common::UserId& user_id) override;
 
   common::VoidResult Subscribe(const common::ConversationId& conv_id,
                                const common::UserId& user_id,
-                               common::Timestamp now);
+                               common::Timestamp now) override;
   common::VoidResult Unsubscribe(const common::ConversationId& conv_id,
                                  const common::UserId& user_id,
-                                 common::Timestamp now);
-  std::vector<common::UserId> GetSubscribers(const common::ConversationId& conv_id);
-  std::size_t GetMemberCount(const common::ConversationId& conv_id);
+                                 common::Timestamp now) override;
+  std::vector<common::UserId> GetSubscribers(const common::ConversationId& conv_id) override;
+  std::size_t GetMemberCount(const common::ConversationId& conv_id) override;
 
 private:
-  Database& db_;
+  IDatabase& db_;
 };
 
 } // namespace vox::store

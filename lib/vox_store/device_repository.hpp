@@ -34,19 +34,34 @@ struct PrekeyBundle {
   std::optional<std::string> one_time_prekey_id;
 };
 
-class DeviceRepository {
+class IDeviceRepository {
 public:
-  explicit DeviceRepository(Database& db);
+  virtual ~IDeviceRepository() = default;
+  virtual common::VoidResult RegisterDevice(const DeviceRecord& device) = 0;
+  virtual std::vector<DeviceRecord> GetDevicesForUser(const common::UserId& user_id) = 0;
+  virtual std::optional<DeviceRecord> FindById(const common::DeviceId& device_id) = 0;
+  virtual common::VoidResult StorePrekeys(const common::DeviceId& device_id,
+                                          const std::vector<PrekeyRecord>& prekeys) = 0;
+  virtual common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id) = 0;
+  virtual common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) = 0;
+};
 
-  common::VoidResult RegisterDevice(const DeviceRecord& device);
-  std::vector<DeviceRecord> GetDevicesForUser(const common::UserId& user_id);
-  std::optional<DeviceRecord> FindById(const common::DeviceId& device_id);
-  common::VoidResult StorePrekeys(const common::DeviceId& device_id, const std::vector<PrekeyRecord>& prekeys);
-  common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id);
-  common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id);
+class DeviceRepository : public IDeviceRepository {
+public:
+  explicit DeviceRepository(IDatabase& db);
+
+  common::VoidResult RegisterDevice(const DeviceRecord& device) override;
+  std::vector<DeviceRecord> GetDevicesForUser(const common::UserId& user_id) override;
+  std::optional<DeviceRecord> FindById(const common::DeviceId& device_id) override;
+  common::VoidResult StorePrekeys(const common::DeviceId& device_id, const std::vector<PrekeyRecord>& prekeys) override;
+  common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id) override;
+  common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) override;
 
 private:
-  Database& db_;
+  /// Caller must hold `db_.WriteLock()` and an active transaction when applicable.
+  std::optional<PrekeyRecord> ConsumeOneAvailableOtpLocked(const common::DeviceId& device_id);
+
+  IDatabase& db_;
 };
 
 } // namespace vox::store

@@ -16,6 +16,7 @@
 build/
 .clangd
 CMakePresets.json
+compile_commands.json
 
 # mpeltonen/sbt-idea plugin
 **.idea_modules/
@@ -42,8 +43,10 @@ fabric.properties
 **.config*/reader/*
 **.config*/analyzer/*
 
-# Prerequisites
+# Prerequisites (generated *.d dependency files — plain "*.d" also matches a dir named "conf.d")
 *.d
+!deploy/nginx/conf.d/
+!deploy/nginx/conf.d/**
 
 # Compiled Object files
 *.slo

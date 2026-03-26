@@ -11,6 +11,8 @@ set(CMAKE_CXX_STANDARD 23)
 
 message(STATUS "Building ${PROJECT_DESCRIPTION} ${PROJECT_NAME}, version ${PROJECT_VERSION}")
 
+include(CTest)
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
@@ -39,6 +41,9 @@ endif ()
 
 # Ensure compile_commands.json is generated for clangd/clang-tidy
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# In Docker, pass -DVOX_USE_SYSTEM_DEPS=ON and install *-dev packages to skip FetchContent builds.
+option(VOX_USE_SYSTEM_DEPS "Use system fmt/spdlog/SQLiteCpp/GTest/argon2 (e.g. apt in Docker)" OFF)
 
 add_subdirectory(lib)
 

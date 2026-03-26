@@ -1,9 +1,12 @@
 #ifndef VOX_RELAY_RELAY_SERVICE_HPP
 #define VOX_RELAY_RELAY_SERVICE_HPP
 
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "lib/vox_common/config.hpp"
 #include "lib/vox_common/types.hpp"
 #include "lib/vox_relay/delivery_manager.hpp"
 #include "lib/vox_store/conversation_repository.hpp"
@@ -18,6 +21,7 @@ struct SendMessageRequest {
   std::string ciphertext;
   std::string envelope_id;
   int envelope_type = 0;
+  std::optional<std::int64_t> ordering_epoch;
 };
 
 struct SendMessageResponse {
@@ -26,24 +30,37 @@ struct SendMessageResponse {
   std::size_t delivered_to_count;
 };
 
-class RelayService {
+class IRelayService {
 public:
-  RelayService(store::EnvelopeRepository& envelopes,
-               store::ConversationRepository& conversations,
-               store::DeviceRepository& devices,
-               DeliveryManager& delivery);
+  virtual ~IRelayService() = default;
+  virtual common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) = 0;
+  virtual std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id,
+                                                         std::size_t limit = 100) = 0;
+  virtual common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+                                                 const common::EnvelopeId& envelope_id) = 0;
+};
 
-  common::Result<SendMessageResponse> SendMessage(const SendMessageRequest& request);
-  std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100);
-  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id);
+class RelayService : public IRelayService {
+public:
+  RelayService(store::IEnvelopeRepository& envelopes,
+               store::IConversationRepository& conversations,
+               store::IDeviceRepository& devices,
+               IDeliveryManager& delivery,
+               const common::ServerConfig& config);
+
+  common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) override;
+  std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100) override;
+  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+                                         const common::EnvelopeId& envelope_id) override;
 
 private:
   common::Timestamp Now();
 
-  store::EnvelopeRepository& envelopes_;
-  store::ConversationRepository& conversations_;
-  store::DeviceRepository& devices_;
-  DeliveryManager& delivery_;
+  store::IEnvelopeRepository& envelopes_;
+  store::IConversationRepository& conversations_;
+  store::IDeviceRepository& devices_;
+  IDeliveryManager& delivery_;
+  const common::ServerConfig& config_;
 };
 
 } // namespace vox::relay

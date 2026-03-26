@@ -6,8 +6,12 @@
 
 namespace vox::relay {
 
-DeliveryManager::DeliveryManager(store::EnvelopeRepository& envelopes, std::size_t max_queue_per_device) :
+DeliveryManager::DeliveryManager(store::IEnvelopeRepository& envelopes, std::size_t max_queue_per_device) :
     envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
+}
+
+void DeliveryManager::SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook) {
+  enqueue_hook_ = std::move(hook);
 }
 
 common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) {
@@ -21,6 +25,9 @@ common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, c
   }
 
   queue.pending.push_back(envelope);
+  if (enqueue_hook_) {
+    enqueue_hook_(device_id, envelope);
+  }
   return {};
 }
 
@@ -90,6 +97,19 @@ DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::De
     }
     return it->second;
   });
+}
+
+void DeliveryManager::PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                                       const common::DeviceId& device_id) {
+  auto found = queues_.Find(device_id);
+  if (!found) {
+    return;
+  }
+  auto& queue = *found;
+  std::lock_guard lock(queue->mutex);
+  const auto not_conv = [&](const QueuedEnvelope& q) { return q.conversation_id != conversation_id; };
+  const auto new_end = std::stable_partition(queue->pending.begin(), queue->pending.end(), not_conv);
+  queue->pending.erase(new_end, queue->pending.end());
 }
 
 } // namespace vox::relay

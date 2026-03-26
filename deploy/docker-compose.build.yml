@@ -1,0 +1,11 @@
+# Local image build (no GHCR). Usage from repo root:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml --project-directory deploy up --build
+services:
+  vox-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: vox-server:local
+    environment:
+      VOX_SESSION_PEPPER: ${VOX_SESSION_PEPPER:?set VOX_SESSION_PEPPER in .env}
+      VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}

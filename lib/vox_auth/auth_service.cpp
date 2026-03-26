@@ -8,10 +8,10 @@
 
 namespace vox::auth {
 
-AuthService::AuthService(store::UserRepository& users,
-                         store::DeviceRepository& devices,
+AuthService::AuthService(store::IUserRepository& users,
+                         store::IDeviceRepository& devices,
                          PasswordHasher& hasher,
-                         TokenManager& tokens,
+                         ITokenManager& tokens,
                          common::ThreadPool& cpu_pool) :
     users_(users), devices_(devices), hasher_(hasher), tokens_(tokens), cpu_pool_(cpu_pool) {
 }
@@ -115,6 +115,10 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
 common::VoidResult AuthService::Logout(const std::string& session_id) {
   auto now = Now();
   return tokens_.RevokeSession(session_id, now);
+}
+
+common::VoidResult AuthService::LogoutWithAccessToken(const std::string& access_token) {
+  return tokens_.RevokeByAccessToken(access_token, Now());
 }
 
 common::Result<TokenPair> AuthService::Refresh(const RefreshRequest& request) {

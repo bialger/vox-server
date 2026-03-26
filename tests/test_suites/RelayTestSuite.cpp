@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "lib/vox_common/config.hpp"
+
 namespace {
 
 constexpr std::size_t kDeliveryManagerMaxQueuePerDevice = 100;
@@ -16,10 +18,14 @@ void RelayTestSuite::SetUp() {
   conversations_ = std::make_unique<vox::store::ConversationRepository>(*db_);
   envelopes_ = std::make_unique<vox::store::EnvelopeRepository>(*db_);
   delivery_ = std::make_unique<vox::relay::DeliveryManager>(*envelopes_, kDeliveryManagerMaxQueuePerDevice);
-  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_);
+  auto cfg = vox::common::ServerConfig::Default();
+  relay_ = std::make_unique<vox::relay::RelayService>(*envelopes_, *conversations_, *devices_, *delivery_, cfg);
+  conv_service_ =
+      std::make_unique<vox::relay::ConversationService>(*conversations_, *envelopes_, *devices_, *delivery_, cfg);
 }
 
 void RelayTestSuite::TearDown() {
+  conv_service_.reset();
   relay_.reset();
   delivery_.reset();
   envelopes_.reset();
