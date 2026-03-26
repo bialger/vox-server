@@ -15,8 +15,7 @@ namespace vox::common {
 namespace {
 
 /// Upper bound for TCP/UDP port values stored in `ServerConfig::listen_port`.
-constexpr std::uint64_t kMaxListenPort =
-    static_cast<std::uint64_t>(std::numeric_limits<std::uint16_t>::max());
+constexpr std::uint64_t kMaxListenPort = static_cast<std::uint64_t>(std::numeric_limits<std::uint16_t>::max());
 
 void TrimInPlace(std::string& s) {
   while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())) != 0) {
