@@ -65,6 +65,7 @@ Press **Ctrl+C** in the terminal, or send **`SIGINT`** / **`SIGTERM`** (on Windo
 | Option | Description |
 |--------|-------------|
 | `--help`, `-h` | Show usage |
+| `--config <path>` | Load `key=value` settings from a file (also `VOX_CONFIG_FILE`, or `vox.conf` in the current directory if it exists). Later sources override earlier ones for the same setting: file, then env (`VOX_SESSION_PEPPER`, `VOX_ADMIN_TOKEN`), then CLI. |
 | `--listen <addr>` | Bind address (default: `127.0.0.1`) |
 | `--port <n>` | TCP port (default: `8080`) |
 | `--db <path>` | SQLite database file path |
@@ -91,7 +92,7 @@ Default public hostname in the bundled nginx config is **`messenger.bialger.com`
 
 | Service     | Role |
 |-------------|------|
-| `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). |
+| `vox-server` | Built from `deploy/Dockerfile`; data in volume `vox_data` (`/data`: SQLite DB + attachment blobs). **`deploy/vox.conf`** is bind-mounted to **`/data/vox.conf`** (see **`deploy/vox.conf.example`** for a commented template); secrets **`VOX_SESSION_PEPPER`** / **`VOX_ADMIN_TOKEN`** stay in **`deploy/.env`**. |
 | `nginx`     | Reverse proxy to `vox-server:8080`, WebSocket upgrade headers, `client_max_body_size 100m`, ACME webroot for Let’s Encrypt; **`deploy/nginx/nginx.conf`** sets access logging **without** query strings (see **TLS and reverse proxy** above). |
 | `certbot`   | Optional profile `certbot` — used for one-off certificate issuance (see below). |
 
