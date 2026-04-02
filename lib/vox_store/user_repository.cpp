@@ -3,6 +3,9 @@
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <sqlite3.h>
 
+#include <unordered_map>
+#include <unordered_set>
+
 namespace vox::store {
 
 namespace {
@@ -13,6 +16,7 @@ constexpr int kCreateBindWrappedSyncKey = 7;
 constexpr int kCreateBindSyncWrapSalt = 8;
 constexpr int kCreateBindSyncWrapParams = 9;
 constexpr int kSetSyncBindUserId = 5;
+constexpr std::size_t kMaxUserIdsInBatch = 100;
 
 UserRecord RowToUser(SQLite::Statement& stmt) {
   UserRecord record;
@@ -39,6 +43,10 @@ UserRepository::UserRepository(IDatabase& db) : db_(db) {
 common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
   try {
     auto lock = db_.WriteLock();
+    if (FindByUsername(user.username)) {
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Username already taken"});
+    }
     SQLite::Statement stmt(db_.Connection(),
                            "INSERT INTO users (user_id, username, password_salt, password_verifier, created_at, "
                            "sync_key_version, wrapped_sync_key, sync_wrap_salt, sync_wrap_params) "
@@ -65,7 +73,7 @@ common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
 
 std::optional<UserRecord> UserRepository::FindByUsername(const std::string& username) {
   auto lock = db_.ReadLock();
-  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM users WHERE username = ?");
+  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM users WHERE username = ? COLLATE NOCASE LIMIT 1");
   stmt.bind(1, username);
   if (stmt.executeStep()) {
     return RowToUser(stmt);
@@ -81,6 +89,50 @@ std::optional<UserRecord> UserRepository::FindById(const common::UserId& user_id
     return RowToUser(stmt);
   }
   return std::nullopt;
+}
+
+std::vector<UserPublicProfile> UserRepository::FindPublicProfilesByIds(const std::vector<common::UserId>& ids) {
+  std::vector<common::UserId> ordered;
+  ordered.reserve(ids.size());
+  std::unordered_set<std::string> seen;
+  for (const auto& id : ids) {
+    if (seen.insert(id).second) {
+      ordered.push_back(id);
+    }
+    if (ordered.size() >= kMaxUserIdsInBatch) {
+      break;
+    }
+  }
+  if (ordered.empty()) {
+    return {};
+  }
+  auto lock = db_.ReadLock();
+  std::string sql = "SELECT user_id, username FROM users WHERE user_id IN (";
+  for (std::size_t i = 0; i < ordered.size(); ++i) {
+    if (i > 0) {
+      sql += ", ";
+    }
+    sql += "?";
+  }
+  sql += ") AND disabled_at IS NULL";
+  SQLite::Statement stmt(db_.Connection(), sql);
+  int bind_idx = 1;
+  for (const auto& id : ordered) {
+    stmt.bind(bind_idx++, id);
+  }
+  std::unordered_map<std::string, std::string> by_id;
+  while (stmt.executeStep()) {
+    by_id[stmt.getColumn(0).getString()] = stmt.getColumn(1).getString();
+  }
+  std::vector<UserPublicProfile> out;
+  out.reserve(ordered.size());
+  for (const auto& id : ordered) {
+    auto it = by_id.find(id);
+    if (it != by_id.end()) {
+      out.push_back(UserPublicProfile{.user_id = it->first, .username = it->second});
+    }
+  }
+  return out;
 }
 
 common::VoidResult UserRepository::DisableUser(const common::UserId& user_id, common::Timestamp now) {

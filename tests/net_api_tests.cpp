@@ -138,6 +138,95 @@ TEST_F(NetApiTestSuite, RefreshReturnsNewTokens) {
   ASSERT_FALSE(o["refresh_token"].as_string().empty());
 }
 
+TEST_F(NetApiTestSuite, GetUserProfileReturnsCanonicalUsername) {
+  auto u = RegisterUser("MixedCaseUser", "dev_mcu");
+  auto [st, body] = HttpGet(std::string("/v1/users/") + u.user_id, u.access_token);
+  ASSERT_EQ(st, 200u);
+  auto o = ParseObj(body);
+  ASSERT_EQ(o["username"].as_string(), "MixedCaseUser");
+}
+
+TEST_F(NetApiTestSuite, GetUserByUsernamePathCaseInsensitive) {
+  auto u = RegisterUser("CanonicalName", "dev_cname");
+  auto [st, body] = HttpGet("/v1/users/by-username/canonicalname", u.access_token);
+  ASSERT_EQ(st, 200u);
+  auto o = ParseObj(body);
+  ASSERT_EQ(o["user_id"].as_string(), u.user_id);
+  ASSERT_EQ(o["username"].as_string(), "CanonicalName");
+}
+
+TEST_F(NetApiTestSuite, BatchGetUsersByIds) {
+  auto a = RegisterUser("batch_u1", "d_b1");
+  auto b = RegisterUser("batch_u2", "d_b2");
+  std::string path = std::string("/v1/users?ids=") + a.user_id + "," + b.user_id;
+  auto [st, body] = HttpGet(path, a.access_token);
+  ASSERT_EQ(st, 200u);
+  auto arr = ParseObj(body)["users"].as_array();
+  ASSERT_EQ(arr.size(), 2u);
+}
+
+TEST_F(NetApiTestSuite, ConversationMembersIncludeUsernames) {
+  auto a = RegisterUser("mem_a", "dma");
+  auto b = RegisterUser("mem_b", "dmb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  std::string mpath = std::string("/v1/conversations/") + conv_id + "/members";
+  auto [gst, gbody] = HttpGet(mpath, b.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto arr = ParseObj(gbody)["members"].as_array();
+  bool saw_b = false;
+  for (const auto& item : arr) {
+    const auto& o = item.as_object();
+    if (o.at("user_id").as_string() == b.user_id) {
+      ASSERT_EQ(o.at("username").as_string(), "mem_b");
+      saw_b = true;
+    }
+  }
+  ASSERT_TRUE(saw_b);
+}
+
+TEST_F(NetApiTestSuite, ListConversationsIncludesCreatedByUsername) {
+  auto a = RegisterUser("lst_a", "lda");
+  auto b = RegisterUser("lst_b", "ldb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst, 200u);
+  bool found = false;
+  for (const auto& item : ParseObj(gbody)["conversations"].as_array()) {
+    const auto& o = item.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_EQ(o.at("created_by_username").as_string(), "lst_b");
+      found = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found);
+}
+
+TEST_F(NetApiTestSuite, GetConversationIncludesCreatedByUsername) {
+  auto a = RegisterUser("gone_a", "gda");
+  auto b = RegisterUser("gone_b", "gdb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet(std::string("/v1/conversations/") + conv_id, b.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto o = ParseObj(gbody);
+  ASSERT_EQ(o["created_by_username"].as_string(), "gone_b");
+}
+
 TEST_F(NetApiTestSuite, LogoutRevokesBearer) {
   auto u = RegisterUser("logout_u", "dev_l");
   auto [st1, body1] = HttpPost("/v1/logout", "{}", u.access_token);

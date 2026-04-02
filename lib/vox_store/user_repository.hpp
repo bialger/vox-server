@@ -10,6 +10,12 @@
 
 namespace vox::store {
 
+/// Public profile fields for batch APIs (non-disabled users only).
+struct UserPublicProfile {
+  common::UserId user_id;
+  std::string username;
+};
+
 struct UserRecord {
   common::UserId user_id;
   std::string username;
@@ -34,8 +40,11 @@ class IUserRepository {
 public:
   virtual ~IUserRepository() = default;
   virtual common::VoidResult CreateUser(const UserRecord& user) = 0;
+  /// Case-insensitive match; returns the row as stored (canonical spelling).
   virtual std::optional<UserRecord> FindByUsername(const std::string& username) = 0;
   virtual std::optional<UserRecord> FindById(const common::UserId& user_id) = 0;
+  /// Non-disabled users only; order follows first occurrence in `ids` (deduplicated).
+  virtual std::vector<UserPublicProfile> FindPublicProfilesByIds(const std::vector<common::UserId>& ids) = 0;
   virtual common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) = 0;
   virtual std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) = 0;
 
@@ -56,6 +65,7 @@ public:
   common::VoidResult CreateUser(const UserRecord& user) override;
   std::optional<UserRecord> FindByUsername(const std::string& username) override;
   std::optional<UserRecord> FindById(const common::UserId& user_id) override;
+  std::vector<UserPublicProfile> FindPublicProfilesByIds(const std::vector<common::UserId>& ids) override;
   common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) override;
   std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) override;
 

@@ -5,8 +5,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <boost/beast/http/file_body.hpp>
 #include <boost/json.hpp>
@@ -36,6 +38,76 @@ constexpr unsigned kHttpInternalServerError = 500;
 constexpr std::size_t kDefaultPaginationLimit = 100;
 constexpr std::size_t kDefaultUserSearchLimit = 20;
 constexpr std::size_t kMaxUserSearchLimit = 50;
+constexpr std::size_t kMaxUserBatchIds = 100;
+
+void AppendCommaSeparatedIds(std::string_view v, std::vector<std::string>* out) {
+  while (!v.empty()) {
+    const auto comma = v.find(',');
+    std::string_view piece = v.substr(0, comma);
+    while (!piece.empty() && piece.front() == ' ') {
+      piece.remove_prefix(1);
+    }
+    while (!piece.empty() && piece.back() == ' ') {
+      piece.remove_suffix(1);
+    }
+    if (!piece.empty()) {
+      out->emplace_back(piece);
+    }
+    if (comma == std::string_view::npos) {
+      break;
+    }
+    v.remove_prefix(comma + 1);
+  }
+}
+
+/// Collects `ids` query values (comma-separated per value; multiple `ids=` allowed).
+std::vector<std::string> ParseIdsQuery(std::string_view target) {
+  std::vector<std::string> ids;
+  const auto q = target.find('?');
+  if (q == std::string_view::npos) {
+    return ids;
+  }
+  std::string_view query = target.substr(q + 1);
+  while (!query.empty()) {
+    const auto amp = query.find('&');
+    const std::string_view pair = query.substr(0, amp);
+    const auto eq = pair.find('=');
+    if (eq != std::string_view::npos) {
+      const std::string_view k = pair.substr(0, eq);
+      const std::string_view v = pair.substr(eq + 1);
+      if (k == "ids") {
+        AppendCommaSeparatedIds(v, &ids);
+      }
+    }
+    if (amp == std::string_view::npos) {
+      break;
+    }
+    query.remove_prefix(amp + 1);
+  }
+  return ids;
+}
+
+std::unordered_map<std::string, std::string> UsernameMapFromProfiles(
+    const std::vector<vox::store::UserPublicProfile>& profiles) {
+  std::unordered_map<std::string, std::string> m;
+  m.reserve(profiles.size());
+  for (const auto& p : profiles) {
+    m[p.user_id] = p.username;
+  }
+  return m;
+}
+
+void SetProfileField(boost::json::object& o,
+                     const std::unordered_map<std::string, std::string>& names,
+                     const std::string& user_id,
+                     std::string_view json_key) {
+  const auto it = names.find(user_id);
+  if (it != names.end()) {
+    o[std::string(json_key)] = it->second;
+  } else {
+    o[std::string(json_key)] = nullptr;
+  }
+}
 
 common::Timestamp NowSeconds() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -446,7 +518,7 @@ bool IsKnownProtectedRoute(http::verb m, std::string_view path) {
     }
     case http::verb::get: {
       if (path == "/v1/me" || path == "/v1/me/devices" || path == "/v1/sync/pending" || path == "/v1/conversations" ||
-          path == "/v1/sync/key-bundle") {
+          path == "/v1/users" || path == "/v1/sync/key-bundle") {
         return true;
       }
       if (path.starts_with("/v1/sync/changes")) {
@@ -858,6 +930,26 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         return JsonRes(ver, kHttpOk, out);
       }
 
+      if (path == "/v1/users") {
+        const auto raw_ids = ParseIdsQuery(req.target());
+        if (raw_ids.size() > kMaxUserBatchIds) {
+          common::Error e{.code = common::ErrorCode::kInvalidArgument, .message = "too many ids"};
+          return ErrRes(ver, kHttpBadRequest, e);
+        }
+        std::vector<vox::common::UserId> id_vec(raw_ids.begin(), raw_ids.end());
+        const auto profiles = ctx.users.FindPublicProfilesByIds(id_vec);
+        boost::json::array arr;
+        for (const auto& p : profiles) {
+          boost::json::object o;
+          o["user_id"] = p.user_id;
+          o["username"] = p.username;
+          arr.push_back(o);
+        }
+        boost::json::object out;
+        out["users"] = arr;
+        return JsonRes(ver, kHttpOk, out);
+      }
+
       if (path.starts_with("/v1/users/by-username/")) {
         std::string uname = std::string(path.substr(std::strlen("/v1/users/by-username/")));
         auto u = ctx.users.FindByUsername(uname);
@@ -1009,6 +1101,16 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         out["conversation_id"] = conv->conversation_id;
         out["type"] = static_cast<int>(conv->type);
         out["created_by"] = conv->created_by;
+        {
+          std::vector<vox::common::UserId> uids;
+          uids.push_back(conv->created_by);
+          const auto prof = ctx.users.FindPublicProfilesByIds(uids);
+          if (!prof.empty()) {
+            out["created_by_username"] = prof[0].username;
+          } else {
+            out["created_by_username"] = nullptr;
+          }
+        }
         out["created_at"] = conv->created_at;
         out["membership_version"] = conv->membership_version;
         if (conv->type == common::ConversationType::kChannel) {
@@ -1054,10 +1156,19 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           out["conversation_id"] = conv_id;
           out["membership_version"] = crec->membership_version;
           if (crec->type == common::ConversationType::kDm || crec->type == common::ConversationType::kGroup) {
+            const auto mems = ctx.conversations_store.GetMembers(conv_id);
+            std::vector<vox::common::UserId> uid_batch;
+            uid_batch.reserve(mems.size());
+            for (const auto& m : mems) {
+              uid_batch.push_back(m.user_id);
+            }
+            const auto profiles = ctx.users.FindPublicProfilesByIds(uid_batch);
+            const auto name_map = UsernameMapFromProfiles(profiles);
             boost::json::array members;
-            for (const auto& m : ctx.conversations_store.GetMembers(conv_id)) {
+            for (const auto& m : mems) {
               boost::json::object mo;
               mo["user_id"] = m.user_id;
+              SetProfileField(mo, name_map, m.user_id, "username");
               const char* rs = "member";
               if (m.role == common::MemberRole::kOwner) {
                 rs = "owner";
@@ -1074,10 +1185,28 @@ OptRes HandleAuthenticated(ServerContext& ctx,
             auto actor = ctx.conversations_store.GetMember(conv_id, sess.user_id);
             const bool is_admin =
                 actor && (actor->role == common::MemberRole::kOwner || actor->role == common::MemberRole::kAdmin);
+            const auto admin_rows = ctx.conversations_store.GetMembers(conv_id);
+            std::unordered_set<std::string> admin_set;
+            std::vector<vox::common::UserId> uid_batch;
+            for (const auto& m : admin_rows) {
+              admin_set.insert(m.user_id);
+              uid_batch.push_back(m.user_id);
+            }
+            if (is_admin) {
+              for (const auto& su : ctx.conversations_store.GetSubscribers(conv_id)) {
+                if (admin_set.count(su)) {
+                  continue;
+                }
+                uid_batch.push_back(su);
+              }
+            }
+            const auto profiles = ctx.users.FindPublicProfilesByIds(uid_batch);
+            const auto name_map = UsernameMapFromProfiles(profiles);
             boost::json::array admins;
-            for (const auto& m : ctx.conversations_store.GetMembers(conv_id)) {
+            for (const auto& m : admin_rows) {
               boost::json::object mo;
               mo["user_id"] = m.user_id;
+              SetProfileField(mo, name_map, m.user_id, "username");
               const char* rs = "member";
               if (m.role == common::MemberRole::kOwner) {
                 rs = "owner";
@@ -1090,17 +1219,13 @@ OptRes HandleAuthenticated(ServerContext& ctx,
             out["admins"] = admins;
             if (is_admin) {
               boost::json::array subs;
-              auto admin_ids = ctx.conversations_store.GetMembers(conv_id);
-              std::unordered_set<std::string> admin_set;
-              for (const auto& m : admin_ids) {
-                admin_set.insert(m.user_id);
-              }
               for (const auto& su : ctx.conversations_store.GetSubscribers(conv_id)) {
                 if (admin_set.count(su)) {
                   continue;
                 }
                 boost::json::object so;
                 so["user_id"] = su;
+                SetProfileField(so, name_map, su, "username");
                 so["role"] = "member";
                 subs.push_back(so);
               }
@@ -1208,12 +1333,20 @@ OptRes HandleAuthenticated(ServerContext& ctx,
 
       if (path == "/v1/conversations") {
         auto list = ctx.conversations.ListForUser(sess.user_id);
+        std::vector<vox::common::UserId> created_by_ids;
+        created_by_ids.reserve(list.size());
+        for (const auto& c : list) {
+          created_by_ids.push_back(c.created_by);
+        }
+        const auto creator_profiles = ctx.users.FindPublicProfilesByIds(created_by_ids);
+        const auto creator_names = UsernameMapFromProfiles(creator_profiles);
         boost::json::array arr;
         for (const auto& c : list) {
           boost::json::object co;
           co["conversation_id"] = c.conversation_id;
           co["type"] = static_cast<int>(c.type);
           co["created_by"] = c.created_by;
+          SetProfileField(co, creator_names, c.created_by, "created_by_username");
           co["created_at"] = c.created_at;
           co["membership_version"] = c.membership_version;
           if (c.last_activity_at) {

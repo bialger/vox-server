@@ -38,6 +38,39 @@ TEST_F(StoreTestSuite, CreateAndFindUserByUsername) {
   }
 }
 
+TEST_F(StoreTestSuite, FindByUsernameIsCaseInsensitive) {
+  auto user = MakeUser("Alice");
+  ASSERT_TRUE(users_->CreateUser(user).has_value());
+  const auto found = users_->FindByUsername("alice");
+  ASSERT_TRUE(found.has_value());
+  if (found) {
+    ASSERT_EQ(found->username, "Alice");
+  }
+}
+
+TEST_F(StoreTestSuite, UsernameCaseInsensitiveDuplicateRejected) {
+  auto u1 = MakeUser("Alice");
+  ASSERT_TRUE(users_->CreateUser(u1).has_value());
+  auto u2 = MakeUser("alice");
+  auto r = users_->CreateUser(u2);
+  ASSERT_FALSE(r.has_value());
+  ASSERT_EQ(r.error().code, vox::common::ErrorCode::kAlreadyExists);
+}
+
+TEST_F(StoreTestSuite, FindPublicProfilesByIds) {
+  auto a = MakeUser("batch_a");
+  auto b = MakeUser("batch_b");
+  ASSERT_TRUE(users_->CreateUser(a).has_value());
+  ASSERT_TRUE(users_->CreateUser(b).has_value());
+  std::vector<vox::common::UserId> order{b.user_id, a.user_id, b.user_id};
+  auto profs = users_->FindPublicProfilesByIds(order);
+  ASSERT_EQ(profs.size(), 2u);
+  ASSERT_EQ(profs[0].user_id, b.user_id);
+  ASSERT_EQ(profs[0].username, "batch_b");
+  ASSERT_EQ(profs[1].user_id, a.user_id);
+  ASSERT_EQ(profs[1].username, "batch_a");
+}
+
 TEST_F(StoreTestSuite, CreateAndFindUserById) {
   auto user = MakeUser("bob");
   ASSERT_TRUE(users_->CreateUser(user));
