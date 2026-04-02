@@ -9,6 +9,7 @@
 namespace {
 
 constexpr std::int64_t kSmallAttachmentBytes = 12;
+constexpr int kArgon2MemoryKib = 65536;
 
 boost::json::object ParseObj(const std::string& body) {
   return boost::json::parse(body).as_object();
@@ -16,6 +17,17 @@ boost::json::object ParseObj(const std::string& body) {
 
 std::string JsonString(const std::string& json, std::string_view key) {
   return {ParseObj(json).at(key).as_string().c_str()};
+}
+
+void AddSyncBundle(boost::json::object& reg) {
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap;
+  wrap["algorithm"] = "argon2id";
+  wrap["memory_kib"] = kArgon2MemoryKib;
+  wrap["iterations"] = 3;
+  wrap["parallelism"] = 1;
+  reg["sync_wrap_params"] = wrap;
 }
 
 } // namespace
@@ -28,6 +40,7 @@ TEST_F(NetApiTestSuite, RegisterAndLoginSuccess) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg);
   auto [st, body] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st, 200u);
   ASSERT_FALSE(JsonString(body, "access_token").empty());
@@ -67,6 +80,7 @@ TEST_F(NetApiTestSuite, SendMessageFlow) {
   reg_a["identity_key_public"] = "ik";
   reg_a["signed_prekey_public"] = "spk";
   reg_a["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg_a);
   auto [r1, b1] = HttpPost("/v1/register", boost::json::serialize(reg_a));
   ASSERT_EQ(r1, 200u);
   std::string uid_a = JsonString(b1, "user_id");
@@ -78,6 +92,7 @@ TEST_F(NetApiTestSuite, SendMessageFlow) {
   reg_b["identity_key_public"] = "ik";
   reg_b["signed_prekey_public"] = "spk";
   reg_b["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg_b);
   auto [r2, b2] = HttpPost("/v1/register", boost::json::serialize(reg_b));
   ASSERT_EQ(r2, 200u);
   std::string tok_b = JsonString(b2, "access_token");
@@ -291,7 +306,7 @@ TEST_F(NetApiTestSuite, GroupCreateAddRemoveMember) {
   (void) abody;
 
   std::string del_path = std::string("/v1/conversations/") + conv_id + "/members/" + u3.user_id;
-  auto [dst, dbody] = HttpDelete(del_path, u1.access_token);
+  auto [dst, dbody] = HttpDelete(del_path, "", u1.access_token);
   ASSERT_EQ(dst, 200u);
   (void) dbody;
 }
@@ -421,6 +436,11 @@ TEST_F(NetApiTestSuite, RegisterDuplicateReturns409) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap;
+  wrap["algorithm"] = "argon2id";
+  reg["sync_wrap_params"] = wrap;
   auto [st1, b1] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st1, 200u);
   reg["device_id"] = "dd2";
@@ -459,11 +479,16 @@ TEST_F(NetApiTestSuite, AdminDeleteUser) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap2;
+  wrap2["algorithm"] = "argon2id";
+  reg["sync_wrap_params"] = wrap2;
   auto [rst, rbody] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(rst, 200u);
   std::string uid = JsonString(rbody, "user_id");
 
-  auto [dst, dbody] = HttpDelete(std::string("/v1/admin/users/") + uid, "", "test-admin-secret");
+  auto [dst, dbody] = HttpDelete(std::string("/v1/admin/users/") + uid, "", "", "test-admin-secret");
   ASSERT_EQ(dst, 200u);
   (void) dbody;
 
@@ -491,6 +516,7 @@ TEST_F(NetApiTestSuite, AsioTcpRegisterAndLoginViaExchange) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg);
   auto [st, body] = AsioHttpExchange("POST", "/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st, 200u);
   ASSERT_FALSE(JsonString(body, "access_token").empty());

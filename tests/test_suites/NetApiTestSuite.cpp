@@ -25,6 +25,7 @@ constexpr std::size_t kStorageQueue = 128;
 constexpr std::size_t kNetThreads = 2;
 constexpr unsigned kHttp11 = 11;
 constexpr unsigned kHttpOk = 200;
+constexpr int kArgon2MemoryKib = 65536;
 
 http::verb ParseHttpMethod(std::string_view m) {
   if (m == "GET") {
@@ -62,6 +63,14 @@ NetApiTestSuite::RegisteredUser NetApiTestSuite::RegisterUser(const std::string&
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  reg["wrapped_sync_key"] = "wsk";
+  reg["sync_wrap_salt"] = "salt";
+  boost::json::object wrap;
+  wrap["algorithm"] = "argon2id";
+  wrap["memory_kib"] = kArgon2MemoryKib;
+  wrap["iterations"] = 3;
+  wrap["parallelism"] = 1;
+  reg["sync_wrap_params"] = wrap;
   auto [st, body] = HttpPost("/v1/register", boost::json::serialize(reg));
   if (st != kHttpOk) {
     throw std::runtime_error(std::string("RegisterUser failed: ") + body);
@@ -97,6 +106,7 @@ void NetApiTestSuite::SetUp() {
   conversations_ = std::make_unique<vox::store::ConversationRepository>(*db_);
   envelopes_ = std::make_unique<vox::store::EnvelopeRepository>(*db_);
   attachments_ = std::make_unique<vox::store::AttachmentRepository>(*db_);
+  sync_state_ = std::make_unique<vox::store::SyncStateRepository>(*db_);
 
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreads, kCpuQueue);
   storage_pool_ = std::make_unique<vox::common::ThreadPool>(kStoragePoolThreads, kStorageQueue);
@@ -124,6 +134,7 @@ void NetApiTestSuite::SetUp() {
     o["sender_device_id"] = q.sender_device_id;
     o["ciphertext"] = q.ciphertext;
     o["server_timestamp"] = q.server_timestamp;
+    o["envelope_type"] = q.envelope_type;
     if (q.ordering_epoch) {
       o["ordering_epoch"] = *q.ordering_epoch;
     }
@@ -140,8 +151,11 @@ void NetApiTestSuite::SetUp() {
       .envelopes = *envelopes_,
       .conversations_store = *conversations_,
       .devices = *devices_,
+      .users = *users_,
+      .sync_state = *sync_state_,
       .attachments = *attachment_service_,
       .admin = *admin_service_,
+      .ws_push = ws_registry_.get(),
   });
 
   ioc_ = std::make_unique<net::io_context>();
@@ -179,6 +193,7 @@ void NetApiTestSuite::TearDown() {
   storage_pool_.reset();
   cpu_pool_.reset();
   attachments_.reset();
+  sync_state_.reset();
   envelopes_.reset();
   conversations_.reset();
   sessions_.reset();
@@ -252,7 +267,9 @@ std::pair<unsigned, std::string> NetApiTestSuite::HttpPut(const std::string& pat
 }
 
 std::pair<unsigned, std::string> NetApiTestSuite::HttpDelete(const std::string& path,
+                                                             const std::string& body,
                                                              const std::string& bearer,
                                                              const std::string& admin_token) {
-  return AsioHttpExchange("DELETE", path, "", bearer, admin_token, {});
+  return AsioHttpExchange(
+      "DELETE", path, body, bearer, admin_token, body.empty() ? std::string{} : std::string{"application/json"});
 }
