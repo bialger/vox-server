@@ -30,6 +30,7 @@ public:
 
 private:
   void CreateSchema();
+  void MigrateLegacySchema();
 
   std::unique_ptr<SQLite::Database> db_;
   std::recursive_mutex connection_mutex_;

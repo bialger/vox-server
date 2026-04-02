@@ -2,6 +2,7 @@
 #define VOX_STORE_DEVICE_REPOSITORY_HPP
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "lib/vox_common/types.hpp"
@@ -17,6 +18,10 @@ struct DeviceRecord {
   std::string signed_prekey_signature;
   std::optional<common::Timestamp> last_prekey_refresh_at;
   int client_protocol_version = 1;
+  std::string device_label;
+  common::Timestamp created_at = 0;
+  common::Timestamp last_seen_at = 0;
+  std::optional<common::Timestamp> revoked_at;
 };
 
 struct PrekeyRecord {
@@ -44,6 +49,18 @@ public:
                                           const std::vector<PrekeyRecord>& prekeys) = 0;
   virtual common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id) = 0;
   virtual common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) = 0;
+
+  virtual common::VoidResult UpdateSignedPrekey(const common::DeviceId& device_id,
+                                               const std::string& signed_prekey_public,
+                                               const std::string& signed_prekey_signature,
+                                               common::Timestamp now) = 0;
+
+  virtual common::VoidResult RevokeDevice(const common::DeviceId& device_id, common::Timestamp now) = 0;
+
+  virtual common::VoidResult UpdateLastSeen(const common::DeviceId& device_id, common::Timestamp now) = 0;
+
+  /// Count one-time prekeys with consumed_at IS NULL for this device.
+  virtual std::size_t CountAvailableOneTimePrekeys(const common::DeviceId& device_id) = 0;
 };
 
 class DeviceRepository : public IDeviceRepository {
@@ -56,6 +73,17 @@ public:
   common::VoidResult StorePrekeys(const common::DeviceId& device_id, const std::vector<PrekeyRecord>& prekeys) override;
   common::Result<PrekeyBundle> GetPrekeyBundle(const common::DeviceId& device_id) override;
   common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) override;
+
+  common::VoidResult UpdateSignedPrekey(const common::DeviceId& device_id,
+                                       const std::string& signed_prekey_public,
+                                       const std::string& signed_prekey_signature,
+                                       common::Timestamp now) override;
+
+  common::VoidResult RevokeDevice(const common::DeviceId& device_id, common::Timestamp now) override;
+
+  common::VoidResult UpdateLastSeen(const common::DeviceId& device_id, common::Timestamp now) override;
+
+  std::size_t CountAvailableOneTimePrekeys(const common::DeviceId& device_id) override;
 
 private:
   /// Caller must hold `db_.WriteLock()` and an active transaction when applicable.

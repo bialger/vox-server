@@ -1,5 +1,7 @@
 #include "lib/vox_store/envelope_repository.hpp"
 
+#include <sstream>
+
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <sqlite3.h>
 
@@ -11,6 +13,48 @@ constexpr int kServerTimestampParam = 5;
 constexpr int kEnvelopeTypeParam = 6;
 constexpr int kRetentionUntilParam = 7;
 constexpr int kOrderingEpochParam = 8;
+
+EnvelopeRecord RowToEnvelope(SQLite::Statement& stmt) {
+  EnvelopeRecord rec;
+  rec.envelope_id = stmt.getColumn("envelope_id").getString();
+  rec.conversation_id = stmt.getColumn("conversation_id").getString();
+  rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
+  rec.ciphertext = stmt.getColumn("ciphertext").getString();
+  rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
+  rec.envelope_type = stmt.getColumn("envelope_type").getInt();
+  if (!stmt.getColumn("retention_until").isNull()) {
+    rec.retention_until = stmt.getColumn("retention_until").getInt64();
+  }
+  if (!stmt.getColumn("ordering_epoch").isNull()) {
+    rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
+  }
+  return rec;
+}
+
+std::string MakeEnvCursor(common::Timestamp ts, const common::EnvelopeId& eid) {
+  std::ostringstream oss;
+  oss << ts << '|' << eid;
+  return oss.str();
+}
+
+bool ParseEnvCursor(const std::string& cursor, common::Timestamp& out_ts, common::EnvelopeId& out_eid) {
+  if (cursor.empty()) {
+    out_ts = 0;
+    out_eid.clear();
+    return true;
+  }
+  const auto pos = cursor.find('|');
+  if (pos == std::string::npos || pos == 0) {
+    return false;
+  }
+  try {
+    out_ts = static_cast<common::Timestamp>(std::stoll(cursor.substr(0, pos)));
+  } catch (...) {
+    return false;
+  }
+  out_eid = cursor.substr(pos + 1);
+  return !out_eid.empty();
+}
 
 } // namespace
 
@@ -80,22 +124,56 @@ std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common
   stmt.bind(1, device_id);
   stmt.bind(2, static_cast<std::int64_t>(limit));
   while (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    result.push_back(std::move(rec));
+    result.push_back(RowToEnvelope(stmt));
   }
   return result;
+}
+
+IEnvelopeRepository::EnvelopePage EnvelopeRepository::GetPendingForDeviceCursored(const common::DeviceId& device_id,
+                                                                                  const std::string& cursor,
+                                                                                  std::size_t limit) {
+  EnvelopePage page;
+  common::Timestamp last_ts = 0;
+  common::EnvelopeId last_eid;
+  if (!cursor.empty()) {
+    if (!ParseEnvCursor(cursor, last_ts, last_eid)) {
+      page.has_more = false;
+      return page;
+    }
+  }
+
+  auto lock = db_.ReadLock();
+  std::string sql =
+      "SELECT e.* FROM encrypted_envelopes e "
+      "JOIN delivery_state d ON e.envelope_id = d.envelope_id "
+      "WHERE d.target_device_id = ? AND d.delivered_at IS NULL AND d.acked_at IS NULL ";
+  if (!cursor.empty()) {
+    sql += "AND ((e.server_timestamp > ?) OR (e.server_timestamp = ? AND e.envelope_id > ?)) ";
+  }
+  sql += "ORDER BY e.server_timestamp ASC, e.envelope_id ASC LIMIT ?";
+
+  SQLite::Statement stmt(db_.Connection(), sql);
+  int bi = 1;
+  stmt.bind(bi++, device_id);
+  if (!cursor.empty()) {
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_eid);
+  }
+  stmt.bind(bi++, static_cast<std::int64_t>(limit + 1));
+
+  while (stmt.executeStep()) {
+    page.envelopes.push_back(RowToEnvelope(stmt));
+  }
+  if (page.envelopes.size() > limit) {
+    page.has_more = true;
+    page.envelopes.pop_back();
+  }
+  if (!page.envelopes.empty()) {
+    const auto& last = page.envelopes.back();
+    page.next_cursor = MakeEnvCursor(last.server_timestamp, last.envelope_id);
+  }
+  return page;
 }
 
 std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common::ConversationId& conversation_id,
@@ -110,22 +188,50 @@ std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common
   stmt.bind(2, since_exclusive);
   stmt.bind(3, static_cast<std::int64_t>(limit));
   while (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    result.push_back(std::move(rec));
+    result.push_back(RowToEnvelope(stmt));
   }
   return result;
+}
+
+IEnvelopeRepository::EnvelopePage EnvelopeRepository::ListForConversationCursored(
+    const common::ConversationId& conversation_id, const std::string& cursor, std::size_t limit) {
+  EnvelopePage page;
+  common::Timestamp last_ts = 0;
+  common::EnvelopeId last_eid;
+  if (!cursor.empty() && !ParseEnvCursor(cursor, last_ts, last_eid)) {
+    page.has_more = false;
+    return page;
+  }
+
+  auto lock = db_.ReadLock();
+  std::string sql = "SELECT * FROM encrypted_envelopes WHERE conversation_id = ? ";
+  if (!cursor.empty()) {
+    sql += "AND ((server_timestamp > ?) OR (server_timestamp = ? AND envelope_id > ?)) ";
+  }
+  sql += "ORDER BY server_timestamp ASC, envelope_id ASC LIMIT ?";
+
+  SQLite::Statement stmt(db_.Connection(), sql);
+  int bi = 1;
+  stmt.bind(bi++, conversation_id);
+  if (!cursor.empty()) {
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_eid);
+  }
+  stmt.bind(bi++, static_cast<std::int64_t>(limit + 1));
+
+  while (stmt.executeStep()) {
+    page.envelopes.push_back(RowToEnvelope(stmt));
+  }
+  if (page.envelopes.size() > limit) {
+    page.has_more = true;
+    page.envelopes.pop_back();
+  }
+  if (!page.envelopes.empty()) {
+    const auto& last = page.envelopes.back();
+    page.next_cursor = MakeEnvCursor(last.server_timestamp, last.envelope_id);
+  }
+  return page;
 }
 
 common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& envelope_id,
@@ -210,20 +316,7 @@ std::optional<EnvelopeRecord> EnvelopeRepository::FindById(const common::Envelop
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM encrypted_envelopes WHERE envelope_id = ?");
   stmt.bind(1, envelope_id);
   if (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    return rec;
+    return RowToEnvelope(stmt);
   }
   return std::nullopt;
 }

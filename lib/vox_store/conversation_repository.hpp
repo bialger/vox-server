@@ -1,6 +1,7 @@
 #ifndef VOX_STORE_CONVERSATION_REPOSITORY_HPP
 #define VOX_STORE_CONVERSATION_REPOSITORY_HPP
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -16,6 +17,7 @@ struct ConversationRecord {
   common::UserId created_by;
   common::Timestamp created_at;
   std::string policy_blob;
+  std::int64_t membership_version = 0;
 };
 
 struct MemberRecord {

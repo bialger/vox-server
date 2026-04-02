@@ -30,6 +30,7 @@ public:
   virtual common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) = 0;
   virtual common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) = 0;
   virtual common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) = 0;
+  virtual common::VoidResult RevokeAllForDevice(const common::DeviceId& device_id, common::Timestamp now) = 0;
 };
 
 class TokenManager : public ITokenManager {
@@ -53,6 +54,7 @@ public:
   common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) override;
   common::VoidResult RevokeByAccessToken(const std::string& access_token, common::Timestamp now) override;
   common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) override;
+  common::VoidResult RevokeAllForDevice(const common::DeviceId& device_id, common::Timestamp now) override;
 
   [[nodiscard]] std::string HashToken(const std::string& token) const;
 

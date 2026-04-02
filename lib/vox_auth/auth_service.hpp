@@ -17,30 +17,55 @@ struct RegisterRequest {
   std::string username;
   std::string password_derived_value;
   std::string device_id;
+  std::string device_label;
   std::string identity_key_public;
   std::string signed_prekey_public;
   std::string signed_prekey_signature;
+  std::string wrapped_sync_key;
+  std::string sync_wrap_salt;
+  /// JSON object serialized as string (opaque to server).
+  std::string sync_wrap_params;
 };
 
 struct RegisterResponse {
   common::UserId user_id;
   TokenPair tokens;
+  std::string device_status;
+  int sync_key_version = 1;
 };
 
 struct LoginRequest {
   std::string username;
   std::string password_derived_value;
   std::string device_id;
+  std::string device_label;
+  std::string identity_key_public;
+  std::string signed_prekey_public;
+  std::string signed_prekey_signature;
 };
 
 struct LoginResponse {
   common::UserId user_id;
   TokenPair tokens;
+  std::string device_status;
+  int sync_key_version = 1;
 };
 
 struct RefreshRequest {
   std::string refresh_token;
   std::string device_id;
+};
+
+struct ChangePasswordRequest {
+  std::string current_password_derived_value;
+  std::string new_password_derived_value;
+  std::string wrapped_sync_key;
+  std::string sync_wrap_salt;
+  std::string sync_wrap_params;
+};
+
+struct ChangePasswordResponse {
+  int sync_key_version = 1;
 };
 
 class IAuthService {
@@ -51,6 +76,8 @@ public:
   virtual common::VoidResult Logout(const std::string& session_id) = 0;
   virtual common::VoidResult LogoutWithAccessToken(const std::string& access_token) = 0;
   virtual common::Result<TokenPair> Refresh(const RefreshRequest& request) = 0;
+  virtual common::Result<ChangePasswordResponse> ChangePassword(const common::UserId& user_id,
+                                                               const ChangePasswordRequest& request) = 0;
 };
 
 class AuthService : public IAuthService {
@@ -66,6 +93,8 @@ public:
   common::VoidResult Logout(const std::string& session_id) override;
   common::VoidResult LogoutWithAccessToken(const std::string& access_token) override;
   common::Result<TokenPair> Refresh(const RefreshRequest& request) override;
+  common::Result<ChangePasswordResponse> ChangePassword(const common::UserId& user_id,
+                                                         const ChangePasswordRequest& request) override;
 
 private:
   common::Timestamp Now();

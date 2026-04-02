@@ -40,10 +40,20 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   }
 
   if (conv->type == common::ConversationType::kChannel) {
-    auto member = conversations_.GetMember(request.conversation_id, sender_device->user_id);
-    if (!member || (member->role != common::MemberRole::kOwner && member->role != common::MemberRole::kAdmin)) {
-      return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden,
-                                           .message = "Only admins/owners can publish to channels"});
+    if (!conversations_.IsUserInConversation(request.conversation_id, sender_device->user_id)) {
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kForbidden, .message = "Not subscribed to channel"});
+    }
+    bool admins_only = true;
+    if (conv->policy_blob.find(R"("channel_post_policy":"everyone")") != std::string::npos) {
+      admins_only = false;
+    }
+    if (admins_only) {
+      auto member = conversations_.GetMember(request.conversation_id, sender_device->user_id);
+      if (!member || (member->role != common::MemberRole::kOwner && member->role != common::MemberRole::kAdmin)) {
+        return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden,
+                                             .message = "Only admins/owners can publish to this channel"});
+      }
     }
   }
 
@@ -88,12 +98,16 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   queued.sender_device_id = request.sender_device_id;
   queued.ciphertext = request.ciphertext;
   queued.server_timestamp = now;
+  queued.envelope_type = request.envelope_type;
   queued.ordering_epoch = request.ordering_epoch;
 
   std::size_t delivered_count = 0;
   for (const auto& uid : target_users) {
     auto user_devices = devices_.GetDevicesForUser(uid);
     for (const auto& dev : user_devices) {
+      if (dev.revoked_at.has_value()) {
+        continue;
+      }
       if (dev.device_id == request.sender_device_id) {
         continue;
       }

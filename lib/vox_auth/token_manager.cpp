@@ -104,4 +104,8 @@ common::VoidResult TokenManager::RevokeAllForUser(const common::UserId& user_id,
   return sessions_.RevokeAllForUser(user_id, now);
 }
 
+common::VoidResult TokenManager::RevokeAllForDevice(const common::DeviceId& device_id, common::Timestamp now) {
+  return sessions_.RevokeAllForDevice(device_id, now);
+}
+
 } // namespace vox::auth

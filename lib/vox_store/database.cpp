@@ -36,7 +36,11 @@ void Database::CreateSchema() {
       password_salt TEXT NOT NULL,
       password_verifier TEXT NOT NULL,
       created_at    INTEGER NOT NULL,
-      disabled_at   INTEGER
+      disabled_at   INTEGER,
+      sync_key_version INTEGER NOT NULL DEFAULT 0,
+      wrapped_sync_key TEXT NOT NULL DEFAULT '',
+      sync_wrap_salt TEXT NOT NULL DEFAULT '',
+      sync_wrap_params TEXT NOT NULL DEFAULT ''
     )
   )SQL");
 
@@ -48,7 +52,11 @@ void Database::CreateSchema() {
       signed_prekey_public   TEXT,
       signed_prekey_signature TEXT,
       last_prekey_refresh_at INTEGER,
-      client_protocol_version INTEGER DEFAULT 1
+      client_protocol_version INTEGER DEFAULT 1,
+      device_label           TEXT NOT NULL DEFAULT '',
+      created_at             INTEGER NOT NULL DEFAULT 0,
+      last_seen_at           INTEGER NOT NULL DEFAULT 0,
+      revoked_at             INTEGER
     )
   )SQL");
 
@@ -81,7 +89,8 @@ void Database::CreateSchema() {
       type            INTEGER NOT NULL,
       created_by      TEXT NOT NULL REFERENCES users(user_id),
       created_at      INTEGER NOT NULL,
-      policy_blob     TEXT
+      policy_blob     TEXT,
+      membership_version INTEGER NOT NULL DEFAULT 0
     )
   )SQL");
 
@@ -153,6 +162,52 @@ void Database::CreateSchema() {
       retention_until   INTEGER
     )
   )SQL");
+
+  db_->exec(R"SQL(
+    CREATE TABLE IF NOT EXISTS sync_records (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id           TEXT NOT NULL REFERENCES users(user_id),
+      collection        TEXT NOT NULL,
+      record_id         TEXT NOT NULL,
+      ciphertext        TEXT NOT NULL,
+      content_hash      TEXT NOT NULL,
+      version           INTEGER NOT NULL,
+      deleted           INTEGER NOT NULL DEFAULT 0,
+      server_updated_at INTEGER NOT NULL,
+      UNIQUE(user_id, collection, record_id)
+    )
+  )SQL");
+
+  db_->exec(
+      "CREATE INDEX IF NOT EXISTS idx_sync_records_user_coll_time ON sync_records (user_id, collection, "
+      "server_updated_at, id)");
+
+  MigrateLegacySchema();
+}
+
+void Database::MigrateLegacySchema() {
+  auto try_exec = [this](const char* sql) {
+    try {
+      db_->exec(sql);
+    } catch (const SQLite::Exception& e) {
+      const char* msg = e.what();
+      if (msg == nullptr || std::strstr(msg, "duplicate") == nullptr) {
+        throw;
+      }
+    }
+  };
+
+  try_exec("ALTER TABLE users ADD COLUMN sync_key_version INTEGER NOT NULL DEFAULT 0");
+  try_exec("ALTER TABLE users ADD COLUMN wrapped_sync_key TEXT NOT NULL DEFAULT ''");
+  try_exec("ALTER TABLE users ADD COLUMN sync_wrap_salt TEXT NOT NULL DEFAULT ''");
+  try_exec("ALTER TABLE users ADD COLUMN sync_wrap_params TEXT NOT NULL DEFAULT ''");
+
+  try_exec("ALTER TABLE devices ADD COLUMN device_label TEXT NOT NULL DEFAULT ''");
+  try_exec("ALTER TABLE devices ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0");
+  try_exec("ALTER TABLE devices ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0");
+  try_exec("ALTER TABLE devices ADD COLUMN revoked_at INTEGER");
+
+  try_exec("ALTER TABLE conversations ADD COLUMN membership_version INTEGER NOT NULL DEFAULT 0");
 }
 
 } // namespace vox::store

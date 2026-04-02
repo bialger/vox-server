@@ -21,6 +21,7 @@ struct QueuedEnvelope {
   common::DeviceId sender_device_id;
   std::string ciphertext;
   common::Timestamp server_timestamp;
+  int envelope_type = 0;
   std::optional<std::int64_t> ordering_epoch;
 };
 

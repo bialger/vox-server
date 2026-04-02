@@ -158,6 +158,7 @@ common::Result<common::ConversationId> ConversationService::CreateChannel(
   conv.type = common::ConversationType::kChannel;
   conv.created_by = created_by;
   conv.created_at = now;
+  conv.policy_blob = R"({"title":"","channel_post_policy":"admins_only"})";
 
   auto cr = conversations_.CreateConversation(conv);
   if (!cr) {

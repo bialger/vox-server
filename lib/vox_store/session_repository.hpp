@@ -29,6 +29,7 @@ public:
   virtual std::optional<SessionRecord> FindByRefreshToken(const std::string& refresh_token_hash) = 0;
   virtual common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) = 0;
   virtual common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) = 0;
+  virtual common::VoidResult RevokeAllForDevice(const common::DeviceId& device_id, common::Timestamp now) = 0;
   virtual int CleanExpired(common::Timestamp now) = 0;
   virtual std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now) = 0;
 };
@@ -42,6 +43,7 @@ public:
   std::optional<SessionRecord> FindByRefreshToken(const std::string& refresh_token_hash) override;
   common::VoidResult RevokeSession(const std::string& session_id, common::Timestamp now) override;
   common::VoidResult RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) override;
+  common::VoidResult RevokeAllForDevice(const common::DeviceId& device_id, common::Timestamp now) override;
   int CleanExpired(common::Timestamp now) override;
   std::size_t CountActiveForUser(const common::UserId& user_id, common::Timestamp now) override;
 

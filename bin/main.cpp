@@ -40,6 +40,7 @@
 #include "lib/vox_store/device_repository.hpp"
 #include "lib/vox_store/envelope_repository.hpp"
 #include "lib/vox_store/session_repository.hpp"
+#include "lib/vox_store/sync_state_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 namespace net = boost::asio;
@@ -151,6 +152,7 @@ int main(int argc, char** argv) {
     vox::store::ConversationRepository conversations(db);
     vox::store::EnvelopeRepository envelopes(db);
     vox::store::AttachmentRepository attachments(db);
+    vox::store::SyncStateRepository sync_state(db);
 
     vox::common::ThreadPool cpu_pool(config.cpu_pool_size, config.task_queue_capacity);
     vox::common::ThreadPool storage_pool(config.storage_pool_size, config.task_queue_capacity);
@@ -179,20 +181,6 @@ int main(int argc, char** argv) {
     }
 
     vox::net::WsPushRegistry ws_registry;
-    delivery.SetEnqueueHook(
-        [&ws_registry](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
-          boost::json::object o;
-          o["type"] = "envelope";
-          o["envelope_id"] = q.envelope_id;
-          o["conversation_id"] = q.conversation_id;
-          o["sender_device_id"] = q.sender_device_id;
-          o["ciphertext"] = q.ciphertext;
-          o["server_timestamp"] = q.server_timestamp;
-          if (q.ordering_epoch) {
-            o["ordering_epoch"] = *q.ordering_epoch;
-          }
-          ws_registry.Notify(device_id, boost::json::serialize(o));
-        });
 
     vox::net::ServerContext ctx{.config = config,
                                 .auth = auth,
@@ -203,12 +191,31 @@ int main(int argc, char** argv) {
                                 .envelopes = envelopes,
                                 .conversations_store = conversations,
                                 .devices = devices,
+                                .users = users,
+                                .sync_state = sync_state,
                                 .attachments = attachment_service,
                                 .admin = admin_service,
                                 .auth_rate_limiter = auth_rate_limiter.get(),
                                 .account_rate_limiter = account_rate_limiter.get(),
+                                .ws_push = &ws_registry,
                                 .ioc_for_dispatch = nullptr,
                                 .storage_pool = nullptr};
+
+    delivery.SetEnqueueHook(
+        [&ws_registry](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
+          boost::json::object o;
+          o["type"] = "envelope";
+          o["envelope_id"] = q.envelope_id;
+          o["conversation_id"] = q.conversation_id;
+          o["sender_device_id"] = q.sender_device_id;
+          o["ciphertext"] = q.ciphertext;
+          o["server_timestamp"] = q.server_timestamp;
+          o["envelope_type"] = q.envelope_type;
+          if (q.ordering_epoch) {
+            o["ordering_epoch"] = *q.ordering_epoch;
+          }
+          ws_registry.Notify(device_id, boost::json::serialize(o));
+        });
 
     net::io_context ioc;
     ctx.ioc_for_dispatch = &ioc;

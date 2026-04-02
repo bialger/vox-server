@@ -41,11 +41,27 @@ public:
   virtual std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id,
                                                           std::size_t limit = 100) = 0;
 
+  struct EnvelopePage {
+    std::vector<EnvelopeRecord> envelopes;
+    std::string next_cursor;
+    bool has_more = false;
+  };
+
+  /// Cursor format: `server_timestamp|envelope_id` of the last row from the previous page; empty for first page.
+  virtual EnvelopePage GetPendingForDeviceCursored(const common::DeviceId& device_id,
+                                                   const std::string& cursor,
+                                                   std::size_t limit) = 0;
+
   /// Returns envelopes in `conversation_id` with server_timestamp strictly greater than `since_exclusive`.
   /// Pass `since_exclusive == 0` to start from the first stored message (all timestamps are expected positive).
   virtual std::vector<EnvelopeRecord> ListForConversation(const common::ConversationId& conversation_id,
                                                           common::Timestamp since_exclusive,
                                                           std::size_t limit) = 0;
+
+  /// Cursor format: `server_timestamp|envelope_id`; empty for first page. Ordered by server_timestamp, envelope_id.
+  virtual EnvelopePage ListForConversationCursored(const common::ConversationId& conversation_id,
+                                                   const std::string& cursor,
+                                                   std::size_t limit) = 0;
   virtual common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
                                            const common::DeviceId& device_id,
                                            common::Timestamp now) = 0;
@@ -71,9 +87,17 @@ public:
                                       common::Timestamp now) override;
   std::vector<EnvelopeRecord> GetPendingForDevice(const common::DeviceId& device_id, std::size_t limit = 100) override;
 
+  EnvelopePage GetPendingForDeviceCursored(const common::DeviceId& device_id,
+                                           const std::string& cursor,
+                                           std::size_t limit) override;
+
   std::vector<EnvelopeRecord> ListForConversation(const common::ConversationId& conversation_id,
                                                   common::Timestamp since_exclusive,
                                                   std::size_t limit) override;
+
+  EnvelopePage ListForConversationCursored(const common::ConversationId& conversation_id,
+                                             const std::string& cursor,
+                                             std::size_t limit) override;
   common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
                                    const common::DeviceId& device_id,
                                    common::Timestamp now) override;
