@@ -109,6 +109,21 @@ void SetProfileField(boost::json::object& o,
   }
 }
 
+std::optional<vox::common::UserId> DmPeerUserId(const std::vector<vox::store::MemberRecord>& members,
+                                                const vox::common::UserId& self_user_id) {
+  for (const auto& member : members) {
+    if (member.user_id != self_user_id) {
+      return member.user_id;
+    }
+  }
+  for (const auto& member : members) {
+    if (member.user_id == self_user_id) {
+      return member.user_id;
+    }
+  }
+  return std::nullopt;
+}
+
 common::Timestamp NowSeconds() {
   return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
@@ -1113,6 +1128,14 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         }
         out["created_at"] = conv->created_at;
         out["membership_version"] = conv->membership_version;
+        if (conv->type == common::ConversationType::kDm) {
+          const auto members = ctx.conversations_store.GetMembers(*conv_only);
+          if (const auto peer = DmPeerUserId(members, sess.user_id)) {
+            out["peer_user_id"] = *peer;
+          } else {
+            out["peer_user_id"] = nullptr;
+          }
+        }
         if (conv->type == common::ConversationType::kChannel) {
           if (pol.contains("title")) {
             out["title"] = pol.at("title");
@@ -1349,6 +1372,14 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           SetProfileField(co, creator_names, c.created_by, "created_by_username");
           co["created_at"] = c.created_at;
           co["membership_version"] = c.membership_version;
+          if (c.type == common::ConversationType::kDm) {
+            const auto members = ctx.conversations_store.GetMembers(c.conversation_id);
+            if (const auto peer = DmPeerUserId(members, sess.user_id)) {
+              co["peer_user_id"] = *peer;
+            } else {
+              co["peer_user_id"] = nullptr;
+            }
+          }
           if (c.last_activity_at) {
             co["last_activity_at"] = *c.last_activity_at;
           } else {

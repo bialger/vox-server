@@ -1190,6 +1190,7 @@ Each element of `conversations`:
 | `type`               | integer         | `0` DM, `1` group, `2` channel |
 | `created_by`         | string          | User id     |
 | `created_by_username` | string or null | Canonical username for `created_by` (non-disabled); `null` if not available |
+| `peer_user_id`       | string          | Present only for DM (`type = 0`): counterpart user id relative to caller; for self-DM equals caller `user_id` |
 | `created_at`         | integer         | Unix seconds (conversation created) |
 | `membership_version` | integer         | Bumps on membership changes |
 | `last_activity_at`   | integer or null | Unix seconds of the latest stored envelope in this conversation (`MAX(server_timestamp)`); `null` if there are no envelopes yet |
@@ -1204,6 +1205,7 @@ Each element of `conversations`:
       "type": 0,
       "created_by": "usr_alice",
       "created_by_username": "alice",
+      "peer_user_id": "usr_bob",
       "created_at": 1710000000,
       "membership_version": 3,
       "last_activity_at": 1710000123
@@ -1240,6 +1242,7 @@ Common fields:
 | `type`               | integer | `0` DM, `1` group, `2` channel |
 | `created_by`         | string  |             |
 | `created_by_username` | string or null | Canonical username for `created_by` |
+| `peer_user_id`       | string  | Present only for DM (`type = 0`): counterpart user id relative to caller; for self-DM equals caller `user_id` |
 | `created_at`         | integer | Unix seconds |
 | `membership_version` | integer |             |
 | `my_role`            | string  | `"owner"`, `"admin"`, or `"member"` |
@@ -1251,7 +1254,8 @@ Additional fields for **channel** (`type == 2`) only:
 | `title`                 | string | Channel title (may be empty) |
 | `channel_post_policy`   | string | e.g. `admins_only` or policy serialized by server |
 
-**200 (DM or group)** — `title` and `channel_post_policy` are **not** returned; only `my_role` among the extra fields below.
+**200 (DM or group)** — `title` and `channel_post_policy` are **not** returned; only `my_role` among the extra fields below.  
+For DM (`type = 0`) `peer_user_id` is included; for group (`type = 1`) it is omitted.
 
 ```json
 {

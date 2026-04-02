@@ -206,6 +206,8 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesCreatedByUsername) {
     const auto& o = item.as_object();
     if (o.at("conversation_id").as_string() == conv_id) {
       ASSERT_EQ(o.at("created_by_username").as_string(), "lst_b");
+      ASSERT_TRUE(o.contains("peer_user_id"));
+      ASSERT_EQ(o.at("peer_user_id").as_string(), a.user_id);
       found = true;
       break;
     }
@@ -226,6 +228,36 @@ TEST_F(NetApiTestSuite, GetConversationIncludesCreatedByUsername) {
   ASSERT_EQ(gst, 200u);
   auto o = ParseObj(gbody);
   ASSERT_EQ(o["created_by_username"].as_string(), "gone_b");
+  ASSERT_TRUE(o.contains("peer_user_id"));
+  ASSERT_EQ(o["peer_user_id"].as_string(), a.user_id);
+}
+
+TEST_F(NetApiTestSuite, ListConversationsOmitsPeerUserIdForGroup) {
+  auto a = RegisterUser("grp_l_a", "grp_lda");
+  auto b = RegisterUser("grp_l_b", "grp_ldb");
+  boost::json::object conv;
+  conv["type"] = "group";
+  boost::json::array members;
+  members.emplace_back(a.user_id);
+  members.emplace_back(b.user_id);
+  conv["members"] = members;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), a.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+
+  auto [gst, gbody] = HttpGet("/v1/conversations", a.access_token);
+  ASSERT_EQ(gst, 200u);
+  bool found = false;
+  auto list_root = ParseObj(gbody);
+  for (const auto& item : list_root["conversations"].as_array()) {
+    const auto& o = item.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_FALSE(o.contains("peer_user_id"));
+      found = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found);
 }
 
 TEST_F(NetApiTestSuite, LogoutRevokesBearer) {
@@ -691,6 +723,11 @@ TEST_F(NetApiTestSuite, SelfDmCreateAndSendMessage) {
   auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), u.access_token);
   ASSERT_EQ(cst, 200u);
   std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet(std::string("/v1/conversations/") + conv_id, u.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto conv_obj = ParseObj(gbody);
+  ASSERT_TRUE(conv_obj.contains("peer_user_id"));
+  ASSERT_EQ(conv_obj["peer_user_id"].as_string(), u.user_id);
 
   boost::json::object send;
   send["device_id"] = "dev_self";
