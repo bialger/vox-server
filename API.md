@@ -216,9 +216,10 @@ Authenticate a user and bind the session to a device.
 
 **Behavior**
 
-- If `device_id` already exists for that account, the server opens a session for the existing device.
-- If `device_id` is new **and** the device public-key fields are present, the server creates a new device and opens a session for it.
-- If `device_id` is new and the public-key fields are missing, return **400**.
+- Device rows are keyed by **`(user_id, device_id)`**. The same `device_id` string may be registered independently for different accounts (e.g. several users on one physical device). Uniqueness is per user, not globally.
+- If `device_id` already exists **for this user**, the server opens a session for the existing device.
+- If `device_id` is new **for this user** **and** the device public-key fields are present, the server creates a new device and opens a session for it.
+- If `device_id` is new for this user and the public-key fields are missing, return **400**.
 
 **200**
 
@@ -677,9 +678,30 @@ This is the preferred endpoint for multi-device DM bootstrap.
 
 ## Device key publication and rotation
 
-### `POST /v1/devices/{device_id}/prekeys`
+Device endpoints are scoped by **`user_id` + `device_id`**. The preferred path form is:
+
+`/v1/users/{user_id}/devices/{device_id}/…`
+
+Legacy paths `/v1/devices/{device_id}/…` still work when the client targets **its own** session device (same `device_id` as the Bearer session). For fetching another user’s prekey bundle, use the user-scoped URL below, or the legacy URL only when that `device_id` is unambiguous on the server.
+
+### `POST /v1/users/{user_id}/devices/{device_id}/prekeys`
 
 Upload one-time prekeys for the authenticated device.
+
+**Path parameters**
+
+| Name        | Type   | Description |
+| ----------- | ------ | ----------- |
+| `user_id`   | string | Must equal session `user_id` |
+| `device_id` | string | Must equal session `device_id` |
+
+Same request body as `POST /v1/devices/{device_id}/prekeys`.
+
+---
+
+### `POST /v1/devices/{device_id}/prekeys`
+
+Upload one-time prekeys for the authenticated device (legacy; same as above with `user_id` implied by the session).
 
 **Path parameters**
 
@@ -725,6 +747,14 @@ The path `device_id` must equal the session's device id.
 
 ---
 
+### `PUT /v1/users/{user_id}/devices/{device_id}/signed-prekey`
+
+Rotate the signed prekey for the authenticated device. Path `user_id` and `device_id` must match the session.
+
+Same body as `PUT /v1/devices/{device_id}/signed-prekey`.
+
+---
+
 ### `PUT /v1/devices/{device_id}/signed-prekey`
 
 Rotate the signed prekey for the authenticated device.
@@ -763,6 +793,31 @@ The path `device_id` must equal the session's device id.
 
 ---
 
+### `GET /v1/users/{user_id}/devices/{device_id}/prekey-bundle`
+
+Fetch the public bundle for a specific device row (**preferred**).
+
+**Path parameters**
+
+| Name        | Type   | Description |
+| ----------- | ------ | ----------- |
+| `user_id`   | string | Owner of the device |
+| `device_id` | string | Client device id |
+
+**Response `200`** (`application/json`)
+
+| Field                      | Type   | Required | Description |
+| -------------------------- | ------ | -------- | ----------- |
+| `user_id`                  | string | yes      | Same as path |
+| `device_id`                | string | yes      |             |
+| `identity_key_public`      | string | yes      |             |
+| `signed_prekey_public`     | string | yes      |             |
+| `signed_prekey_signature`  | string | yes      |             |
+| `one_time_prekey_public`   | string | no       |             |
+| `one_time_prekey_id`       | string | no       |             |
+
+---
+
 ### `GET /v1/devices/{device_id}/prekey-bundle`
 
 Fetch the public bundle for one device.
@@ -773,10 +828,13 @@ Fetch the public bundle for one device.
 | ----------- | ------ | ----------- |
 | `device_id` | string | Target device id |
 
+If more than one account has registered the same `device_id` string, returns **400** with a message to use `GET /v1/users/{user_id}/devices/{device_id}/prekey-bundle`.
+
 **Response `200`** (`application/json`)
 
 | Field                      | Type   | Required | Description |
 | -------------------------- | ------ | -------- | ----------- |
+| `user_id`                  | string | yes      | Owner of the device row |
 | `device_id`                | string | yes      |             |
 | `identity_key_public`      | string | yes      |             |
 | `signed_prekey_public`     | string | yes      |             |
@@ -788,6 +846,7 @@ Fetch the public bundle for one device.
 
 ```json
 {
+  "user_id": "usr_bob",
   "device_id": "dev_phone",
   "identity_key_public": "...",
   "signed_prekey_public": "...",
@@ -797,7 +856,7 @@ Fetch the public bundle for one device.
 }
 ```
 
-This route is useful when the client already knows the exact target device id.
+This route is useful when the client already knows the exact target device id and it is unique for that string on the server.
 
 ---
 
@@ -1294,7 +1353,7 @@ Create a conversation.
 
 | `type` value | Fields | Description |
 | ------------ | ------ | ----------- |
-| `"dm"`       | `peer_user_id` (string) | Other user id for 1:1 |
+| `"dm"`       | `peer_user_id` (string) | Other user id for 1:1; may equal the caller’s `user_id` to create a **self DM** (notes / messages to yourself) |
 | `"group"`    | `members` (array of user id strings) | Initial members besides creator |
 | `"channel"`  | `admins`, `subscribers` (arrays of user id strings, optional) | Channel admins and subscribers |
 
@@ -1306,6 +1365,17 @@ Create a conversation.
   "peer_user_id": "usr_bob"
 }
 ```
+
+**Self DM** — set `peer_user_id` to **your own** `user_id` (here the session user is `usr_alice`):
+
+```json
+{
+  "type": "dm",
+  "peer_user_id": "usr_alice"
+}
+```
+
+The resulting DM has a single member (you). Use it like a notes / saved-messages thread.
 
 **Group**
 
@@ -1443,6 +1513,8 @@ Unsubscribe the current user from a channel.
 
 Send an encrypted envelope to a conversation.
 
+The **sender** is always the authenticated session: the server stores `sender_user_id` and `sender_device_id` from the Bearer session (not from extra body fields).
+
 **Request body** (`application/json`)
 
 | Field            | Type    | Required | Description |
@@ -1544,6 +1616,7 @@ Each element of `envelopes`:
 | ------------------- | ------- | ----------- |
 | `envelope_id`       | string  |             |
 | `conversation_id`   | string  |             |
+| `sender_user_id`    | string  | Account that sent the envelope |
 | `sender_device_id`  | string  |             |
 | `ciphertext`        | string  |             |
 | `server_timestamp`  | integer |             |
@@ -1558,6 +1631,7 @@ Each element of `envelopes`:
     {
       "envelope_id": "env_123",
       "conversation_id": "conv_1",
+      "sender_user_id": "usr_bob",
       "sender_device_id": "dev_remote",
       "ciphertext": "...",
       "server_timestamp": 1710004000,
@@ -1611,6 +1685,7 @@ Prefer **cursor** pagination. If **`cursor` is omitted** and **`since`** is set,
     {
       "envelope_id": "env_120",
       "conversation_id": "conv_1",
+      "sender_user_id": "usr_bob",
       "sender_device_id": "dev_remote",
       "ciphertext": "...",
       "server_timestamp": 1710003000,
@@ -1802,6 +1877,7 @@ Each message is one JSON object per line (text frame). **`type`** discriminates 
 | `type`              | string  | `"envelope"` |
 | `envelope_id`       | string  |             |
 | `conversation_id`   | string  |             |
+| `sender_user_id`    | string  |             |
 | `sender_device_id`  | string  |             |
 | `ciphertext`        | string  |             |
 | `server_timestamp`  | integer | Unix seconds |
@@ -1813,6 +1889,7 @@ Each message is one JSON object per line (text frame). **`type`** discriminates 
   "type": "envelope",
   "envelope_id": "env_123",
   "conversation_id": "conv_1",
+  "sender_user_id": "usr_bob",
   "sender_device_id": "dev_remote",
   "ciphertext": "...",
   "server_timestamp": 1710004000,
