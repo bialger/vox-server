@@ -1216,6 +1216,11 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           co["created_by"] = c.created_by;
           co["created_at"] = c.created_at;
           co["membership_version"] = c.membership_version;
+          if (c.last_activity_at) {
+            co["last_activity_at"] = *c.last_activity_at;
+          } else {
+            co["last_activity_at"] = nullptr;
+          }
           arr.push_back(co);
         }
         boost::json::object out;

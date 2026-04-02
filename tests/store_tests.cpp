@@ -231,6 +231,39 @@ TEST_F(StoreTestSuite, CreateConversationAndAddMembers) {
   ASSERT_TRUE(conversations_->IsUserInConversation(conv.conversation_id, bob.user_id));
 }
 
+TEST_F(StoreTestSuite, GetConversationsForUserLastActivityFromEnvelopes) {
+  auto user = MakeUser("last_act_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "last_act_dev");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  vox::store::ConversationRecord conv;
+  conv.conversation_id = vox::common::GenerateUuid();
+  conv.type = vox::common::ConversationType::kDm;
+  conv.created_by = user.user_id;
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, user.user_id, vox::common::MemberRole::kOwner, kTestBaseTimestamp));
+
+  auto list0 = conversations_->GetConversationsForUser(user.user_id);
+  ASSERT_EQ(list0.size(), 1u);
+  ASSERT_FALSE(list0[0].last_activity_at.has_value());
+
+  vox::store::EnvelopeRecord env;
+  env.envelope_id = vox::common::GenerateUuid();
+  env.conversation_id = conv.conversation_id;
+  env.sender_user_id = user.user_id;
+  env.sender_device_id = "last_act_dev";
+  env.ciphertext = "x";
+  env.server_timestamp = kTestTimestampOffset1 + 1;
+  ASSERT_TRUE(envelopes_->StoreEnvelope(env));
+
+  auto list1 = conversations_->GetConversationsForUser(user.user_id);
+  ASSERT_EQ(list1.size(), 1u);
+  ASSERT_EQ(list1[0].last_activity_at, std::optional<vox::common::Timestamp>(env.server_timestamp));
+}
+
 TEST_F(StoreTestSuite, RemoveMemberTwiceIsIdempotent) {
   auto user = MakeUser("remove_test");
   ASSERT_TRUE(users_->CreateUser(user));

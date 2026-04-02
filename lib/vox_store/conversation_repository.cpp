@@ -130,10 +130,14 @@ std::vector<MemberRecord> ConversationRepository::GetMembers(const common::Conve
 std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(const common::UserId& user_id) {
   auto lock = db_.ReadLock();
   std::vector<ConversationRecord> result;
-  SQLite::Statement stmt(db_.Connection(),
-                         "SELECT c.* FROM conversations c "
-                         "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
-                         "WHERE m.user_id = ? AND m.removed_at IS NULL");
+  SQLite::Statement stmt(
+      db_.Connection(),
+      "SELECT c.*, "
+      "(SELECT MAX(e.server_timestamp) FROM encrypted_envelopes e WHERE e.conversation_id = c.conversation_id) "
+      "AS last_activity_at "
+      "FROM conversations c "
+      "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
+      "WHERE m.user_id = ? AND m.removed_at IS NULL");
   stmt.bind(1, user_id);
   while (stmt.executeStep()) {
     ConversationRecord rec;
@@ -143,6 +147,9 @@ std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(
     rec.created_at = stmt.getColumn("created_at").getInt64();
     rec.policy_blob = stmt.getColumn("policy_blob").getString();
     rec.membership_version = stmt.getColumn("membership_version").getInt64();
+    if (!stmt.getColumn("last_activity_at").isNull()) {
+      rec.last_activity_at = stmt.getColumn("last_activity_at").getInt64();
+    }
     result.push_back(std::move(rec));
   }
   return result;

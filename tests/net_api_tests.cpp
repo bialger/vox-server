@@ -172,6 +172,52 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesDm) {
   ASSERT_TRUE(found);
 }
 
+TEST_F(NetApiTestSuite, ListConversationsIncludesLastActivityFromMessages) {
+  auto a = RegisterUser("lact_a", "lact_da");
+  auto b = RegisterUser("lact_b", "lact_db");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+
+  auto [gst0, gbody0] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst0, 200u);
+  bool found0 = false;
+  for (const auto& it : ParseObj(gbody0)["conversations"].as_array()) {
+    if (it.as_object().at("conversation_id").as_string() == conv_id) {
+      ASSERT_TRUE(it.as_object().contains("last_activity_at"));
+      ASSERT_TRUE(it.as_object().at("last_activity_at").is_null());
+      found0 = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found0);
+
+  boost::json::object send;
+  send["device_id"] = "lact_db";
+  send["conversation_id"] = conv_id;
+  send["ciphertext"] = "hello";
+  auto [sst, sbody] = HttpPost("/v1/messages/send", boost::json::serialize(send), b.access_token);
+  ASSERT_EQ(sst, 200u);
+  const auto ts = ParseObj(sbody)["server_timestamp"].as_int64();
+
+  auto [gst1, gbody1] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst1, 200u);
+  bool matched = false;
+  for (const auto& it : ParseObj(gbody1)["conversations"].as_array()) {
+    const auto& o = it.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_FALSE(o.at("last_activity_at").is_null());
+      ASSERT_EQ(o.at("last_activity_at").as_int64(), ts);
+      matched = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(matched);
+}
+
 TEST_F(NetApiTestSuite, GetConversationEnvelopes) {
   auto a = RegisterUser("env_a", "dea");
   auto b = RegisterUser("env_b", "deb");

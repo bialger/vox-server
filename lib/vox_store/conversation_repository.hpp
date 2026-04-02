@@ -18,6 +18,8 @@ struct ConversationRecord {
   common::Timestamp created_at;
   std::string policy_blob;
   std::int64_t membership_version = 0;
+  /// Set only by `GetConversationsForUser`: max `server_timestamp` in `encrypted_envelopes`, or unset if none.
+  std::optional<common::Timestamp> last_activity_at;
 };
 
 struct MemberRecord {
