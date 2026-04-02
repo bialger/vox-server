@@ -176,14 +176,15 @@ void NetApiTestSuite::TearDown() {
   if (listener_) {
     listener_->Shutdown();
   }
-  // DispatchHttp may run on storage_pool; finish before tearing down ctx / repositories.
-  if (storage_pool_) {
-    storage_pool_->WaitForIdle();
-  }
+  // ioc.stop + join before WaitForIdle: otherwise another io thread could Submit(DispatchHttp)
+  // after storage looked idle, then ctx is destroyed while that task runs.
   if (ioc_) {
     ioc_->stop();
   }
   net_threads_.clear();
+  if (storage_pool_) {
+    storage_pool_->WaitForIdle();
+  }
   listener_.reset();
   server_ctx_.reset();
   ws_registry_.reset();
