@@ -22,6 +22,12 @@ using AttachmentId = std::string;
 using SessionToken = std::string;
 using Timestamp = std::int64_t;
 
+/// Stable key for maps and WebSocket registry when the same `device_id` string may exist for multiple users.
+inline std::string DeviceScopeKey(const UserId& user_id, const DeviceId& device_id) {
+  constexpr char kSep = '\x1f';
+  return user_id + kSep + device_id;
+}
+
 enum class ConversationType : std::uint8_t {
   kDm = 0,
   kGroup = 1,

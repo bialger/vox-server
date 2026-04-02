@@ -13,6 +13,7 @@
 #include <boost/beast/websocket.hpp>
 #include <boost/json.hpp>
 
+#include "lib/vox_common/types.hpp"
 #include "lib/vox_net/http_dispatch.hpp"
 
 namespace vox::net {
@@ -75,8 +76,9 @@ private:
       return;
     }
     device_id_ = session->device_id;
+    user_id_ = session->user_id;
 
-    registry_.Register(device_id_, [self = weak_from_this()](std::string msg) {
+    registry_.Register(common::DeviceScopeKey(user_id_, device_id_), [self = weak_from_this()](std::string msg) {
       if (auto s = self.lock()) {
         s->PostSend(std::move(msg));
       }
@@ -194,8 +196,9 @@ private:
 
   void Shutdown() {
     if (!device_id_.empty()) {
-      registry_.Unregister(device_id_);
+      registry_.Unregister(common::DeviceScopeKey(user_id_, device_id_));
       device_id_.clear();
+      user_id_.clear();
     }
     beast::error_code ec;
     ws_.close(websocket::close_code::normal, ec);
@@ -208,6 +211,7 @@ private:
   net::steady_timer deferred_auth_timer_;
   bool deferred_auth_active_ = false;
   beast::flat_buffer buffer_;
+  std::string user_id_;
   std::string device_id_;
   std::deque<std::string> outbound_;
   bool write_in_progress_ = false;

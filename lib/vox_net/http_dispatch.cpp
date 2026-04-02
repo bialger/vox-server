@@ -11,6 +11,7 @@
 #include <boost/beast/http/file_body.hpp>
 #include <boost/json.hpp>
 
+#include "lib/vox_common/types.hpp"
 #include "lib/vox_net/error_http.hpp"
 #include "lib/vox_net/rate_limiter.hpp"
 #include "lib/vox_net/ws_registry.hpp"
@@ -145,6 +146,32 @@ std::optional<std::string> SplitDeviceSubPath(std::string_view path, std::string
   return std::move(p->first);
 }
 
+/// `/v1/users/{user_id}/devices/{device_id}/{suffix}` → (user_id, device_id).
+std::optional<std::pair<std::string, std::string>> SplitUserDeviceSubPath(std::string_view path,
+                                                                          std::string_view suffix) {
+  constexpr std::string_view kPrefix = "/v1/users/";
+  if (!path.starts_with(kPrefix)) {
+    return std::nullopt;
+  }
+  auto rest = path.substr(kPrefix.size());
+  constexpr std::string_view kMid = "/devices/";
+  const auto mid = rest.find(kMid);
+  if (mid == std::string_view::npos) {
+    return std::nullopt;
+  }
+  std::string uid = std::string(rest.substr(0, mid));
+  const auto after_mid = rest.substr(mid + kMid.size());
+  const auto slash = after_mid.find('/');
+  if (slash == std::string_view::npos) {
+    return std::nullopt;
+  }
+  std::string did = std::string(after_mid.substr(0, slash));
+  if (after_mid.substr(slash + 1) != suffix) {
+    return std::nullopt;
+  }
+  return std::pair{std::move(uid), std::move(did)};
+}
+
 /// `/v1/conversations/{id}` with no further path segments.
 std::optional<std::string> ConversationIdOnly(std::string_view path) {
   constexpr std::string_view kPrefix = "/v1/conversations/";
@@ -174,6 +201,7 @@ std::string SerializeSyncWrapParams(const boost::json::object& o) {
 
 void NotifyUserDevicesExcept(ServerContext& ctx,
                              const common::UserId& user_id,
+                             const common::UserId& except_user_id,
                              const common::DeviceId& except_device,
                              std::string_view json_line) {
   if (ctx.ws_push == nullptr) {
@@ -183,10 +211,10 @@ void NotifyUserDevicesExcept(ServerContext& ctx,
     if (d.revoked_at.has_value()) {
       continue;
     }
-    if (d.device_id == except_device) {
+    if (d.user_id == except_user_id && d.device_id == except_device) {
       continue;
     }
-    ctx.ws_push->Notify(d.device_id, std::string(json_line));
+    ctx.ws_push->Notify(common::DeviceScopeKey(d.user_id, d.device_id), std::string(json_line));
   }
 }
 
@@ -212,7 +240,7 @@ void NotifyConversationMembershipChanged(ServerContext& ctx, const common::Conve
       if (d.revoked_at.has_value()) {
         continue;
       }
-      ctx.ws_push->Notify(d.device_id, json_line);
+      ctx.ws_push->Notify(common::DeviceScopeKey(d.user_id, d.device_id), json_line);
     }
   }
   if (conv->type == common::ConversationType::kChannel) {
@@ -224,7 +252,7 @@ void NotifyConversationMembershipChanged(ServerContext& ctx, const common::Conve
         if (d.revoked_at.has_value()) {
           continue;
         }
-        ctx.ws_push->Notify(d.device_id, json_line);
+        ctx.ws_push->Notify(common::DeviceScopeKey(d.user_id, d.device_id), json_line);
       }
     }
   }
@@ -409,10 +437,11 @@ bool IsKnownProtectedRoute(http::verb m, std::string_view path) {
           return true;
         }
       }
-      if (SplitDeviceSubPath(path, "prekeys")) {
+      if (SplitDeviceSubPath(path, "prekeys") || SplitUserDeviceSubPath(path, "prekeys")) {
         return true;
       }
-      return SplitDeviceSubPath(path, "signed-prekey").has_value();
+      return SplitDeviceSubPath(path, "signed-prekey").has_value() ||
+             SplitUserDeviceSubPath(path, "signed-prekey").has_value();
     }
     case http::verb::get: {
       if (path == "/v1/me" || path == "/v1/me/devices" || path == "/v1/sync/pending" || path == "/v1/conversations" ||
@@ -433,7 +462,7 @@ bool IsKnownProtectedRoute(http::verb m, std::string_view path) {
           return true;
         }
       }
-      if (SplitDeviceSubPath(path, "prekey-bundle")) {
+      if (SplitDeviceSubPath(path, "prekey-bundle") || SplitUserDeviceSubPath(path, "prekey-bundle")) {
         return true;
       }
       if (path.starts_with("/v1/users/") && path.find("/prekey-bundles") != std::string_view::npos) {
@@ -452,7 +481,7 @@ bool IsKnownProtectedRoute(http::verb m, std::string_view path) {
       if (path.starts_with("/v1/sync/records/")) {
         return true;
       }
-      if (SplitDeviceSubPath(path, "signed-prekey")) {
+      if (SplitDeviceSubPath(path, "signed-prekey") || SplitUserDeviceSubPath(path, "signed-prekey")) {
         return true;
       }
       if (path.starts_with("/v1/attachments/") && path.find("/chunk") != std::string::npos) {
@@ -528,6 +557,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           return ErrRes(ver, kHttpForbidden, e);
         }
         vox::relay::SendMessageRequest sr;
+        sr.sender_user_id = sess.user_id;
         sr.sender_device_id = device_id;
         sr.conversation_id = JsonString(o, "conversation_id").value_or("");
         sr.ciphertext = JsonString(o, "ciphertext").value_or("");
@@ -558,7 +588,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           return ErrRes(ver, kHttpForbidden, e);
         }
         std::string envelope_id = JsonString(o, "envelope_id").value_or("");
-        auto result = ctx.relay.AcknowledgeEnvelope(device_id, envelope_id);
+        auto result = ctx.relay.AcknowledgeEnvelope(sess.user_id, device_id, envelope_id);
         if (!result) {
           return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
         }
@@ -669,34 +699,44 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         }
       }
 
-      if (auto device_id = SplitDeviceSubPath(path, "prekeys")) {
-        if (*device_id != sess.device_id) {
-          common::Error e{.code = common::ErrorCode::kForbidden, .message = "Can only upload prekeys for own device"};
-          return ErrRes(ver, kHttpForbidden, e);
+      {
+        std::optional<std::pair<std::string, std::string>> prekey_scope;
+        if (auto ud = SplitUserDeviceSubPath(path, "prekeys")) {
+          prekey_scope = std::move(ud);
+        } else if (auto legacy_id = SplitDeviceSubPath(path, "prekeys")) {
+          prekey_scope = std::pair<std::string, std::string>{sess.user_id, std::move(*legacy_id)};
         }
-        boost::json::object o;
-        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
-          return std::move(br);
-        }
-        std::vector<vox::store::PrekeyRecord> prekeys;
-        if (o.contains("prekeys") && o["prekeys"].is_array()) {
-          for (const auto& item : o["prekeys"].as_array()) {
-            if (!item.is_object()) {
-              continue;
-            }
-            const auto& po = item.as_object();
-            vox::store::PrekeyRecord pr;
-            pr.prekey_id = JsonString(po, "prekey_id").value_or("");
-            pr.prekey_public = JsonString(po, "prekey_public").value_or("");
-            pr.device_id = *device_id;
-            prekeys.push_back(std::move(pr));
+        if (prekey_scope.has_value()) {
+          const auto& owner_uid = prekey_scope->first;
+          const auto& dev_id = prekey_scope->second;
+          if (owner_uid != sess.user_id || dev_id != sess.device_id) {
+            common::Error e{.code = common::ErrorCode::kForbidden, .message = "Can only upload prekeys for own device"};
+            return ErrRes(ver, kHttpForbidden, e);
           }
+          boost::json::object o;
+          if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+            return std::move(br);
+          }
+          std::vector<vox::store::PrekeyRecord> prekeys;
+          if (o.contains("prekeys") && o["prekeys"].is_array()) {
+            for (const auto& item : o["prekeys"].as_array()) {
+              if (!item.is_object()) {
+                continue;
+              }
+              const auto& po = item.as_object();
+              vox::store::PrekeyRecord pr;
+              pr.prekey_id = JsonString(po, "prekey_id").value_or("");
+              pr.prekey_public = JsonString(po, "prekey_public").value_or("");
+              pr.device_id = dev_id;
+              prekeys.push_back(std::move(pr));
+            }
+          }
+          auto result = ctx.devices.StorePrekeys(owner_uid, dev_id, prekeys);
+          if (!result) {
+            return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
+          }
+          return JsonRes(ver, kHttpOk, boost::json::object{});
         }
-        auto result = ctx.devices.StorePrekeys(*device_id, prekeys);
-        if (!result) {
-          return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
-        }
-        return JsonRes(ver, kHttpOk, boost::json::object{});
       }
 
       if (path == "/v1/attachments/upload-init") {
@@ -876,7 +916,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           if (d.revoked_at.has_value()) {
             continue;
           }
-          auto pb = ctx.devices.GetPrekeyBundle(d.device_id);
+          auto pb = ctx.devices.GetPrekeyBundle(uid, d.device_id);
           if (!pb) {
             continue;
           }
@@ -925,7 +965,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           o["device_id"] = d.device_id;
           o["device_label"] = d.device_label;
           o["is_revoked"] = false;
-          o["has_prekeys"] = (ctx.devices.CountAvailableOneTimePrekeys(d.device_id) > 0);
+          o["has_prekeys"] = (ctx.devices.CountAvailableOneTimePrekeys(uid, d.device_id) > 0);
           arr.push_back(o);
         }
         boost::json::object out;
@@ -1080,12 +1120,13 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         }
         std::string cursor = QueryParam(req.target(), "cursor").value_or("");
         vox::store::IEnvelopeRepository::EnvelopePage page =
-            ctx.envelopes.GetPendingForDeviceCursored(sess.device_id, cursor, limit);
+            ctx.envelopes.GetPendingForDeviceCursored(sess.user_id, sess.device_id, cursor, limit);
         boost::json::array arr;
         for (const auto& e : page.envelopes) {
           boost::json::object eo;
           eo["envelope_id"] = e.envelope_id;
           eo["conversation_id"] = e.conversation_id;
+          eo["sender_user_id"] = e.sender_user_id;
           eo["sender_device_id"] = e.sender_device_id;
           eo["ciphertext"] = e.ciphertext;
           eo["server_timestamp"] = e.server_timestamp;
@@ -1127,6 +1168,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
               boost::json::object eo;
               eo["envelope_id"] = e.envelope_id;
               eo["conversation_id"] = e.conversation_id;
+              eo["sender_user_id"] = e.sender_user_id;
               eo["sender_device_id"] = e.sender_device_id;
               eo["ciphertext"] = e.ciphertext;
               eo["server_timestamp"] = e.server_timestamp;
@@ -1142,6 +1184,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
               boost::json::object eo;
               eo["envelope_id"] = e.envelope_id;
               eo["conversation_id"] = e.conversation_id;
+              eo["sender_user_id"] = e.sender_user_id;
               eo["sender_device_id"] = e.sender_device_id;
               eo["ciphertext"] = e.ciphertext;
               eo["server_timestamp"] = e.server_timestamp;
@@ -1179,12 +1222,45 @@ OptRes HandleAuthenticated(ServerContext& ctx,
         return JsonRes(ver, kHttpOk, out);
       }
 
-      if (auto device_id = SplitDeviceSubPath(path, "prekey-bundle")) {
-        auto result = ctx.devices.GetPrekeyBundle(*device_id);
+      if (auto ud = SplitUserDeviceSubPath(path, "prekey-bundle")) {
+        auto result = ctx.devices.GetPrekeyBundle(ud->first, ud->second);
         if (!result) {
           return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
         }
         boost::json::object out;
+        out["user_id"] = ud->first;
+        out["device_id"] = ud->second;
+        out["identity_key_public"] = result->identity_key_public;
+        out["signed_prekey_public"] = result->signed_prekey_public;
+        out["signed_prekey_signature"] = result->signed_prekey_signature;
+        auto one_time_pub = result->one_time_prekey_public;
+        if (one_time_pub) {
+          out["one_time_prekey_public"] = *one_time_pub;
+        }
+        auto one_time_id = result->one_time_prekey_id;
+        if (one_time_id) {
+          out["one_time_prekey_id"] = *one_time_id;
+        }
+        return JsonRes(ver, kHttpOk, out);
+      }
+      if (auto device_id = SplitDeviceSubPath(path, "prekey-bundle")) {
+        auto matches = ctx.devices.FindAllByDeviceId(*device_id);
+        if (matches.empty()) {
+          common::Error e{.code = common::ErrorCode::kNotFound, .message = "Device not found"};
+          return ErrRes(ver, kHttpNotFound, e);
+        }
+        if (matches.size() > 1) {
+          common::Error e{
+              .code = common::ErrorCode::kInvalidArgument,
+              .message = "device_id is ambiguous; use /v1/users/{user_id}/devices/{device_id}/prekey-bundle"};
+          return ErrRes(ver, kHttpBadRequest, e);
+        }
+        auto result = ctx.devices.GetPrekeyBundle(matches.front().user_id, *device_id);
+        if (!result) {
+          return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
+        }
+        boost::json::object out;
+        out["user_id"] = matches.front().user_id;
         out["device_id"] = *device_id;
         out["identity_key_public"] = result->identity_key_public;
         out["signed_prekey_public"] = result->signed_prekey_public;
@@ -1249,7 +1325,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           boost::json::object evt;
           evt["type"] = "user_devices_changed";
           evt["user_id"] = sess.user_id;
-          NotifyUserDevicesExcept(ctx, sess.user_id, sess.device_id, boost::json::serialize(evt));
+          NotifyUserDevicesExcept(ctx, sess.user_id, sess.user_id, sess.device_id, boost::json::serialize(evt));
         }
         return JsonRes(ver, kHttpOk, out);
       }
@@ -1286,33 +1362,44 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           evt["collection"] = sr->first;
           evt["record_id"] = sr->second;
           evt["version"] = result->version;
-          NotifyUserDevicesExcept(ctx, sess.user_id, sess.device_id, boost::json::serialize(evt));
+          NotifyUserDevicesExcept(ctx, sess.user_id, sess.user_id, sess.device_id, boost::json::serialize(evt));
         }
         return JsonRes(ver, kHttpOk, out);
       }
 
-      if (auto device_id = SplitDeviceSubPath(path, "signed-prekey")) {
-        if (*device_id != sess.device_id) {
-          common::Error e{.code = common::ErrorCode::kForbidden,
-                          .message = "Can only rotate signed prekey for own device"};
-          return ErrRes(ver, kHttpForbidden, e);
+      {
+        std::optional<std::pair<std::string, std::string>> spk_scope;
+        if (auto ud = SplitUserDeviceSubPath(path, "signed-prekey")) {
+          spk_scope = std::move(ud);
+        } else if (auto legacy_id = SplitDeviceSubPath(path, "signed-prekey")) {
+          spk_scope = std::pair<std::string, std::string>{sess.user_id, std::move(*legacy_id)};
         }
-        boost::json::object o;
-        if (auto br = std::forward<ParseBody>(parse_body)(o)) {
-          return std::move(br);
+        if (spk_scope.has_value()) {
+          const auto& owner_uid = spk_scope->first;
+          const auto& dev_id = spk_scope->second;
+          if (owner_uid != sess.user_id || dev_id != sess.device_id) {
+            common::Error e{.code = common::ErrorCode::kForbidden,
+                            .message = "Can only rotate signed prekey for own device"};
+            return ErrRes(ver, kHttpForbidden, e);
+          }
+          boost::json::object o;
+          if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+            return std::move(br);
+          }
+          auto r = ctx.devices.UpdateSignedPrekey(owner_uid,
+                                                  dev_id,
+                                                  JsonString(o, "signed_prekey_public").value_or(""),
+                                                  JsonString(o, "signed_prekey_signature").value_or(""),
+                                                  NowSeconds());
+          if (!r) {
+            return ErrRes(ver, HttpStatusForError(r.error().code), r.error());
+          }
+          boost::json::object evt;
+          evt["type"] = "user_devices_changed";
+          evt["user_id"] = sess.user_id;
+          NotifyUserDevicesExcept(ctx, sess.user_id, sess.user_id, sess.device_id, boost::json::serialize(evt));
+          return JsonRes(ver, kHttpOk, boost::json::object{});
         }
-        auto r = ctx.devices.UpdateSignedPrekey(*device_id,
-                                                JsonString(o, "signed_prekey_public").value_or(""),
-                                                JsonString(o, "signed_prekey_signature").value_or(""),
-                                                NowSeconds());
-        if (!r) {
-          return ErrRes(ver, HttpStatusForError(r.error().code), r.error());
-        }
-        boost::json::object evt;
-        evt["type"] = "user_devices_changed";
-        evt["user_id"] = sess.user_id;
-        NotifyUserDevicesExcept(ctx, sess.user_id, sess.device_id, boost::json::serialize(evt));
-        return JsonRes(ver, kHttpOk, boost::json::object{});
       }
 
       if (path.starts_with("/v1/attachments/") && path.find("/chunk") != std::string::npos) {
@@ -1341,23 +1428,23 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           common::Error e{.code = common::ErrorCode::kInvalidArgument, .message = "Cannot revoke current device"};
           return ErrRes(ver, kHttpBadRequest, e);
         }
-        auto dev = ctx.devices.FindById(target);
-        if (!dev || dev->user_id != sess.user_id) {
+        auto dev = ctx.devices.FindByUserAndDevice(sess.user_id, target);
+        if (!dev) {
           common::Error e{.code = common::ErrorCode::kNotFound, .message = "Device not found"};
           return ErrRes(ver, kHttpNotFound, e);
         }
         const auto now = NowSeconds();
-        auto rv = ctx.devices.RevokeDevice(target, now);
+        auto rv = ctx.devices.RevokeDevice(sess.user_id, target, now);
         if (!rv) {
           return ErrRes(ver, HttpStatusForError(rv.error().code), rv.error());
         }
-        if (auto tr = ctx.tokens.RevokeAllForDevice(target, now); !tr) {
+        if (auto tr = ctx.tokens.RevokeAllForDevice(sess.user_id, target, now); !tr) {
           return ErrRes(ver, HttpStatusForError(tr.error().code), tr.error());
         }
         boost::json::object evt;
         evt["type"] = "user_devices_changed";
         evt["user_id"] = sess.user_id;
-        NotifyUserDevicesExcept(ctx, sess.user_id, sess.device_id, boost::json::serialize(evt));
+        NotifyUserDevicesExcept(ctx, sess.user_id, sess.user_id, sess.device_id, boost::json::serialize(evt));
         return JsonRes(ver, kHttpOk, boost::json::object{});
       }
 
@@ -1392,7 +1479,7 @@ OptRes HandleAuthenticated(ServerContext& ctx,
           evt["collection"] = sr->first;
           evt["record_id"] = sr->second;
           evt["version"] = result->version;
-          NotifyUserDevicesExcept(ctx, sess.user_id, sess.device_id, boost::json::serialize(evt));
+          NotifyUserDevicesExcept(ctx, sess.user_id, sess.user_id, sess.device_id, boost::json::serialize(evt));
         }
         return JsonRes(ver, kHttpOk, out);
       }

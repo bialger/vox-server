@@ -201,21 +201,21 @@ int main(int argc, char** argv) {
                                 .ioc_for_dispatch = nullptr,
                                 .storage_pool = nullptr};
 
-    delivery.SetEnqueueHook(
-        [&ws_registry](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
-          boost::json::object o;
-          o["type"] = "envelope";
-          o["envelope_id"] = q.envelope_id;
-          o["conversation_id"] = q.conversation_id;
-          o["sender_device_id"] = q.sender_device_id;
-          o["ciphertext"] = q.ciphertext;
-          o["server_timestamp"] = q.server_timestamp;
-          o["envelope_type"] = q.envelope_type;
-          if (q.ordering_epoch) {
-            o["ordering_epoch"] = *q.ordering_epoch;
-          }
-          ws_registry.Notify(device_id, boost::json::serialize(o));
-        });
+    delivery.SetEnqueueHook([&ws_registry](const std::string& device_scope_key, const vox::relay::QueuedEnvelope& q) {
+      boost::json::object o;
+      o["type"] = "envelope";
+      o["envelope_id"] = q.envelope_id;
+      o["conversation_id"] = q.conversation_id;
+      o["sender_user_id"] = q.sender_user_id;
+      o["sender_device_id"] = q.sender_device_id;
+      o["ciphertext"] = q.ciphertext;
+      o["server_timestamp"] = q.server_timestamp;
+      o["envelope_type"] = q.envelope_type;
+      if (q.ordering_epoch) {
+        o["ordering_epoch"] = *q.ordering_epoch;
+      }
+      ws_registry.Notify(device_scope_key, boost::json::serialize(o));
+    });
 
     net::io_context ioc;
     ctx.ioc_for_dispatch = &ioc;

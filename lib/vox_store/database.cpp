@@ -46,8 +46,8 @@ void Database::CreateSchema() {
 
   db_->exec(R"SQL(
     CREATE TABLE IF NOT EXISTS devices (
-      device_id              TEXT PRIMARY KEY,
       user_id                TEXT NOT NULL REFERENCES users(user_id),
+      device_id              TEXT NOT NULL,
       identity_key_public    TEXT,
       signed_prekey_public   TEXT,
       signed_prekey_signature TEXT,
@@ -56,16 +56,19 @@ void Database::CreateSchema() {
       device_label           TEXT NOT NULL DEFAULT '',
       created_at             INTEGER NOT NULL DEFAULT 0,
       last_seen_at           INTEGER NOT NULL DEFAULT 0,
-      revoked_at             INTEGER
+      revoked_at             INTEGER,
+      PRIMARY KEY (user_id, device_id)
     )
   )SQL");
 
   db_->exec(R"SQL(
     CREATE TABLE IF NOT EXISTS one_time_prekeys (
-      prekey_id   TEXT PRIMARY KEY,
-      device_id   TEXT NOT NULL REFERENCES devices(device_id),
+      prekey_id     TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      device_id     TEXT NOT NULL,
       prekey_public TEXT NOT NULL,
-      consumed_at INTEGER
+      consumed_at   INTEGER,
+      FOREIGN KEY (user_id, device_id) REFERENCES devices(user_id, device_id)
     )
   )SQL");
 
@@ -73,13 +76,14 @@ void Database::CreateSchema() {
     CREATE TABLE IF NOT EXISTS sessions (
       session_id            TEXT PRIMARY KEY,
       user_id               TEXT NOT NULL REFERENCES users(user_id),
-      device_id             TEXT NOT NULL REFERENCES devices(device_id),
+      device_id             TEXT NOT NULL,
       access_token_hash     TEXT NOT NULL UNIQUE,
       refresh_token_hash    TEXT NOT NULL UNIQUE,
       access_expires_at     INTEGER NOT NULL,
       refresh_expires_at    INTEGER NOT NULL,
       created_at            INTEGER NOT NULL,
-      revoked_at            INTEGER
+      revoked_at            INTEGER,
+      FOREIGN KEY (user_id, device_id) REFERENCES devices(user_id, device_id)
     )
   )SQL");
 
@@ -119,12 +123,14 @@ void Database::CreateSchema() {
     CREATE TABLE IF NOT EXISTS encrypted_envelopes (
       envelope_id       TEXT PRIMARY KEY,
       conversation_id   TEXT NOT NULL REFERENCES conversations(conversation_id),
-      sender_device_id  TEXT NOT NULL REFERENCES devices(device_id),
+      sender_user_id    TEXT NOT NULL,
+      sender_device_id  TEXT NOT NULL,
       ciphertext        BLOB NOT NULL,
       server_timestamp  INTEGER NOT NULL,
       envelope_type     INTEGER NOT NULL DEFAULT 0,
       retention_until   INTEGER,
-      ordering_epoch    INTEGER
+      ordering_epoch    INTEGER,
+      FOREIGN KEY (sender_user_id, sender_device_id) REFERENCES devices(user_id, device_id)
     )
   )SQL");
 
@@ -140,11 +146,13 @@ void Database::CreateSchema() {
   db_->exec(R"SQL(
     CREATE TABLE IF NOT EXISTS delivery_state (
       envelope_id      TEXT NOT NULL REFERENCES encrypted_envelopes(envelope_id),
-      target_device_id TEXT NOT NULL REFERENCES devices(device_id),
+      target_user_id   TEXT NOT NULL,
+      target_device_id TEXT NOT NULL,
       queued_at        INTEGER NOT NULL,
       delivered_at     INTEGER,
       acked_at         INTEGER,
-      PRIMARY KEY (envelope_id, target_device_id)
+      PRIMARY KEY (envelope_id, target_user_id, target_device_id),
+      FOREIGN KEY (target_user_id, target_device_id) REFERENCES devices(user_id, device_id)
     )
   )SQL");
 
@@ -185,7 +193,130 @@ void Database::CreateSchema() {
   MigrateLegacySchema();
 }
 
+void Database::MigrateDevicesCompositePrimaryKey() {
+  SQLite::Statement exists(*db_, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='devices'");
+  if (!exists.executeStep() || exists.getColumn(0).getInt() == 0) {
+    return;
+  }
+  SQLite::Statement pk_cols(*db_, "SELECT COUNT(*) FROM pragma_table_info('devices') WHERE pk > 0");
+  pk_cols.executeStep();
+  if (pk_cols.getColumn(0).getInt() >= 2) {
+    return;
+  }
+
+  db_->exec("PRAGMA foreign_keys=OFF");
+  SQLite::Transaction txn(*db_);
+
+  db_->exec("ALTER TABLE devices RENAME TO devices_old");
+
+  db_->exec(R"SQL(
+    CREATE TABLE devices (
+      user_id                TEXT NOT NULL REFERENCES users(user_id),
+      device_id              TEXT NOT NULL,
+      identity_key_public    TEXT,
+      signed_prekey_public   TEXT,
+      signed_prekey_signature TEXT,
+      last_prekey_refresh_at INTEGER,
+      client_protocol_version INTEGER DEFAULT 1,
+      device_label           TEXT NOT NULL DEFAULT '',
+      created_at             INTEGER NOT NULL DEFAULT 0,
+      last_seen_at           INTEGER NOT NULL DEFAULT 0,
+      revoked_at             INTEGER,
+      PRIMARY KEY (user_id, device_id)
+    )
+  )SQL");
+  db_->exec(
+      "INSERT INTO devices (user_id, device_id, identity_key_public, signed_prekey_public, signed_prekey_signature, "
+      "last_prekey_refresh_at, client_protocol_version, device_label, created_at, last_seen_at, revoked_at) "
+      "SELECT user_id, device_id, identity_key_public, signed_prekey_public, signed_prekey_signature, "
+      "last_prekey_refresh_at, client_protocol_version, device_label, created_at, last_seen_at, revoked_at "
+      "FROM devices_old");
+  db_->exec("DROP TABLE devices_old");
+
+  db_->exec("ALTER TABLE one_time_prekeys RENAME TO one_time_prekeys_old");
+  db_->exec(R"SQL(
+    CREATE TABLE one_time_prekeys (
+      prekey_id     TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL,
+      device_id     TEXT NOT NULL,
+      prekey_public TEXT NOT NULL,
+      consumed_at   INTEGER,
+      FOREIGN KEY (user_id, device_id) REFERENCES devices(user_id, device_id)
+    )
+  )SQL");
+  db_->exec(
+      "INSERT INTO one_time_prekeys (prekey_id, user_id, device_id, prekey_public, consumed_at) "
+      "SELECT otp.prekey_id, d.user_id, otp.device_id, otp.prekey_public, otp.consumed_at "
+      "FROM one_time_prekeys_old otp "
+      "INNER JOIN devices d ON d.device_id = otp.device_id");
+  db_->exec("DROP TABLE one_time_prekeys_old");
+
+  db_->exec("ALTER TABLE sessions RENAME TO sessions_old");
+  db_->exec(R"SQL(
+    CREATE TABLE sessions (
+      session_id            TEXT PRIMARY KEY,
+      user_id               TEXT NOT NULL REFERENCES users(user_id),
+      device_id             TEXT NOT NULL,
+      access_token_hash     TEXT NOT NULL UNIQUE,
+      refresh_token_hash    TEXT NOT NULL UNIQUE,
+      access_expires_at     INTEGER NOT NULL,
+      refresh_expires_at    INTEGER NOT NULL,
+      created_at            INTEGER NOT NULL,
+      revoked_at            INTEGER,
+      FOREIGN KEY (user_id, device_id) REFERENCES devices(user_id, device_id)
+    )
+  )SQL");
+  db_->exec("INSERT INTO sessions SELECT * FROM sessions_old");
+  db_->exec("DROP TABLE sessions_old");
+
+  db_->exec("ALTER TABLE encrypted_envelopes RENAME TO encrypted_envelopes_old");
+  db_->exec(R"SQL(
+    CREATE TABLE encrypted_envelopes (
+      envelope_id       TEXT PRIMARY KEY,
+      conversation_id   TEXT NOT NULL REFERENCES conversations(conversation_id),
+      sender_user_id    TEXT NOT NULL,
+      sender_device_id  TEXT NOT NULL,
+      ciphertext        BLOB NOT NULL,
+      server_timestamp  INTEGER NOT NULL,
+      envelope_type     INTEGER NOT NULL DEFAULT 0,
+      retention_until   INTEGER,
+      ordering_epoch    INTEGER,
+      FOREIGN KEY (sender_user_id, sender_device_id) REFERENCES devices(user_id, device_id)
+    )
+  )SQL");
+  db_->exec(
+      "INSERT INTO encrypted_envelopes (envelope_id, conversation_id, sender_user_id, sender_device_id, ciphertext, "
+      "server_timestamp, envelope_type, retention_until, ordering_epoch) "
+      "SELECT e.envelope_id, e.conversation_id, d.user_id, e.sender_device_id, e.ciphertext, e.server_timestamp, "
+      "e.envelope_type, e.retention_until, e.ordering_epoch "
+      "FROM encrypted_envelopes_old e JOIN devices d ON e.sender_device_id = d.device_id");
+  db_->exec("DROP TABLE encrypted_envelopes_old");
+
+  db_->exec("ALTER TABLE delivery_state RENAME TO delivery_state_old");
+  db_->exec(R"SQL(
+    CREATE TABLE delivery_state (
+      envelope_id      TEXT NOT NULL REFERENCES encrypted_envelopes(envelope_id),
+      target_user_id   TEXT NOT NULL,
+      target_device_id TEXT NOT NULL,
+      queued_at        INTEGER NOT NULL,
+      delivered_at     INTEGER,
+      acked_at         INTEGER,
+      PRIMARY KEY (envelope_id, target_user_id, target_device_id),
+      FOREIGN KEY (target_user_id, target_device_id) REFERENCES devices(user_id, device_id)
+    )
+  )SQL");
+  db_->exec(
+      "INSERT INTO delivery_state (envelope_id, target_user_id, target_device_id, queued_at, delivered_at, acked_at) "
+      "SELECT ds.envelope_id, d.user_id, ds.target_device_id, ds.queued_at, ds.delivered_at, ds.acked_at "
+      "FROM delivery_state_old ds JOIN devices d ON ds.target_device_id = d.device_id");
+  db_->exec("DROP TABLE delivery_state_old");
+
+  txn.commit();
+  db_->exec("PRAGMA foreign_keys=ON");
+}
+
 void Database::MigrateLegacySchema() {
+  MigrateDevicesCompositePrimaryKey();
   auto try_exec = [this](const char* sql) {
     try {
       db_->exec(sql);

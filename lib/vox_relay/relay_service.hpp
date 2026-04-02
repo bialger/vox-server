@@ -16,6 +16,7 @@
 namespace vox::relay {
 
 struct SendMessageRequest {
+  common::UserId sender_user_id;
   common::DeviceId sender_device_id;
   common::ConversationId conversation_id;
   std::string ciphertext;
@@ -34,9 +35,11 @@ class IRelayService {
 public:
   virtual ~IRelayService() = default;
   virtual common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) = 0;
-  virtual std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id,
+  virtual std::vector<store::EnvelopeRecord> SyncOffline(const common::UserId& user_id,
+                                                         const common::DeviceId& device_id,
                                                          std::size_t limit = 100) = 0;
-  virtual common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+  virtual common::VoidResult AcknowledgeEnvelope(const common::UserId& user_id,
+                                                 const common::DeviceId& device_id,
                                                  const common::EnvelopeId& envelope_id) = 0;
 };
 
@@ -49,8 +52,11 @@ public:
                const common::ServerConfig& config);
 
   common::Result<SendMessageResponse> SendEnvelope(const SendMessageRequest& request) override;
-  std::vector<store::EnvelopeRecord> SyncOffline(const common::DeviceId& device_id, std::size_t limit = 100) override;
-  common::VoidResult AcknowledgeEnvelope(const common::DeviceId& device_id,
+  std::vector<store::EnvelopeRecord> SyncOffline(const common::UserId& user_id,
+                                                 const common::DeviceId& device_id,
+                                                 std::size_t limit = 100) override;
+  common::VoidResult AcknowledgeEnvelope(const common::UserId& user_id,
+                                         const common::DeviceId& device_id,
                                          const common::EnvelopeId& envelope_id) override;
 
 private:

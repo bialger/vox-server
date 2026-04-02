@@ -33,7 +33,7 @@ void ConversationService::PurgeMemberDelivery(const common::ConversationId& conv
   }
   auto devs = devices_.GetDevicesForUser(user_id);
   for (const auto& d : devs) {
-    delivery_.PurgeConversationFromDeviceQueue(conv_id, d.device_id);
+    delivery_.PurgeConversationFromDeviceQueue(conv_id, d.user_id, d.device_id);
   }
 }
 
@@ -50,9 +50,6 @@ common::Timestamp ConversationService::Now() {
 common::Result<common::ConversationId> ConversationService::CreateDm(const common::UserId& user_a,
                                                                      const common::UserId& user_b,
                                                                      const common::UserId& created_by) {
-  if (user_a == user_b) {
-    return std::unexpected(Err(common::ErrorCode::kInvalidArgument, "DM requires two distinct users"));
-  }
   if (created_by != user_a && created_by != user_b) {
     return std::unexpected(Err(common::ErrorCode::kForbidden, "Creator must be one of the participants"));
   }
@@ -68,6 +65,13 @@ common::Result<common::ConversationId> ConversationService::CreateDm(const commo
   auto cr = conversations_.CreateConversation(conv);
   if (!cr) {
     return std::unexpected(cr.error());
+  }
+
+  if (user_a == user_b) {
+    if (auto r1 = conversations_.AddMember(conv_id, user_a, common::MemberRole::kOwner, now); !r1) {
+      return std::unexpected(r1.error());
+    }
+    return conv_id;
   }
 
   auto owner = (created_by == user_a) ? user_a : user_b;

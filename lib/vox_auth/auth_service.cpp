@@ -110,7 +110,7 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
   auto now = Now();
   auto device_id = request.device_id.empty() ? common::GenerateUuid() : request.device_id;
 
-  auto existing_device = devices_.FindById(device_id);
+  auto existing_device = devices_.FindByUserAndDevice(user->user_id, device_id);
   std::string device_status = "existing";
 
   if (!existing_device) {
@@ -136,11 +136,7 @@ common::Result<LoginResponse> AuthService::Login(const LoginRequest& request) {
     }
     device_status = "created";
   } else {
-    if (existing_device->user_id != user->user_id) {
-      return std::unexpected(
-          common::Error{.code = common::ErrorCode::kForbidden, .message = "Device belongs to another user"});
-    }
-    if (auto seen = devices_.UpdateLastSeen(device_id, now); !seen) {
+    if (auto seen = devices_.UpdateLastSeen(user->user_id, device_id, now); !seen) {
       return std::unexpected(seen.error());
     }
   }
@@ -170,11 +166,12 @@ common::Result<TokenPair> AuthService::Refresh(const RefreshRequest& request) {
   auto now = Now();
   auto result = tokens_.RefreshTokens(request.refresh_token, request.device_id, now);
   if (result) {
-    if (auto seen = devices_.UpdateLastSeen(request.device_id, now); !seen) {
+    if (auto seen = devices_.UpdateLastSeen(result->user_id, request.device_id, now); !seen) {
       return std::unexpected(seen.error());
     }
+    return result->tokens;
   }
-  return result;
+  return std::unexpected(result.error());
 }
 
 common::Result<ChangePasswordResponse> AuthService::ChangePassword(const common::UserId& user_id,
