@@ -61,10 +61,10 @@ jobs:
             _d "IMAGE=${IMAGE} branch=${{ github.event.inputs.branch }} deploy_path=${{ github.event.inputs.deploy_path }}"
             cd "${{ github.event.inputs.deploy_path }}"
             _d "repo root $(pwd)"
+            # Match remote tip (avoids failed ff-only pulls after branch switches / divergent local clones)
             git fetch origin "${{ github.event.inputs.branch }}"
-            git checkout "${{ github.event.inputs.branch }}"
-            git pull --ff-only origin "${{ github.event.inputs.branch }}"
-            _d "--- after git pull ---"
+            git checkout -B "${{ github.event.inputs.branch }}" "origin/${{ github.event.inputs.branch }}"
+            _d "--- after git sync ---"
             git rev-parse HEAD && git status -sb || true
             if [ ! -d deploy ]; then
               _d "ERROR: $(pwd)/deploy is not a directory"; exit 1

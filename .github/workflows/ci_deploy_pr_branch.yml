@@ -188,9 +188,8 @@ jobs:
             cd /opt/vox-server
             _d "repo root $(pwd)"
             git fetch origin "${BRANCH}"
-            git checkout "${BRANCH}"
-            git pull --ff-only origin "${BRANCH}"
-            _d "--- after git pull ---"
+            git checkout -B "${BRANCH}" "origin/${BRANCH}"
+            _d "--- after git sync ---"
             git rev-parse HEAD && git status -sb || true
             if [ ! -d deploy ]; then
               _d "ERROR: $(pwd)/deploy is not a directory"; exit 1

@@ -17,5 +17,5 @@ cmake-build-release
 # Misc
 **/.cache
 **/*.log
-.env
+**/.env
 deploy/.env
