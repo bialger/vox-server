@@ -176,6 +176,10 @@ void NetApiTestSuite::TearDown() {
   if (listener_) {
     listener_->Shutdown();
   }
+  // DispatchHttp may run on storage_pool; finish before tearing down ctx / repositories.
+  if (storage_pool_) {
+    storage_pool_->WaitForIdle();
+  }
   if (ioc_) {
     ioc_->stop();
   }

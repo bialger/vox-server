@@ -43,9 +43,13 @@ UserRepository::UserRepository(IDatabase& db) : db_(db) {
 common::VoidResult UserRepository::CreateUser(const UserRecord& user) {
   try {
     auto lock = db_.WriteLock();
-    if (FindByUsername(user.username)) {
-      return std::unexpected(
-          common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Username already taken"});
+    {
+      SQLite::Statement chk(db_.Connection(), "SELECT 1 FROM users WHERE username = ? COLLATE NOCASE LIMIT 1");
+      chk.bind(1, user.username);
+      if (chk.executeStep()) {
+        return std::unexpected(
+            common::Error{.code = common::ErrorCode::kAlreadyExists, .message = "Username already taken"});
+      }
     }
     SQLite::Statement stmt(db_.Connection(),
                            "INSERT INTO users (user_id, username, password_salt, password_verifier, created_at, "

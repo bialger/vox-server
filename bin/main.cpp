@@ -277,6 +277,9 @@ int main(int argc, char** argv) {
     for (auto& w : workers) {
       w.join();
     }
+    // `ctx` is destroyed before `storage_pool` (reverse declaration order). Ensure no
+    // `DispatchHttp` task still runs on `storage_pool` after `ioc` stopped.
+    storage_pool.WaitForIdle();
   } catch (const std::exception& e) {
     std::cerr << "Fatal: " << e.what() << "\n";
     return 1;
