@@ -1,6 +1,8 @@
 #include "lib/vox_store/database.hpp"
 
+#include <chrono>
 #include <cstring>
+#include <thread>
 
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <spdlog/spdlog.h>
@@ -8,16 +10,48 @@
 
 namespace vox::store {
 
+namespace {
+
+constexpr int kSqliteBusyHandlerMaxInvocations = 300;
+constexpr int kSqliteBusyHandlerSleepMs = 25;
+constexpr int kSchemaInitMaxAttempts = 8;
+constexpr int kSchemaInitBackoffBaseMs = 250;
+
+/// Retries for SQLITE_BUSY (and similar) when another connection/process touches the same DB file.
+/// Registering this replaces PRAGMA busy_timeout; keep sleeps bounded so startup cannot hang forever.
+int SqliteBusyHandler(void*, int attempt) {
+  if (attempt > kSqliteBusyHandlerMaxInvocations) {
+    return 0;
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(kSqliteBusyHandlerSleepMs));
+  return 1;
+}
+
+} // namespace
+
 Database::Database(const std::string& db_path) :
     db_(std::make_unique<SQLite::Database>(
         db_path, static_cast<int>(SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX))) {
   db_->exec("PRAGMA journal_mode=WAL");
   db_->exec("PRAGMA foreign_keys=ON");
-  // Long timeout: overlaps during deploy (two processes briefly) or slow disks; reduces SQLITE_BUSY.
-  db_->exec("PRAGMA busy_timeout=60000");
   // WAL + NORMAL is the usual production pairing; less fsync pressure than FULL.
   db_->exec("PRAGMA synchronous=NORMAL");
-  CreateSchema();
+  sqlite3_busy_handler(db_->getHandle(), SqliteBusyHandler, nullptr);
+
+  for (int attempt = 1; attempt <= kSchemaInitMaxAttempts; ++attempt) {
+    try {
+      CreateSchema();
+      break;
+    } catch (const SQLite::Exception& e) {
+      const int code = e.getErrorCode();
+      if (attempt < kSchemaInitMaxAttempts && (code == SQLITE_BUSY || code == SQLITE_LOCKED)) {
+        spdlog::warn("Database schema init attempt {}/{}: {}", attempt, kSchemaInitMaxAttempts, e.what());
+        std::this_thread::sleep_for(std::chrono::milliseconds(kSchemaInitBackoffBaseMs * attempt));
+        continue;
+      }
+      throw;
+    }
+  }
   spdlog::info("Database initialized at {}", db_path);
 }
 
@@ -199,14 +233,20 @@ void Database::CreateSchema() {
 }
 
 void Database::MigrateDevicesCompositePrimaryKey() {
-  SQLite::Statement exists(*db_, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='devices'");
-  if (!exists.executeStep() || exists.getColumn(0).getInt() == 0) {
-    return;
+  // Keep these Statements scoped: an active prepared statement on the same connection
+  // during schema changes / Transaction can cause SQLITE_LOCKED ("database table is locked").
+  {
+    SQLite::Statement exists(*db_, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='devices'");
+    if (!exists.executeStep() || exists.getColumn(0).getInt() == 0) {
+      return;
+    }
   }
-  SQLite::Statement pk_cols(*db_, "SELECT COUNT(*) FROM pragma_table_info('devices') WHERE pk > 0");
-  pk_cols.executeStep();
-  if (pk_cols.getColumn(0).getInt() >= 2) {
-    return;
+  {
+    SQLite::Statement pk_cols(*db_, "SELECT COUNT(*) FROM pragma_table_info('devices') WHERE pk > 0");
+    pk_cols.executeStep();
+    if (pk_cols.getColumn(0).getInt() >= 2) {
+      return;
+    }
   }
 
   db_->exec("PRAGMA foreign_keys=OFF");

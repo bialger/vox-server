@@ -290,7 +290,16 @@ void HttpSession::OnRead(beast::error_code ec, std::size_t) {
     auto* ioc = ctx_.ioc_for_dispatch;
     ctx_.storage_pool->Submit(
         [self, req_copy = std::move(req_copy), sess, client_ip = std::move(client_ip), ioc]() mutable {
-          HttpResponse res = DispatchHttp(self->ctx_, req_copy, sess, client_ip);
+          HttpResponse res;
+          try {
+            res = DispatchHttp(self->ctx_, req_copy, sess, client_ip);
+          } catch (const std::exception& e) {
+            spdlog::error("DispatchHttp: {}", e.what());
+            res = InternalServerErrorResponse(req_copy.version(), "Internal server error");
+          } catch (...) {
+            spdlog::error("DispatchHttp: unknown exception");
+            res = InternalServerErrorResponse(req_copy.version(), "Internal server error");
+          }
           bool keep_alive = std::visit([](const auto& r) { return r.keep_alive(); }, res);
           std::visit([keep_alive](auto& r) { r.keep_alive(keep_alive); }, res);
           net::post(ioc->get_executor(), [self, res = std::move(res), keep_alive]() mutable {
@@ -307,7 +316,16 @@ void HttpSession::OnRead(beast::error_code ec, std::size_t) {
     return;
   }
 
-  HttpResponse res = DispatchHttp(ctx_, req_, sess, client_ip);
+  HttpResponse res;
+  try {
+    res = DispatchHttp(ctx_, req_, sess, client_ip);
+  } catch (const std::exception& e) {
+    spdlog::error("DispatchHttp: {}", e.what());
+    res = InternalServerErrorResponse(req_.version(), "Internal server error");
+  } catch (...) {
+    spdlog::error("DispatchHttp: unknown exception");
+    res = InternalServerErrorResponse(req_.version(), "Internal server error");
+  }
   bool keep_alive = std::visit([](const auto& r) { return r.keep_alive(); }, res);
   std::visit([keep_alive](auto& r) { r.keep_alive(keep_alive); }, res);
   res_ = std::move(res);

@@ -32,6 +32,7 @@ constexpr unsigned kHttpBadRequest = 400;
 constexpr unsigned kHttpUnauthorized = 401;
 constexpr unsigned kHttpForbidden = 403;
 constexpr unsigned kHttpNotFound = 404;
+constexpr unsigned kHttpInternalServerError = 500;
 constexpr std::size_t kDefaultPaginationLimit = 100;
 constexpr std::size_t kDefaultUserSearchLimit = 20;
 constexpr std::size_t kMaxUserSearchLimit = 50;
@@ -1616,6 +1617,11 @@ HttpResponse DispatchHttp(ServerContext& ctx,
   }
 
   return detail::NotFoundRes(ver);
+}
+
+HttpResponse InternalServerErrorResponse(unsigned http_version, std::string_view message) {
+  common::Error e{.code = common::ErrorCode::kInternal, .message = std::string(message)};
+  return detail::ErrRes(http_version, detail::kHttpInternalServerError, e);
 }
 
 } // namespace vox::net

@@ -27,6 +27,9 @@ HttpResponse DispatchHttp(ServerContext& ctx,
                           const std::optional<vox::store::SessionRecord>& session,
                           std::string_view client_ip = {});
 
+/// JSON error body for unexpected failures (e.g. SQLite) so the process keeps serving.
+HttpResponse InternalServerErrorResponse(unsigned http_version, std::string_view message);
+
 std::string PathOnly(std::string_view target);
 std::optional<std::string> QueryParam(std::string_view target, std::string_view key);
 
