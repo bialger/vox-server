@@ -14,7 +14,7 @@ Vox is a privacy-first, end-to-end encrypted messenger designed for self-hosted 
 | `vox_relay` | Message relay (`SendEnvelope`), `ConversationService` for DM/group/channel creation, sharded delivery queues, offline fallback, membership-checked fanout |
 | `vox_attachments` | Encrypted attachment management: chunked upload, quota enforcement, authorization, expiry cleanup |
 | `vox_admin` | Administration service: optional HTTP admin (`X-Admin-Token`), server stats, cascading user deletion, force logout |
-| `vox_net` | HTTP/1.1 (`Boost.Beast`) + JSON (`Boost.JSON`) API under `/v1/`, public `GET /v1/health`, WebSocket at `/v1/ws?access_token=...` for push notifications |
+| `vox_net` | HTTP/1.1 (`Boost.Beast`) + JSON (`Boost.JSON`) API under `/v1/`, public `GET /v1/health`, WebSocket at `/v1/ws` with `Authorization: Bearer` on upgrade or a post-handshake `{"type":"auth",...}` frame for push notifications |
 
 ## Dependencies
 
@@ -80,7 +80,7 @@ The binary listens on plain TCP. For production, terminate **HTTPS** and **WebSo
 
 **Is WSS automatic when the site uses HTTPS?** Not by magic: the **client** must open a WebSocket with a **`wss://`** URL (or a relative URL that resolves to `wss` on an HTTPS page). Serving the web app over HTTPS does not rewrite `ws://` to `wss://` by itself. Browsers treat `wss://host/v1/ws` like HTTPS to `host`—TLS to the proxy, then the proxy speaks plain HTTP/WebSocket to the app container. Configure TLS on **443** in the proxy; until then only `ws://` to the app (or unencrypted traffic) is possible from outside.
 
-**Access logs and query strings:** `GET /v1/ws?access_token=…` puts the token in the query string. Prefer **not** to log it: use a **custom log format** that logs **`$request_method`**, **`$uri`**, and **`$server_protocol`** instead of **`$request`** (which includes `?…`). The bundled Docker nginx uses **`log_format vox_noquery`** in **`deploy/nginx/nginx.conf`** so the default access log omits query strings. For other software: disable or redact query parameters in access logs, and keep TLS so the query is encrypted on the wire (still visible to proxies that log full URLs—hence log hygiene).
+**WebSocket auth:** Use **`Authorization: Bearer`** on the upgrade request, or send **`{"type":"auth","access_token":"..."}`** as the first text frame within 5 seconds. The bundled Docker nginx uses **`log_format vox_noquery`** in **`deploy/nginx/nginx.conf`** so access logs omit query strings from the request line (useful if other routes add sensitive `?` parameters).
 
 ## Production deployment (Docker + nginx)
 
@@ -228,7 +228,7 @@ Web clients should use **`https://`** and **`wss://`** for the same host and `/v
 
 The repo ships **`deploy/nginx/nginx.conf`**, mounted into the **`nginx`** service, with:
 
-- **`log_format vox_noquery`** — same idea as the common **`combined`** format, but the request line is logged as **`"$request_method $uri $server_protocol"`** instead of **`"$request"`**, so **`?access_token=…`** and other query parameters are **not** written to **`/var/log/nginx/access.log`**.
+- **`log_format vox_noquery`** — same idea as the common **`combined`** format, but the request line is logged as **`"$request_method $uri $server_protocol"`** instead of **`"$request"`**, so query strings are **not** written to **`/var/log/nginx/access.log`**.
 - A single **`access_log`** at **`http`** level using that format (avoids the stock image’s default **`main`** format that would log full **`$request`**).
 
 If you add your own **`access_log`** directives in **`conf.d`**, avoid re-enabling a format that uses **`$request`**, or you will log tokens again. For **other** reverse proxies (Caddy, Traefik, Envoy, cloud load balancers), configure access logging to **drop or redact** the query part; many examples use a custom log line template analogous to nginx’s **`$uri`**-only style.
