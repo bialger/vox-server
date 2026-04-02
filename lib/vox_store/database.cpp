@@ -4,14 +4,19 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <spdlog/spdlog.h>
+#include <sqlite3.h>
 
 namespace vox::store {
 
 Database::Database(const std::string& db_path) :
-    db_(std::make_unique<SQLite::Database>(db_path, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE)) {
+    db_(std::make_unique<SQLite::Database>(
+        db_path, static_cast<int>(SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX))) {
   db_->exec("PRAGMA journal_mode=WAL");
   db_->exec("PRAGMA foreign_keys=ON");
-  db_->exec("PRAGMA busy_timeout=5000");
+  // Long timeout: overlaps during deploy (two processes briefly) or slow disks; reduces SQLITE_BUSY.
+  db_->exec("PRAGMA busy_timeout=60000");
+  // WAL + NORMAL is the usual production pairing; less fsync pressure than FULL.
+  db_->exec("PRAGMA synchronous=NORMAL");
   CreateSchema();
   spdlog::info("Database initialized at {}", db_path);
 }

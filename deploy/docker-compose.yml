@@ -1,3 +1,4 @@
+# Single vox-server instance only: SQLite uses one writable file; do not `scale` this service.
 services:
   vox-server:
     # Production: set VOX_IMAGE in deploy/.env (ghcr.io/owner/repo:<sha>). Local: omit and use docker-compose.build.yml.
@@ -12,6 +13,14 @@ services:
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
     expose:
       - "8080"
+    # TCP to 8080: ensures the process listens before nginx proxies (avoids 502 right after compose up).
+    # Uses bash /dev/tcp (present in the Ubuntu-based image); no extra packages.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 45s
     networks:
       - vox_net
 
@@ -27,7 +36,8 @@ services:
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt:ro
     depends_on:
-      - vox-server
+      vox-server:
+        condition: service_healthy
     networks:
       - vox_net
 
