@@ -544,3 +544,56 @@ TEST_F(NetApiTestSuite, AsioTcpProtectedRouteWithoutAuthViaExchange) {
   ASSERT_EQ(st, 401u);
   (void) body;
 }
+
+TEST_F(NetApiTestSuite, SelfDmCreateAndSendMessage) {
+  auto u = RegisterUser("self_dm_net", "dev_self");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = u.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), u.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+
+  boost::json::object send;
+  send["device_id"] = "dev_self";
+  send["conversation_id"] = conv_id;
+  send["ciphertext"] = "self_note";
+  auto [sst, sbody] = HttpPost("/v1/messages/send", boost::json::serialize(send), u.access_token);
+  ASSERT_EQ(sst, 200u);
+  (void) sbody;
+}
+
+TEST_F(NetApiTestSuite, SameDeviceIdTwoAccountsCanRegisterAndLogin) {
+  boost::json::object reg_a;
+  reg_a["username"] = "multi_a";
+  reg_a["password_derived_value"] = "p";
+  reg_a["device_id"] = "shared_phone";
+  reg_a["identity_key_public"] = "ik_a";
+  reg_a["signed_prekey_public"] = "spk_a";
+  reg_a["signed_prekey_signature"] = "sig_a";
+  AddSyncBundle(reg_a);
+  auto [r1, b1] = HttpPost("/v1/register", boost::json::serialize(reg_a));
+  ASSERT_EQ(r1, 200u);
+  std::string uid_a = JsonString(b1, "user_id");
+
+  boost::json::object reg_b;
+  reg_b["username"] = "multi_b";
+  reg_b["password_derived_value"] = "p";
+  reg_b["device_id"] = "shared_phone";
+  reg_b["identity_key_public"] = "ik_b";
+  reg_b["signed_prekey_public"] = "spk_b";
+  reg_b["signed_prekey_signature"] = "sig_b";
+  AddSyncBundle(reg_b);
+  auto [r2, b2] = HttpPost("/v1/register", boost::json::serialize(reg_b));
+  ASSERT_EQ(r2, 200u);
+  std::string uid_b = JsonString(b2, "user_id");
+  ASSERT_NE(uid_a, uid_b);
+
+  boost::json::object login_b;
+  login_b["username"] = "multi_b";
+  login_b["password_derived_value"] = "p";
+  login_b["device_id"] = "shared_phone";
+  auto [lbst, lbbody] = HttpPost("/v1/login", boost::json::serialize(login_b));
+  ASSERT_EQ(lbst, 200u);
+  ASSERT_EQ(JsonString(lbbody, "user_id"), uid_b);
+}

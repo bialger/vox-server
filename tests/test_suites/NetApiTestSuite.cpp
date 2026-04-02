@@ -126,11 +126,12 @@ void NetApiTestSuite::SetUp() {
   admin_service_ = std::make_unique<vox::admin::AdminService>(*db_, *users_, *sessions_);
 
   ws_registry_ = std::make_unique<vox::net::WsPushRegistry>();
-  delivery_->SetEnqueueHook([this](const vox::common::DeviceId& device_id, const vox::relay::QueuedEnvelope& q) {
+  delivery_->SetEnqueueHook([this](const std::string& device_scope_key, const vox::relay::QueuedEnvelope& q) {
     boost::json::object o;
     o["type"] = "envelope";
     o["envelope_id"] = q.envelope_id;
     o["conversation_id"] = q.conversation_id;
+    o["sender_user_id"] = q.sender_user_id;
     o["sender_device_id"] = q.sender_device_id;
     o["ciphertext"] = q.ciphertext;
     o["server_timestamp"] = q.server_timestamp;
@@ -138,7 +139,7 @@ void NetApiTestSuite::SetUp() {
     if (q.ordering_epoch) {
       o["ordering_epoch"] = *q.ordering_epoch;
     }
-    ws_registry_->Notify(device_id, boost::json::serialize(o));
+    ws_registry_->Notify(device_scope_key, boost::json::serialize(o));
   });
 
   server_ctx_ = std::make_unique<vox::net::ServerContext>(vox::net::ServerContext{
