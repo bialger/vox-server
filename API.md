@@ -459,7 +459,7 @@ The directory is intentionally minimal. It exists only to help a user discover a
 The directory may expose:
 
 - `user_id`
-- `username`
+- `username` (canonical server-side login name as stored at registration; case-insensitive uniqueness)
 - active device ids
 - optional device labels
 - public prekey bundle material
@@ -481,14 +481,14 @@ Resolve one username to a user id.
 
 | Name       | Type   | Description   |
 | ---------- | ------ | ------------- |
-| `username` | string | Exact username to resolve |
+| `username` | string | Username to resolve (matching is **case-insensitive**; response returns the **canonical** stored spelling) |
 
 **Response `200`** (`application/json`)
 
 | Field       | Type   | Description |
 | ----------- | ------ | ----------- |
 | `user_id`   | string |             |
-| `username`  | string |             |
+| `username`  | string | Canonical username from the user row |
 
 **200**
 
@@ -537,6 +537,35 @@ Search users on the current server.
 
 ---
 
+### `GET /v1/users?ids=<id1,id2,...>`
+
+Batch-resolve public profiles by user id (avoids per-user `GET /v1/users/{user_id}` when rendering lists).
+
+**Query parameters**
+
+| Name | Type   | Required | Description |
+| ---- | ------ | -------- | ----------- |
+| `ids` | string | no       | Comma-separated `user_id` values. Multiple `ids=` query pairs are merged. Max **100** ids per request; exceeding returns **400**. |
+
+**Response `200`** (`application/json`)
+
+| Field   | Type  | Description |
+| ------- | ----- | ----------- |
+| `users` | array | Objects with `user_id`, `username` for **non-disabled** users only; unknown or disabled ids are omitted |
+
+**200**
+
+```json
+{
+  "users": [
+    { "user_id": "usr_alice", "username": "alice" },
+    { "user_id": "usr_bob", "username": "bob" }
+  ]
+}
+```
+
+---
+
 ### `GET /v1/users/{user_id}`
 
 Get minimal public profile data for one user.
@@ -552,7 +581,7 @@ Get minimal public profile data for one user.
 | Field       | Type   | Description |
 | ----------- | ------ | ----------- |
 | `user_id`   | string |             |
-| `username`  | string |             |
+| `username`  | string | Canonical username as stored server-side (authoritative spelling) |
 
 **200**
 
@@ -1155,13 +1184,15 @@ List conversations for the current user.
 
 Each element of `conversations`:
 
-| Field                | Type    | Description |
-| -------------------- | ------- | ----------- |
-| `conversation_id`    | string  |             |
-| `type`               | integer | `0` DM, `1` group, `2` channel |
-| `created_by`         | string  | User id     |
-| `created_at`         | integer | Unix seconds |
-| `membership_version` | integer | Bumps on membership changes |
+| Field                | Type            | Description |
+| -------------------- | --------------- | ----------- |
+| `conversation_id`    | string          |             |
+| `type`               | integer         | `0` DM, `1` group, `2` channel |
+| `created_by`         | string          | User id     |
+| `created_by_username` | string or null | Canonical username for `created_by` (non-disabled); `null` if not available |
+| `created_at`         | integer         | Unix seconds (conversation created) |
+| `membership_version` | integer         | Bumps on membership changes |
+| `last_activity_at`   | integer or null | Unix seconds of the latest stored envelope in this conversation (`MAX(server_timestamp)`); `null` if there are no envelopes yet |
 
 **200**
 
@@ -1172,8 +1203,10 @@ Each element of `conversations`:
       "conversation_id": "conv_1",
       "type": 0,
       "created_by": "usr_alice",
+      "created_by_username": "alice",
       "created_at": 1710000000,
-      "membership_version": 3
+      "membership_version": 3,
+      "last_activity_at": 1710000123
     }
   ]
 }
@@ -1206,6 +1239,7 @@ Common fields:
 | `conversation_id`    | string  |             |
 | `type`               | integer | `0` DM, `1` group, `2` channel |
 | `created_by`         | string  |             |
+| `created_by_username` | string or null | Canonical username for `created_by` |
 | `created_at`         | integer | Unix seconds |
 | `membership_version` | integer |             |
 | `my_role`            | string  | `"owner"`, `"admin"`, or `"member"` |
@@ -1224,6 +1258,7 @@ Additional fields for **channel** (`type == 2`) only:
   "conversation_id": "conv_1",
   "type": 1,
   "created_by": "usr_alice",
+  "created_by_username": "alice",
   "created_at": 1710000000,
   "membership_version": 3,
   "my_role": "admin"
@@ -1237,6 +1272,7 @@ Additional fields for **channel** (`type == 2`) only:
   "conversation_id": "conv_channel",
   "type": 2,
   "created_by": "usr_alice",
+  "created_by_username": "alice",
   "created_at": 1710000000,
   "membership_version": 8,
   "title": "Announcements",
@@ -1265,7 +1301,7 @@ DM / group:
 | -------------------- | ------ | ----------- |
 | `conversation_id`    | string |             |
 | `membership_version` | integer |            |
-| `members`            | array  | `{ user_id, role }` entries |
+| `members`            | array  | `{ user_id, username, role }` entries (`username` canonical or `null` if unknown/disabled) |
 
 Channel (non-admin subscriber):
 
@@ -1281,8 +1317,8 @@ Channel (admin):
 
 | Field                | Type  | Description |
 | -------------------- | ----- | ----------- |
-| `admins`             | array |             |
-| `subscribers`        | array | Non-admin subscribers |
+| `admins`             | array | `{ user_id, username, role }` |
+| `subscribers`        | array | Non-admin subscribers (`user_id`, `username`, `role`) |
 
 **200 for DM / group**
 
@@ -1293,10 +1329,12 @@ Channel (admin):
   "members": [
     {
       "user_id": "usr_alice",
+      "username": "alice",
       "role": "owner"
     },
     {
       "user_id": "usr_bob",
+      "username": "bob",
       "role": "member"
     }
   ]
@@ -1312,6 +1350,7 @@ Channel (admin):
   "admins": [
     {
       "user_id": "usr_alice",
+      "username": "alice",
       "role": "owner"
     }
   ],
@@ -1329,12 +1368,14 @@ Channel (admin):
   "admins": [
     {
       "user_id": "usr_alice",
+      "username": "alice",
       "role": "owner"
     }
   ],
   "subscribers": [
     {
       "user_id": "usr_bob",
+      "username": "bob",
       "role": "member"
     }
   ]
