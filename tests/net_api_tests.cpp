@@ -201,7 +201,8 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesCreatedByUsername) {
   auto [gst, gbody] = HttpGet("/v1/conversations", b.access_token);
   ASSERT_EQ(gst, 200u);
   bool found = false;
-  for (const auto& item : ParseObj(gbody)["conversations"].as_array()) {
+  auto list_root = ParseObj(gbody);
+  for (const auto& item : list_root["conversations"].as_array()) {
     const auto& o = item.as_object();
     if (o.at("conversation_id").as_string() == conv_id) {
       ASSERT_EQ(o.at("created_by_username").as_string(), "lst_b");
@@ -274,7 +275,8 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesLastActivityFromMessages) {
   auto [gst0, gbody0] = HttpGet("/v1/conversations", b.access_token);
   ASSERT_EQ(gst0, 200u);
   bool found0 = false;
-  for (const auto& it : ParseObj(gbody0)["conversations"].as_array()) {
+  auto list0 = ParseObj(gbody0);
+  for (const auto& it : list0["conversations"].as_array()) {
     if (it.as_object().at("conversation_id").as_string() == conv_id) {
       ASSERT_TRUE(it.as_object().contains("last_activity_at"));
       ASSERT_TRUE(it.as_object().at("last_activity_at").is_null());
@@ -295,7 +297,8 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesLastActivityFromMessages) {
   auto [gst1, gbody1] = HttpGet("/v1/conversations", b.access_token);
   ASSERT_EQ(gst1, 200u);
   bool matched = false;
-  for (const auto& it : ParseObj(gbody1)["conversations"].as_array()) {
+  auto list1 = ParseObj(gbody1);
+  for (const auto& it : list1["conversations"].as_array()) {
     const auto& o = it.as_object();
     if (o.at("conversation_id").as_string() == conv_id) {
       ASSERT_FALSE(o.at("last_activity_at").is_null());
