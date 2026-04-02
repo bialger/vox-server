@@ -37,6 +37,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     libargon2-1 \
     libboost-chrono1.83.0 \
     libboost-date-time1.83.0 \

@@ -13,14 +13,13 @@ services:
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
     expose:
       - "8080"
-    # TCP to 8080: ensures the process listens before nginx proxies (avoids 502 right after compose up).
-    # Uses bash /dev/tcp (present in the Ubuntu-based image); no extra packages.
+    # HTTP probe: confirms vox-server answers (bash /dev/tcp is unreliable in minimal images / some Docker setups).
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/v1/health"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 45s
+      retries: 8
+      start_period: 90s
     networks:
       - vox_net
 
@@ -35,9 +34,9 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt:ro
+    # Start after vox-server container (not after health: avoids failed deploy if probe or image is misconfigured).
     depends_on:
-      vox-server:
-        condition: service_healthy
+      - vox-server
     networks:
       - vox_net
 
