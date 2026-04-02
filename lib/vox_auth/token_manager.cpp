@@ -65,9 +65,9 @@ common::Result<store::SessionRecord> TokenManager::ValidateAccessToken(const std
   return *session;
 }
 
-common::Result<TokenPair> TokenManager::RefreshTokens(const std::string& refresh_token,
-                                                      const common::DeviceId& device_id,
-                                                      common::Timestamp now) {
+common::Result<RefreshResult> TokenManager::RefreshTokens(const std::string& refresh_token,
+                                                          const common::DeviceId& device_id,
+                                                          common::Timestamp now) {
   auto hash = HashToken(refresh_token);
   auto session = sessions_.FindByRefreshToken(hash);
   if (!session) {
@@ -81,11 +81,16 @@ common::Result<TokenPair> TokenManager::RefreshTokens(const std::string& refresh
         common::Error{.code = common::ErrorCode::kForbidden, .message = "Device mismatch on refresh"});
   }
 
+  const common::UserId uid = session->user_id;
   auto revoke_result = sessions_.RevokeSession(session->session_id, now);
   if (!revoke_result) {
     return std::unexpected(revoke_result.error());
   }
-  return IssueTokens(session->user_id, device_id, now);
+  auto pair = IssueTokens(uid, device_id, now);
+  if (!pair) {
+    return std::unexpected(pair.error());
+  }
+  return RefreshResult{.tokens = *pair, .user_id = uid};
 }
 
 common::VoidResult TokenManager::RevokeSession(const std::string& session_id, common::Timestamp now) {
@@ -102,6 +107,12 @@ common::VoidResult TokenManager::RevokeByAccessToken(const std::string& access_t
 
 common::VoidResult TokenManager::RevokeAllForUser(const common::UserId& user_id, common::Timestamp now) {
   return sessions_.RevokeAllForUser(user_id, now);
+}
+
+common::VoidResult TokenManager::RevokeAllForDevice(const common::UserId& user_id,
+                                                    const common::DeviceId& device_id,
+                                                    common::Timestamp now) {
+  return sessions_.RevokeAllForDevice(user_id, device_id, now);
 }
 
 } // namespace vox::auth

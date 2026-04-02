@@ -1,3 +1,4 @@
+# Single vox-server instance only: SQLite uses one writable file; do not `scale` this service.
 services:
   vox-server:
     # Production: set VOX_IMAGE in deploy/.env (ghcr.io/owner/repo:<sha>). Local: omit and use docker-compose.build.yml.
@@ -12,6 +13,13 @@ services:
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
     expose:
       - "8080"
+    # HTTP probe: image must include curl (see Dockerfile.prebuilt).
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 120s
     networks:
       - vox_net
 
@@ -27,7 +35,19 @@ services:
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt:ro
     depends_on:
-      - vox-server
+      vox-server:
+        condition: service_healthy
+    # Probe through nginx so mis-proxy / upstream issues surface (busybox wget; Host matches server_name in conf.d).
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null --header='Host: messenger.bialger.com' http://127.0.0.1/v1/health || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - vox_net
 

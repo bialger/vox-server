@@ -9,9 +9,34 @@ namespace vox::store {
 
 namespace {
 
-constexpr int kSignedPrekeySigParam = 5;
-constexpr int kLastPrekeyRefreshParam = 6;
-constexpr int kClientProtocolVersionParam = 7;
+// INSERT column positions (SQLite bind indices are 1-based).
+constexpr int kBindSignedPrekeySignature = 5;
+constexpr int kBindLastPrekeyRefreshAt = 6;
+constexpr int kBindClientProtocolVersion = 7;
+constexpr int kBindDeviceLabel = 8;
+constexpr int kBindCreatedAt = 9;
+constexpr int kBindLastSeenAt = 10;
+constexpr int kBindRevokedAt = 11;
+
+DeviceRecord RowToDevice(SQLite::Statement& stmt) {
+  DeviceRecord rec;
+  rec.user_id = stmt.getColumn("user_id").getString();
+  rec.device_id = stmt.getColumn("device_id").getString();
+  rec.identity_key_public = stmt.getColumn("identity_key_public").getString();
+  rec.signed_prekey_public = stmt.getColumn("signed_prekey_public").getString();
+  rec.signed_prekey_signature = stmt.getColumn("signed_prekey_signature").getString();
+  if (!stmt.getColumn("last_prekey_refresh_at").isNull()) {
+    rec.last_prekey_refresh_at = stmt.getColumn("last_prekey_refresh_at").getInt64();
+  }
+  rec.client_protocol_version = stmt.getColumn("client_protocol_version").getInt();
+  rec.device_label = stmt.getColumn("device_label").getString();
+  rec.created_at = stmt.getColumn("created_at").getInt64();
+  rec.last_seen_at = stmt.getColumn("last_seen_at").getInt64();
+  if (!stmt.getColumn("revoked_at").isNull()) {
+    rec.revoked_at = stmt.getColumn("revoked_at").getInt64();
+  }
+  return rec;
+}
 
 } // namespace
 
@@ -22,18 +47,29 @@ common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) 
   try {
     auto lock = db_.WriteLock();
     SQLite::Statement stmt(db_.Connection(),
-                           "INSERT INTO devices (device_id, user_id, identity_key_public, signed_prekey_public, "
-                           "signed_prekey_signature, last_prekey_refresh_at, client_protocol_version) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?)");
-    stmt.bind(1, device.device_id);
-    stmt.bind(2, device.user_id);
+                           "INSERT INTO devices (user_id, device_id, identity_key_public, signed_prekey_public, "
+                           "signed_prekey_signature, last_prekey_refresh_at, client_protocol_version, device_label, "
+                           "created_at, last_seen_at, revoked_at) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    stmt.bind(1, device.user_id);
+    stmt.bind(2, device.device_id);
     stmt.bind(3, device.identity_key_public);
     stmt.bind(4, device.signed_prekey_public);
-    stmt.bind(kSignedPrekeySigParam, device.signed_prekey_signature);
+    stmt.bind(kBindSignedPrekeySignature, device.signed_prekey_signature);
     if (device.last_prekey_refresh_at) {
-      stmt.bind(kLastPrekeyRefreshParam, *device.last_prekey_refresh_at);
+      stmt.bind(kBindLastPrekeyRefreshAt, *device.last_prekey_refresh_at);
+    } else {
+      stmt.bind(kBindLastPrekeyRefreshAt);
     }
-    stmt.bind(kClientProtocolVersionParam, device.client_protocol_version);
+    stmt.bind(kBindClientProtocolVersion, device.client_protocol_version);
+    stmt.bind(kBindDeviceLabel, device.device_label);
+    stmt.bind(kBindCreatedAt, device.created_at);
+    stmt.bind(kBindLastSeenAt, device.last_seen_at);
+    if (device.revoked_at) {
+      stmt.bind(kBindRevokedAt, *device.revoked_at);
+    } else {
+      stmt.bind(kBindRevokedAt);
+    }
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
@@ -48,63 +84,61 @@ common::VoidResult DeviceRepository::RegisterDevice(const DeviceRecord& device) 
 std::vector<DeviceRecord> DeviceRepository::GetDevicesForUser(const common::UserId& user_id) {
   auto lock = db_.ReadLock();
   std::vector<DeviceRecord> result;
-  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE user_id = ?");
+  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE user_id = ? ORDER BY created_at ASC");
   stmt.bind(1, user_id);
   while (stmt.executeStep()) {
-    DeviceRecord rec;
-    rec.device_id = stmt.getColumn("device_id").getString();
-    rec.user_id = stmt.getColumn("user_id").getString();
-    rec.identity_key_public = stmt.getColumn("identity_key_public").getString();
-    rec.signed_prekey_public = stmt.getColumn("signed_prekey_public").getString();
-    rec.signed_prekey_signature = stmt.getColumn("signed_prekey_signature").getString();
-    if (!stmt.getColumn("last_prekey_refresh_at").isNull()) {
-      rec.last_prekey_refresh_at = stmt.getColumn("last_prekey_refresh_at").getInt64();
-    }
-    rec.client_protocol_version = stmt.getColumn("client_protocol_version").getInt();
-    result.push_back(std::move(rec));
+    result.push_back(RowToDevice(stmt));
   }
   return result;
 }
 
-std::optional<DeviceRecord> DeviceRepository::FindById(const common::DeviceId& device_id) {
+std::optional<DeviceRecord> DeviceRepository::FindByUserAndDevice(const common::UserId& user_id,
+                                                                  const common::DeviceId& device_id) {
   auto lock = db_.ReadLock();
-  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE device_id = ?");
-  stmt.bind(1, device_id);
+  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE user_id = ? AND device_id = ?");
+  stmt.bind(1, user_id);
+  stmt.bind(2, device_id);
   if (stmt.executeStep()) {
-    DeviceRecord rec;
-    rec.device_id = stmt.getColumn("device_id").getString();
-    rec.user_id = stmt.getColumn("user_id").getString();
-    rec.identity_key_public = stmt.getColumn("identity_key_public").getString();
-    rec.signed_prekey_public = stmt.getColumn("signed_prekey_public").getString();
-    rec.signed_prekey_signature = stmt.getColumn("signed_prekey_signature").getString();
-    if (!stmt.getColumn("last_prekey_refresh_at").isNull()) {
-      rec.last_prekey_refresh_at = stmt.getColumn("last_prekey_refresh_at").getInt64();
-    }
-    rec.client_protocol_version = stmt.getColumn("client_protocol_version").getInt();
-    return rec;
+    return RowToDevice(stmt);
   }
   return std::nullopt;
 }
 
-common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device_id,
+std::vector<DeviceRecord> DeviceRepository::FindAllByDeviceId(const common::DeviceId& device_id) {
+  auto lock = db_.ReadLock();
+  std::vector<DeviceRecord> result;
+  SQLite::Statement stmt(db_.Connection(), "SELECT * FROM devices WHERE device_id = ?");
+  stmt.bind(1, device_id);
+  while (stmt.executeStep()) {
+    result.push_back(RowToDevice(stmt));
+  }
+  return result;
+}
+
+common::VoidResult DeviceRepository::StorePrekeys(const common::UserId& user_id,
+                                                  const common::DeviceId& device_id,
                                                   const std::vector<PrekeyRecord>& prekeys) {
   try {
     auto lock = db_.WriteLock();
     SQLite::Transaction txn(db_.Connection());
     SQLite::Statement stmt(db_.Connection(),
-                           "INSERT INTO one_time_prekeys (prekey_id, device_id, prekey_public) VALUES (?, ?, ?)");
+                           "INSERT INTO one_time_prekeys (prekey_id, user_id, device_id, prekey_public) VALUES (?, ?, "
+                           "?, ?)");
     for (const auto& pk : prekeys) {
       stmt.bind(1, pk.prekey_id);
-      stmt.bind(2, device_id);
-      stmt.bind(3, pk.prekey_public);
+      stmt.bind(2, user_id);
+      stmt.bind(3, device_id);
+      stmt.bind(4, pk.prekey_public);
       stmt.exec();
       stmt.reset();
     }
     auto now =
         std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    SQLite::Statement update(db_.Connection(), "UPDATE devices SET last_prekey_refresh_at = ? WHERE device_id = ?");
+    SQLite::Statement update(db_.Connection(),
+                             "UPDATE devices SET last_prekey_refresh_at = ? WHERE user_id = ? AND device_id = ?");
     update.bind(1, now);
-    update.bind(2, device_id);
+    update.bind(2, user_id);
+    update.bind(3, device_id);
     update.exec();
     txn.commit();
     return {};
@@ -113,11 +147,13 @@ common::VoidResult DeviceRepository::StorePrekeys(const common::DeviceId& device
   }
 }
 
-std::optional<PrekeyRecord> DeviceRepository::ConsumeOneAvailableOtpLocked(const common::DeviceId& device_id) {
+std::optional<PrekeyRecord> DeviceRepository::ConsumeOneAvailableOtpLocked(const common::UserId& user_id,
+                                                                           const common::DeviceId& device_id) {
   SQLite::Statement select(db_.Connection(),
                            "SELECT prekey_id, prekey_public FROM one_time_prekeys "
-                           "WHERE device_id = ? AND consumed_at IS NULL LIMIT 1");
-  select.bind(1, device_id);
+                           "WHERE user_id = ? AND device_id = ? AND consumed_at IS NULL LIMIT 1");
+  select.bind(1, user_id);
+  select.bind(2, device_id);
   if (!select.executeStep()) {
     return std::nullopt;
   }
@@ -143,15 +179,20 @@ std::optional<PrekeyRecord> DeviceRepository::ConsumeOneAvailableOtpLocked(const
   return record;
 }
 
-common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::DeviceId& device_id) {
+common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::UserId& user_id,
+                                                               const common::DeviceId& device_id) {
   try {
     auto lock = db_.WriteLock();
     SQLite::Transaction txn(db_.Connection());
 
-    SQLite::Statement dev_stmt(db_.Connection(), "SELECT * FROM devices WHERE device_id = ?");
-    dev_stmt.bind(1, device_id);
+    SQLite::Statement dev_stmt(db_.Connection(), "SELECT * FROM devices WHERE user_id = ? AND device_id = ?");
+    dev_stmt.bind(1, user_id);
+    dev_stmt.bind(2, device_id);
     if (!dev_stmt.executeStep()) {
       return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
+    }
+    if (!dev_stmt.getColumn("revoked_at").isNull()) {
+      return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden, .message = "Device revoked"});
     }
 
     PrekeyBundle bundle;
@@ -159,7 +200,7 @@ common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::Dev
     bundle.signed_prekey_public = dev_stmt.getColumn("signed_prekey_public").getString();
     bundle.signed_prekey_signature = dev_stmt.getColumn("signed_prekey_signature").getString();
 
-    if (auto otp = ConsumeOneAvailableOtpLocked(device_id)) {
+    if (auto otp = ConsumeOneAvailableOtpLocked(user_id, device_id)) {
       bundle.one_time_prekey_id = otp->prekey_id;
       bundle.one_time_prekey_public = otp->prekey_public;
     }
@@ -171,11 +212,12 @@ common::Result<PrekeyBundle> DeviceRepository::GetPrekeyBundle(const common::Dev
   }
 }
 
-common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common::DeviceId& device_id) {
+common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common::UserId& user_id,
+                                                                    const common::DeviceId& device_id) {
   try {
     auto lock = db_.WriteLock();
     SQLite::Transaction txn(db_.Connection());
-    auto consumed = ConsumeOneAvailableOtpLocked(device_id);
+    auto consumed = ConsumeOneAvailableOtpLocked(user_id, device_id);
     if (!consumed) {
       return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "No available prekeys"});
     }
@@ -184,6 +226,80 @@ common::Result<PrekeyRecord> DeviceRepository::ConsumeOneTimePrekey(const common
   } catch (const SQLite::Exception& e) {
     return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
   }
+}
+
+common::VoidResult DeviceRepository::UpdateSignedPrekey(const common::UserId& user_id,
+                                                        const common::DeviceId& device_id,
+                                                        const std::string& signed_prekey_public,
+                                                        const std::string& signed_prekey_signature,
+                                                        common::Timestamp now) {
+  // SQLite bind indices (1-based).
+  constexpr int kBindSignedPrekeyPublic = 1;
+  constexpr int kBindSignedPrekeySignature = 2;
+  constexpr int kBindLastPrekeyRefreshAt = 3;
+  constexpr int kBindWhereUserId = 4;
+  constexpr int kBindWhereDeviceId = 5;
+
+  auto lock = db_.WriteLock();
+  SQLite::Statement stmt(db_.Connection(),
+                         "UPDATE devices SET signed_prekey_public = ?, signed_prekey_signature = ?, "
+                         "last_prekey_refresh_at = ? WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL");
+  stmt.bind(kBindSignedPrekeyPublic, signed_prekey_public);
+  stmt.bind(kBindSignedPrekeySignature, signed_prekey_signature);
+  stmt.bind(kBindLastPrekeyRefreshAt, now);
+  stmt.bind(kBindWhereUserId, user_id);
+  stmt.bind(kBindWhereDeviceId, device_id);
+  if (stmt.exec() == 0) {
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
+  }
+  return {};
+}
+
+common::VoidResult DeviceRepository::RevokeDevice(const common::UserId& user_id,
+                                                  const common::DeviceId& device_id,
+                                                  common::Timestamp now) {
+  auto lock = db_.WriteLock();
+  SQLite::Transaction txn(db_.Connection());
+  SQLite::Statement upd(db_.Connection(),
+                        "UPDATE devices SET revoked_at = ? WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL");
+  upd.bind(1, now);
+  upd.bind(2, user_id);
+  upd.bind(3, device_id);
+  if (upd.exec() == 0) {
+    return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Device not found"});
+  }
+  SQLite::Statement del_otp(db_.Connection(), "DELETE FROM one_time_prekeys WHERE user_id = ? AND device_id = ?");
+  del_otp.bind(1, user_id);
+  del_otp.bind(2, device_id);
+  del_otp.exec();
+  txn.commit();
+  return {};
+}
+
+common::VoidResult DeviceRepository::UpdateLastSeen(const common::UserId& user_id,
+                                                    const common::DeviceId& device_id,
+                                                    common::Timestamp now) {
+  auto lock = db_.WriteLock();
+  SQLite::Statement stmt(db_.Connection(), "UPDATE devices SET last_seen_at = ? WHERE user_id = ? AND device_id = ?");
+  stmt.bind(1, now);
+  stmt.bind(2, user_id);
+  stmt.bind(3, device_id);
+  stmt.exec();
+  return {};
+}
+
+std::size_t DeviceRepository::CountAvailableOneTimePrekeys(const common::UserId& user_id,
+                                                           const common::DeviceId& device_id) {
+  auto lock = db_.ReadLock();
+  SQLite::Statement stmt(
+      db_.Connection(),
+      "SELECT COUNT(*) FROM one_time_prekeys WHERE user_id = ? AND device_id = ? AND consumed_at IS NULL");
+  stmt.bind(1, user_id);
+  stmt.bind(2, device_id);
+  if (stmt.executeStep()) {
+    return static_cast<std::size_t>(stmt.getColumn(0).getInt64());
+  }
+  return 0;
 }
 
 } // namespace vox::store

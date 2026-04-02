@@ -1,5 +1,7 @@
 #include "lib/vox_store/envelope_repository.hpp"
 
+#include <sstream>
+
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <sqlite3.h>
 
@@ -7,10 +9,54 @@ namespace vox::store {
 
 namespace {
 
-constexpr int kServerTimestampParam = 5;
-constexpr int kEnvelopeTypeParam = 6;
-constexpr int kRetentionUntilParam = 7;
-constexpr int kOrderingEpochParam = 8;
+constexpr int kCiphertextParam = 5;
+constexpr int kServerTimestampParam = 6;
+constexpr int kEnvelopeTypeParam = 7;
+constexpr int kRetentionUntilParam = 8;
+constexpr int kOrderingEpochParam = 9;
+
+EnvelopeRecord RowToEnvelope(SQLite::Statement& stmt) {
+  EnvelopeRecord rec;
+  rec.envelope_id = stmt.getColumn("envelope_id").getString();
+  rec.conversation_id = stmt.getColumn("conversation_id").getString();
+  rec.sender_user_id = stmt.getColumn("sender_user_id").getString();
+  rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
+  rec.ciphertext = stmt.getColumn("ciphertext").getString();
+  rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
+  rec.envelope_type = stmt.getColumn("envelope_type").getInt();
+  if (!stmt.getColumn("retention_until").isNull()) {
+    rec.retention_until = stmt.getColumn("retention_until").getInt64();
+  }
+  if (!stmt.getColumn("ordering_epoch").isNull()) {
+    rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
+  }
+  return rec;
+}
+
+std::string MakeEnvCursor(common::Timestamp ts, const common::EnvelopeId& eid) {
+  std::ostringstream oss;
+  oss << ts << '|' << eid;
+  return oss.str();
+}
+
+bool ParseEnvCursor(const std::string& cursor, common::Timestamp& out_ts, common::EnvelopeId& out_eid) {
+  if (cursor.empty()) {
+    out_ts = 0;
+    out_eid.clear();
+    return true;
+  }
+  const auto pos = cursor.find('|');
+  if (pos == std::string::npos || pos == 0) {
+    return false;
+  }
+  try {
+    out_ts = static_cast<common::Timestamp>(std::stoll(cursor.substr(0, pos)));
+  } catch (...) {
+    return false;
+  }
+  out_eid = cursor.substr(pos + 1);
+  return !out_eid.empty();
+}
 
 } // namespace
 
@@ -21,13 +67,15 @@ common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envel
   try {
     auto lock = db_.WriteLock();
     SQLite::Statement stmt(db_.Connection(),
-                           "INSERT INTO encrypted_envelopes (envelope_id, conversation_id, sender_device_id, "
-                           "ciphertext, server_timestamp, envelope_type, retention_until, ordering_epoch) "
-                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                           "INSERT INTO encrypted_envelopes (envelope_id, conversation_id, sender_user_id, "
+                           "sender_device_id, ciphertext, server_timestamp, envelope_type, retention_until, "
+                           "ordering_epoch) "
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     stmt.bind(1, envelope.envelope_id);
     stmt.bind(2, envelope.conversation_id);
-    stmt.bind(3, envelope.sender_device_id);
-    stmt.bind(4, envelope.ciphertext);
+    stmt.bind(3, envelope.sender_user_id);
+    stmt.bind(4, envelope.sender_device_id);
+    stmt.bind(kCiphertextParam, envelope.ciphertext);
     stmt.bind(kServerTimestampParam, envelope.server_timestamp);
     stmt.bind(kEnvelopeTypeParam, envelope.envelope_type);
     if (envelope.retention_until) {
@@ -52,15 +100,18 @@ common::VoidResult EnvelopeRepository::StoreEnvelope(const EnvelopeRecord& envel
 }
 
 common::VoidResult EnvelopeRepository::AddDeliveryState(const common::EnvelopeId& envelope_id,
+                                                        const common::UserId& target_user_id,
                                                         const common::DeviceId& target_device_id,
                                                         common::Timestamp now) {
   try {
     auto lock = db_.WriteLock();
-    SQLite::Statement stmt(db_.Connection(),
-                           "INSERT INTO delivery_state (envelope_id, target_device_id, queued_at) VALUES (?, ?, ?)");
+    SQLite::Statement stmt(
+        db_.Connection(),
+        "INSERT INTO delivery_state (envelope_id, target_user_id, target_device_id, queued_at) VALUES (?, ?, ?, ?)");
     stmt.bind(1, envelope_id);
-    stmt.bind(2, target_device_id);
-    stmt.bind(3, now);
+    stmt.bind(2, target_user_id);
+    stmt.bind(3, target_device_id);
+    stmt.bind(4, now);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
@@ -68,34 +119,73 @@ common::VoidResult EnvelopeRepository::AddDeliveryState(const common::EnvelopeId
   }
 }
 
-std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common::DeviceId& device_id,
+std::vector<EnvelopeRecord> EnvelopeRepository::GetPendingForDevice(const common::UserId& user_id,
+                                                                    const common::DeviceId& device_id,
                                                                     std::size_t limit) {
   auto lock = db_.ReadLock();
   std::vector<EnvelopeRecord> result;
   SQLite::Statement stmt(db_.Connection(),
                          "SELECT e.* FROM encrypted_envelopes e "
                          "JOIN delivery_state d ON e.envelope_id = d.envelope_id "
-                         "WHERE d.target_device_id = ? AND d.delivered_at IS NULL AND d.acked_at IS NULL "
+                         "WHERE d.target_user_id = ? AND d.target_device_id = ? AND d.delivered_at IS NULL AND "
+                         "d.acked_at IS NULL "
                          "ORDER BY e.server_timestamp ASC LIMIT ?");
-  stmt.bind(1, device_id);
-  stmt.bind(2, static_cast<std::int64_t>(limit));
+  stmt.bind(1, user_id);
+  stmt.bind(2, device_id);
+  stmt.bind(3, static_cast<std::int64_t>(limit));
   while (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    result.push_back(std::move(rec));
+    result.push_back(RowToEnvelope(stmt));
   }
   return result;
+}
+
+IEnvelopeRepository::EnvelopePage EnvelopeRepository::GetPendingForDeviceCursored(const common::UserId& user_id,
+                                                                                  const common::DeviceId& device_id,
+                                                                                  const std::string& cursor,
+                                                                                  std::size_t limit) {
+  EnvelopePage page;
+  common::Timestamp last_ts = 0;
+  common::EnvelopeId last_eid;
+  if (!cursor.empty()) {
+    if (!ParseEnvCursor(cursor, last_ts, last_eid)) {
+      page.has_more = false;
+      return page;
+    }
+  }
+
+  auto lock = db_.ReadLock();
+  std::string sql =
+      "SELECT e.* FROM encrypted_envelopes e "
+      "JOIN delivery_state d ON e.envelope_id = d.envelope_id "
+      "WHERE d.target_user_id = ? AND d.target_device_id = ? AND d.delivered_at IS NULL AND d.acked_at IS NULL ";
+  if (!cursor.empty()) {
+    sql += "AND ((e.server_timestamp > ?) OR (e.server_timestamp = ? AND e.envelope_id > ?)) ";
+  }
+  sql += "ORDER BY e.server_timestamp ASC, e.envelope_id ASC LIMIT ?";
+
+  SQLite::Statement stmt(db_.Connection(), sql);
+  int bi = 1;
+  stmt.bind(bi++, user_id);
+  stmt.bind(bi++, device_id);
+  if (!cursor.empty()) {
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_eid);
+  }
+  stmt.bind(bi++, static_cast<std::int64_t>(limit + 1));
+
+  while (stmt.executeStep()) {
+    page.envelopes.push_back(RowToEnvelope(stmt));
+  }
+  if (page.envelopes.size() > limit) {
+    page.has_more = true;
+    page.envelopes.pop_back();
+  }
+  if (!page.envelopes.empty()) {
+    const auto& last = page.envelopes.back();
+    page.next_cursor = MakeEnvCursor(last.server_timestamp, last.envelope_id);
+  }
+  return page;
 }
 
 std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common::ConversationId& conversation_id,
@@ -110,33 +200,64 @@ std::vector<EnvelopeRecord> EnvelopeRepository::ListForConversation(const common
   stmt.bind(2, since_exclusive);
   stmt.bind(3, static_cast<std::int64_t>(limit));
   while (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    result.push_back(std::move(rec));
+    result.push_back(RowToEnvelope(stmt));
   }
   return result;
 }
 
+IEnvelopeRepository::EnvelopePage EnvelopeRepository::ListForConversationCursored(
+    const common::ConversationId& conversation_id, const std::string& cursor, std::size_t limit) {
+  EnvelopePage page;
+  common::Timestamp last_ts = 0;
+  common::EnvelopeId last_eid;
+  if (!cursor.empty() && !ParseEnvCursor(cursor, last_ts, last_eid)) {
+    page.has_more = false;
+    return page;
+  }
+
+  auto lock = db_.ReadLock();
+  std::string sql = "SELECT * FROM encrypted_envelopes WHERE conversation_id = ? ";
+  if (!cursor.empty()) {
+    sql += "AND ((server_timestamp > ?) OR (server_timestamp = ? AND envelope_id > ?)) ";
+  }
+  sql += "ORDER BY server_timestamp ASC, envelope_id ASC LIMIT ?";
+
+  SQLite::Statement stmt(db_.Connection(), sql);
+  int bi = 1;
+  stmt.bind(bi++, conversation_id);
+  if (!cursor.empty()) {
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_ts);
+    stmt.bind(bi++, last_eid);
+  }
+  stmt.bind(bi++, static_cast<std::int64_t>(limit + 1));
+
+  while (stmt.executeStep()) {
+    page.envelopes.push_back(RowToEnvelope(stmt));
+  }
+  if (page.envelopes.size() > limit) {
+    page.has_more = true;
+    page.envelopes.pop_back();
+  }
+  if (!page.envelopes.empty()) {
+    const auto& last = page.envelopes.back();
+    page.next_cursor = MakeEnvCursor(last.server_timestamp, last.envelope_id);
+  }
+  return page;
+}
+
 common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& envelope_id,
+                                                     const common::UserId& user_id,
                                                      const common::DeviceId& device_id,
                                                      common::Timestamp now) {
   auto lock = db_.WriteLock();
   SQLite::Statement stmt(db_.Connection(),
-                         "UPDATE delivery_state SET delivered_at = ? WHERE envelope_id = ? AND target_device_id = ?");
+                         "UPDATE delivery_state SET delivered_at = ? WHERE envelope_id = ? AND target_user_id = ? AND "
+                         "target_device_id = ?");
   stmt.bind(1, now);
   stmt.bind(2, envelope_id);
-  stmt.bind(3, device_id);
+  stmt.bind(3, user_id);
+  stmt.bind(4, device_id);
   int rows = stmt.exec();
   if (rows == 0) {
     return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Delivery state not found"});
@@ -145,14 +266,17 @@ common::VoidResult EnvelopeRepository::MarkDelivered(const common::EnvelopeId& e
 }
 
 common::VoidResult EnvelopeRepository::MarkAcked(const common::EnvelopeId& envelope_id,
+                                                 const common::UserId& user_id,
                                                  const common::DeviceId& device_id,
                                                  common::Timestamp now) {
   auto lock = db_.WriteLock();
   SQLite::Statement stmt(db_.Connection(),
-                         "UPDATE delivery_state SET acked_at = ? WHERE envelope_id = ? AND target_device_id = ?");
+                         "UPDATE delivery_state SET acked_at = ? WHERE envelope_id = ? AND target_user_id = ? AND "
+                         "target_device_id = ?");
   stmt.bind(1, now);
   stmt.bind(2, envelope_id);
-  stmt.bind(3, device_id);
+  stmt.bind(3, user_id);
+  stmt.bind(4, device_id);
   int rows = stmt.exec();
   if (rows == 0) {
     return std::unexpected(common::Error{.code = common::ErrorCode::kNotFound, .message = "Delivery state not found"});
@@ -165,8 +289,7 @@ common::VoidResult EnvelopeRepository::DeletePendingDeliveryForUserInConversatio
   try {
     auto lock = db_.WriteLock();
     SQLite::Statement stmt(db_.Connection(),
-                           "DELETE FROM delivery_state WHERE target_device_id IN "
-                           "(SELECT device_id FROM devices WHERE user_id = ?) "
+                           "DELETE FROM delivery_state WHERE target_user_id = ? "
                            "AND envelope_id IN "
                            "(SELECT envelope_id FROM encrypted_envelopes WHERE conversation_id = ?)");
     stmt.bind(1, user_id);
@@ -210,30 +333,19 @@ std::optional<EnvelopeRecord> EnvelopeRepository::FindById(const common::Envelop
   SQLite::Statement stmt(db_.Connection(), "SELECT * FROM encrypted_envelopes WHERE envelope_id = ?");
   stmt.bind(1, envelope_id);
   if (stmt.executeStep()) {
-    EnvelopeRecord rec;
-    rec.envelope_id = stmt.getColumn("envelope_id").getString();
-    rec.conversation_id = stmt.getColumn("conversation_id").getString();
-    rec.sender_device_id = stmt.getColumn("sender_device_id").getString();
-    rec.ciphertext = stmt.getColumn("ciphertext").getString();
-    rec.server_timestamp = stmt.getColumn("server_timestamp").getInt64();
-    rec.envelope_type = stmt.getColumn("envelope_type").getInt();
-    if (!stmt.getColumn("retention_until").isNull()) {
-      rec.retention_until = stmt.getColumn("retention_until").getInt64();
-    }
-    if (!stmt.getColumn("ordering_epoch").isNull()) {
-      rec.ordering_epoch = stmt.getColumn("ordering_epoch").getInt64();
-    }
-    return rec;
+    return RowToEnvelope(stmt);
   }
   return std::nullopt;
 }
 
-std::size_t EnvelopeRepository::CountPendingForDevice(const common::DeviceId& device_id) {
+std::size_t EnvelopeRepository::CountPendingForDevice(const common::UserId& user_id,
+                                                      const common::DeviceId& device_id) {
   auto lock = db_.ReadLock();
-  SQLite::Statement stmt(
-      db_.Connection(),
-      "SELECT COUNT(*) FROM delivery_state WHERE target_device_id = ? AND delivered_at IS NULL AND acked_at IS NULL");
-  stmt.bind(1, device_id);
+  SQLite::Statement stmt(db_.Connection(),
+                         "SELECT COUNT(*) FROM delivery_state WHERE target_user_id = ? AND target_device_id = ? AND "
+                         "delivered_at IS NULL AND acked_at IS NULL");
+  stmt.bind(1, user_id);
+  stmt.bind(2, device_id);
   if (stmt.executeStep()) {
     return static_cast<std::size_t>(stmt.getColumn(0).getInt64());
   }

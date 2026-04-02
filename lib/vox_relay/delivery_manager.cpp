@@ -10,12 +10,16 @@ DeliveryManager::DeliveryManager(store::IEnvelopeRepository& envelopes, std::siz
     envelopes_(envelopes), max_queue_per_device_(max_queue_per_device) {
 }
 
-void DeliveryManager::SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook) {
+void DeliveryManager::SetEnqueueHook(
+    std::function<void(const std::string& device_scope_key, const QueuedEnvelope&)> hook) {
   enqueue_hook_ = std::move(hook);
 }
 
-common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) {
-  auto& queue = GetOrCreateQueue(device_id);
+common::VoidResult DeliveryManager::Enqueue(const common::UserId& user_id,
+                                            const common::DeviceId& device_id,
+                                            const QueuedEnvelope& envelope) {
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  auto& queue = GetOrCreateQueue(user_id, device_id);
   std::lock_guard lock(queue.mutex);
 
   if (queue.pending.size() >= max_queue_per_device_) {
@@ -26,14 +30,17 @@ common::VoidResult DeliveryManager::Enqueue(const common::DeviceId& device_id, c
 
   queue.pending.push_back(envelope);
   if (enqueue_hook_) {
-    enqueue_hook_(device_id, envelope);
+    enqueue_hook_(key, envelope);
   }
   return {};
 }
 
-std::vector<QueuedEnvelope> DeliveryManager::Dequeue(const common::DeviceId& device_id, std::size_t max_count) {
+std::vector<QueuedEnvelope> DeliveryManager::Dequeue(const common::UserId& user_id,
+                                                     const common::DeviceId& device_id,
+                                                     std::size_t max_count) {
   std::vector<QueuedEnvelope> result;
-  auto found = queues_.Find(device_id);
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  auto found = queues_.Find(key);
   if (!found) {
     return result;
   }
@@ -50,36 +57,39 @@ std::vector<QueuedEnvelope> DeliveryManager::Dequeue(const common::DeviceId& dev
   return result;
 }
 
-common::VoidResult DeliveryManager::Acknowledge(const common::DeviceId& device_id,
+common::VoidResult DeliveryManager::Acknowledge(const common::UserId& user_id,
+                                                const common::DeviceId& device_id,
                                                 const common::EnvelopeId& envelope_id) {
   auto now =
       std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-  return envelopes_.MarkAcked(envelope_id, device_id, now);
+  return envelopes_.MarkAcked(envelope_id, user_id, device_id, now);
 }
 
-void DeliveryManager::SwitchToOffline(const common::DeviceId& device_id) {
-  auto found = queues_.Find(device_id);
+void DeliveryManager::SwitchToOffline(const common::UserId& user_id, const common::DeviceId& device_id) {
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  auto found = queues_.Find(key);
   if (!found) {
     return;
   }
 
-  auto& queue = *found;
-  std::lock_guard lock(queue->mutex);
+  auto& queue_ptr = *found;
+  std::lock_guard lock(queue_ptr->mutex);
 
   auto now =
       std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-  for (const auto& env : queue->pending) {
-    if (auto add_result = envelopes_.AddDeliveryState(env.envelope_id, device_id, now); !add_result) {
+  for (const auto& env : queue_ptr->pending) {
+    if (auto add_result = envelopes_.AddDeliveryState(env.envelope_id, user_id, device_id, now); !add_result) {
       spdlog::warn("Failed to add delivery state for envelope {}: {}", env.envelope_id, add_result.error().message);
     }
   }
-  queue->pending.clear();
+  queue_ptr->pending.clear();
   spdlog::info("Switched device {} to offline delivery, persisted queued envelopes", device_id);
 }
 
-std::size_t DeliveryManager::QueueSize(const common::DeviceId& device_id) const {
-  auto found = queues_.Find(device_id);
+std::size_t DeliveryManager::QueueSize(const common::UserId& user_id, const common::DeviceId& device_id) const {
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  auto found = queues_.Find(key);
   if (!found) {
     return 0;
   }
@@ -87,12 +97,14 @@ std::size_t DeliveryManager::QueueSize(const common::DeviceId& device_id) const 
   return (*found)->pending.size();
 }
 
-DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::DeviceId& device_id) {
-  return *queues_.WithShard(device_id, [&](auto& map) -> std::shared_ptr<DeviceQueue> {
-    auto it = map.find(device_id);
+DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::UserId& user_id,
+                                                                const common::DeviceId& device_id) {
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  return *queues_.WithShard(key, [&](auto& map) -> std::shared_ptr<DeviceQueue> {
+    auto it = map.find(key);
     if (it == map.end()) {
       auto q = std::make_shared<DeviceQueue>();
-      map.emplace(device_id, q);
+      map.emplace(key, q);
       return q;
     }
     return it->second;
@@ -100,8 +112,10 @@ DeliveryManager::DeviceQueue& DeliveryManager::GetOrCreateQueue(const common::De
 }
 
 void DeliveryManager::PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                                       const common::UserId& user_id,
                                                        const common::DeviceId& device_id) {
-  auto found = queues_.Find(device_id);
+  const std::string key = common::DeviceScopeKey(user_id, device_id);
+  auto found = queues_.Find(key);
   if (!found) {
     return;
   }

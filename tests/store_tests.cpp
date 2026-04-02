@@ -38,6 +38,39 @@ TEST_F(StoreTestSuite, CreateAndFindUserByUsername) {
   }
 }
 
+TEST_F(StoreTestSuite, FindByUsernameIsCaseInsensitive) {
+  auto user = MakeUser("Alice");
+  ASSERT_TRUE(users_->CreateUser(user).has_value());
+  const auto found = users_->FindByUsername("alice");
+  ASSERT_TRUE(found.has_value());
+  if (found) {
+    ASSERT_EQ(found->username, "Alice");
+  }
+}
+
+TEST_F(StoreTestSuite, UsernameCaseInsensitiveDuplicateRejected) {
+  auto u1 = MakeUser("Alice");
+  ASSERT_TRUE(users_->CreateUser(u1).has_value());
+  auto u2 = MakeUser("alice");
+  auto r = users_->CreateUser(u2);
+  ASSERT_FALSE(r.has_value());
+  ASSERT_EQ(r.error().code, vox::common::ErrorCode::kAlreadyExists);
+}
+
+TEST_F(StoreTestSuite, FindPublicProfilesByIds) {
+  auto a = MakeUser("batch_a");
+  auto b = MakeUser("batch_b");
+  ASSERT_TRUE(users_->CreateUser(a).has_value());
+  ASSERT_TRUE(users_->CreateUser(b).has_value());
+  std::vector<vox::common::UserId> order{b.user_id, a.user_id, b.user_id};
+  auto profs = users_->FindPublicProfilesByIds(order);
+  ASSERT_EQ(profs.size(), 2u);
+  ASSERT_EQ(profs[0].user_id, b.user_id);
+  ASSERT_EQ(profs[0].username, "batch_b");
+  ASSERT_EQ(profs[1].user_id, a.user_id);
+  ASSERT_EQ(profs[1].username, "batch_a");
+}
+
 TEST_F(StoreTestSuite, CreateAndFindUserById) {
   auto user = MakeUser("bob");
   ASSERT_TRUE(users_->CreateUser(user));
@@ -93,7 +126,7 @@ TEST_F(StoreTestSuite, RegisterAndFindDevice) {
   auto result = devices_->RegisterDevice(device);
   ASSERT_TRUE(result.has_value());
 
-  auto found = devices_->FindById("dev1");
+  auto found = devices_->FindByUserAndDevice(user.user_id, "dev1");
   ASSERT_TRUE(found.has_value());
   if (found) {
     const auto& found_ref = *found;
@@ -112,6 +145,19 @@ TEST_F(StoreTestSuite, GetDevicesForUser) {
   ASSERT_EQ(devs.size(), 2u);
 }
 
+TEST_F(StoreTestSuite, SameClientDeviceIdForTwoUsers) {
+  auto u1 = MakeUser("multi_a");
+  auto u2 = MakeUser("multi_b");
+  ASSERT_TRUE(users_->CreateUser(u1));
+  ASSERT_TRUE(users_->CreateUser(u2));
+  constexpr const char* kSharedDid = "shared_installation";
+  ASSERT_TRUE(devices_->RegisterDevice(MakeDevice(u1.user_id, kSharedDid)));
+  ASSERT_TRUE(devices_->RegisterDevice(MakeDevice(u2.user_id, kSharedDid)));
+  ASSERT_TRUE(devices_->FindByUserAndDevice(u1.user_id, kSharedDid).has_value());
+  ASSERT_TRUE(devices_->FindByUserAndDevice(u2.user_id, kSharedDid).has_value());
+  ASSERT_EQ(devices_->FindAllByDeviceId(kSharedDid).size(), 2u);
+}
+
 TEST_F(StoreTestSuite, StorePrekeyAndConsume) {
   auto user = MakeUser("grace");
   ASSERT_TRUE(users_->CreateUser(user));
@@ -126,9 +172,9 @@ TEST_F(StoreTestSuite, StorePrekeyAndConsume) {
     pk.prekey_public = "pub_" + std::to_string(i);
     prekeys.push_back(pk);
   }
-  ASSERT_TRUE(devices_->StorePrekeys("dev_pk", prekeys));
+  ASSERT_TRUE(devices_->StorePrekeys(user.user_id, "dev_pk", prekeys));
 
-  auto consumed = devices_->ConsumeOneTimePrekey("dev_pk");
+  auto consumed = devices_->ConsumeOneTimePrekey(user.user_id, "dev_pk");
   ASSERT_TRUE(consumed.has_value());
   if (consumed.has_value()) {
     const auto& consumed_ref = consumed.value();
@@ -150,9 +196,9 @@ TEST_F(StoreTestSuite, GetPrekeyBundleConsumesOneTimePrekeys) {
     pk.prekey_public = "bundle_pub_" + std::to_string(i);
     prekeys.push_back(pk);
   }
-  ASSERT_TRUE(devices_->StorePrekeys("dev_bundle", prekeys));
+  ASSERT_TRUE(devices_->StorePrekeys(user.user_id, "dev_bundle", prekeys));
 
-  auto b1 = devices_->GetPrekeyBundle("dev_bundle");
+  auto b1 = devices_->GetPrekeyBundle(user.user_id, "dev_bundle");
   ASSERT_TRUE(b1.has_value());
   const auto& b1v = b1.value();
   if (!b1v.one_time_prekey_id.has_value()) {
@@ -160,7 +206,7 @@ TEST_F(StoreTestSuite, GetPrekeyBundleConsumesOneTimePrekeys) {
   }
   ASSERT_EQ(b1v.one_time_prekey_id.value(), "bundle_pk_0");
 
-  auto b2 = devices_->GetPrekeyBundle("dev_bundle");
+  auto b2 = devices_->GetPrekeyBundle(user.user_id, "dev_bundle");
   ASSERT_TRUE(b2.has_value());
   const auto& b2v = b2.value();
   if (!b2v.one_time_prekey_id.has_value()) {
@@ -168,7 +214,7 @@ TEST_F(StoreTestSuite, GetPrekeyBundleConsumesOneTimePrekeys) {
   }
   ASSERT_EQ(b2v.one_time_prekey_id.value(), "bundle_pk_1");
 
-  auto b3 = devices_->GetPrekeyBundle("dev_bundle");
+  auto b3 = devices_->GetPrekeyBundle(user.user_id, "dev_bundle");
   ASSERT_TRUE(b3.has_value());
   ASSERT_FALSE(b3->one_time_prekey_id.has_value());
 }
@@ -185,11 +231,11 @@ TEST_F(StoreTestSuite, ConsumeAlreadyConsumedPrekeyFails) {
   pk.device_id = "dev_pk2";
   pk.prekey_public = "pub_single";
   prekeys.push_back(pk);
-  ASSERT_TRUE(devices_->StorePrekeys("dev_pk2", prekeys));
+  ASSERT_TRUE(devices_->StorePrekeys(user.user_id, "dev_pk2", prekeys));
 
-  auto first = devices_->ConsumeOneTimePrekey("dev_pk2");
+  auto first = devices_->ConsumeOneTimePrekey(user.user_id, "dev_pk2");
   ASSERT_TRUE(first.has_value());
-  auto second = devices_->ConsumeOneTimePrekey("dev_pk2");
+  auto second = devices_->ConsumeOneTimePrekey(user.user_id, "dev_pk2");
   ASSERT_FALSE(second.has_value());
   ASSERT_EQ(second.error().code, vox::common::ErrorCode::kNotFound);
 }
@@ -216,6 +262,39 @@ TEST_F(StoreTestSuite, CreateConversationAndAddMembers) {
   ASSERT_EQ(members.size(), 2u);
   ASSERT_TRUE(conversations_->IsUserInConversation(conv.conversation_id, alice.user_id));
   ASSERT_TRUE(conversations_->IsUserInConversation(conv.conversation_id, bob.user_id));
+}
+
+TEST_F(StoreTestSuite, GetConversationsForUserLastActivityFromEnvelopes) {
+  auto user = MakeUser("last_act_user");
+  ASSERT_TRUE(users_->CreateUser(user));
+  auto device = MakeDevice(user.user_id, "last_act_dev");
+  ASSERT_TRUE(devices_->RegisterDevice(device));
+
+  vox::store::ConversationRecord conv;
+  conv.conversation_id = vox::common::GenerateUuid();
+  conv.type = vox::common::ConversationType::kDm;
+  conv.created_by = user.user_id;
+  conv.created_at = kTestBaseTimestamp;
+  ASSERT_TRUE(conversations_->CreateConversation(conv));
+  ASSERT_TRUE(conversations_->AddMember(
+      conv.conversation_id, user.user_id, vox::common::MemberRole::kOwner, kTestBaseTimestamp));
+
+  auto list0 = conversations_->GetConversationsForUser(user.user_id);
+  ASSERT_EQ(list0.size(), 1u);
+  ASSERT_FALSE(list0[0].last_activity_at.has_value());
+
+  vox::store::EnvelopeRecord env;
+  env.envelope_id = vox::common::GenerateUuid();
+  env.conversation_id = conv.conversation_id;
+  env.sender_user_id = user.user_id;
+  env.sender_device_id = "last_act_dev";
+  env.ciphertext = "x";
+  env.server_timestamp = kTestTimestampOffset1 + 1;
+  ASSERT_TRUE(envelopes_->StoreEnvelope(env));
+
+  auto list1 = conversations_->GetConversationsForUser(user.user_id);
+  ASSERT_EQ(list1.size(), 1u);
+  ASSERT_EQ(list1[0].last_activity_at, std::optional<vox::common::Timestamp>(env.server_timestamp));
 }
 
 TEST_F(StoreTestSuite, RemoveMemberTwiceIsIdempotent) {
@@ -253,6 +332,7 @@ TEST_F(StoreTestSuite, StoreAndRetrieveEnvelope) {
   vox::store::EnvelopeRecord env;
   env.envelope_id = vox::common::GenerateUuid();
   env.conversation_id = conv.conversation_id;
+  env.sender_user_id = user.user_id;
   env.sender_device_id = "env_dev";
   env.ciphertext = "encrypted_data";
   env.server_timestamp = kTestTimestampOffset1;
@@ -283,6 +363,7 @@ TEST_F(StoreTestSuite, DuplicateEnvelopeRejected) {
   vox::store::EnvelopeRecord env;
   env.envelope_id = vox::common::GenerateUuid();
   env.conversation_id = conv.conversation_id;
+  env.sender_user_id = user.user_id;
   env.sender_device_id = "dup_env_dev";
   env.ciphertext = "data";
   env.server_timestamp = kTestTimestampOffset1;
@@ -310,6 +391,7 @@ TEST_F(StoreTestSuite, CheckDuplicateDetection) {
   vox::store::EnvelopeRecord env;
   env.envelope_id = env_id;
   env.conversation_id = conv.conversation_id;
+  env.sender_user_id = user.user_id;
   env.sender_device_id = "chk_dup_dev";
   env.ciphertext = "data";
   env.server_timestamp = kTestTimestampOffset1;
@@ -335,6 +417,7 @@ TEST_F(StoreTestSuite, ListForConversationPagination) {
     vox::store::EnvelopeRecord env;
     env.envelope_id = vox::common::GenerateUuid();
     env.conversation_id = conv.conversation_id;
+    env.sender_user_id = user.user_id;
     env.sender_device_id = "list_conv_dev";
     env.ciphertext = "m" + std::to_string(i);
     env.server_timestamp = kTestTimestampOffset1 + i;

@@ -20,6 +20,7 @@ TEST_F(RelayTestSuite, SendMessageToDm) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "encrypted_hello";
@@ -38,6 +39,7 @@ TEST_F(RelayTestSuite, SendMessageToGroup) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kGroup, alice.user_id, {alice, bob, charlie});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "group_message";
@@ -54,13 +56,14 @@ TEST_F(RelayTestSuite, DequeueReturnsInOrder) {
 
   for (int i = 0; i < kDequeueMessageCount; ++i) {
     vox::relay::SendMessageRequest req;
+    req.sender_user_id = alice.user_id;
     req.sender_device_id = alice.device_id;
     req.conversation_id = conv_id;
     req.ciphertext = "msg_" + std::to_string(i);
     ASSERT_TRUE(relay_->SendEnvelope(req).has_value());
   }
 
-  auto queued = delivery_->Dequeue(bob.device_id, kDequeueMaxCount);
+  auto queued = delivery_->Dequeue(bob.user_id, bob.device_id, kDequeueMaxCount);
   ASSERT_EQ(queued.size(), static_cast<std::size_t>(kDequeueMessageCount));
   for (int i = 0; i < kDequeueMessageCount; ++i) {
     ASSERT_EQ(queued[i].ciphertext, "msg_" + std::to_string(i));
@@ -73,17 +76,19 @@ TEST_F(RelayTestSuite, AcknowledgeRemovesFromDb) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "ack_test";
   auto send_result = relay_->SendEnvelope(req);
   ASSERT_TRUE(send_result.has_value());
 
-  auto queued = delivery_->Dequeue(bob.device_id, kDequeueMaxCount);
+  auto queued = delivery_->Dequeue(bob.user_id, bob.device_id, kDequeueMaxCount);
   ASSERT_EQ(queued.size(), 1u);
 
-  ASSERT_TRUE(envelopes_->AddDeliveryState(send_result->envelope_id, bob.device_id, send_result->server_timestamp));
-  auto ack_result = relay_->AcknowledgeEnvelope(bob.device_id, send_result->envelope_id);
+  ASSERT_TRUE(envelopes_->AddDeliveryState(
+      send_result->envelope_id, bob.user_id, bob.device_id, send_result->server_timestamp));
+  auto ack_result = relay_->AcknowledgeEnvelope(bob.user_id, bob.device_id, send_result->envelope_id);
   ASSERT_TRUE(ack_result.has_value());
 }
 
@@ -94,6 +99,7 @@ TEST_F(RelayTestSuite, SendToNonMemberFails) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = outsider.user_id;
   req.sender_device_id = outsider.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "should_fail";
@@ -111,6 +117,7 @@ TEST_F(RelayTestSuite, DuplicateEnvelopeRejected) {
   auto env_id = vox::common::GenerateUuid();
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "first";
@@ -130,6 +137,7 @@ TEST_F(RelayTestSuite, ChannelNonAdminPublishFails) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = subscriber.user_id;
   req.sender_device_id = subscriber.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "unauthorized_post";
@@ -145,6 +153,7 @@ TEST_F(RelayTestSuite, ChannelAdminPublishSucceeds) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kChannel, admin.user_id, {admin, subscriber});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = admin.user_id;
   req.sender_device_id = admin.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "broadcast_msg";
@@ -164,6 +173,7 @@ TEST_F(RelayTestSuite, QueueOverflowReturnsError) {
 
   for (int i = 0; i < kQueueOverflowMaxPerDevice; ++i) {
     vox::relay::SendMessageRequest req;
+    req.sender_user_id = alice.user_id;
     req.sender_device_id = alice.device_id;
     req.conversation_id = conv_id;
     req.ciphertext = "msg_" + std::to_string(i);
@@ -171,6 +181,7 @@ TEST_F(RelayTestSuite, QueueOverflowReturnsError) {
   }
 
   vox::relay::SendMessageRequest overflow_req;
+  overflow_req.sender_user_id = alice.user_id;
   overflow_req.sender_device_id = alice.device_id;
   overflow_req.conversation_id = conv_id;
   overflow_req.ciphertext = "overflow_msg";
@@ -185,15 +196,17 @@ TEST_F(RelayTestSuite, SyncOfflineReturnsPersistedEnvelopes) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "offline_msg";
   auto send_result = relay_->SendEnvelope(req);
   ASSERT_TRUE(send_result.has_value());
 
-  ASSERT_TRUE(envelopes_->AddDeliveryState(send_result->envelope_id, bob.device_id, send_result->server_timestamp));
+  ASSERT_TRUE(envelopes_->AddDeliveryState(
+      send_result->envelope_id, bob.user_id, bob.device_id, send_result->server_timestamp));
 
-  auto pending = relay_->SyncOffline(bob.device_id, kSyncOfflineLimit);
+  auto pending = relay_->SyncOffline(bob.user_id, bob.device_id, kSyncOfflineLimit);
   ASSERT_EQ(pending.size(), 1u);
   ASSERT_EQ(pending[0].ciphertext, "offline_msg");
 }
@@ -204,6 +217,7 @@ TEST_F(RelayTestSuite, EmptyCiphertextRejected) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "";
@@ -219,6 +233,7 @@ TEST_F(RelayTestSuite, ListForConversationIncludesStoredMessage) {
   auto conv_id = CreateTestConversation(vox::common::ConversationType::kDm, alice.user_id, {alice, bob});
 
   vox::relay::SendMessageRequest req;
+  req.sender_user_id = alice.user_id;
   req.sender_device_id = alice.device_id;
   req.conversation_id = conv_id;
   req.ciphertext = "hist_payload";
@@ -238,6 +253,27 @@ TEST_F(RelayTestSuite, ConversationServiceCreateDm) {
   ASSERT_TRUE(r.has_value());
   ASSERT_TRUE(conversations_->IsUserInConversation(*r, a.user_id));
   ASSERT_TRUE(conversations_->IsUserInConversation(*r, b.user_id));
+}
+
+TEST_F(RelayTestSuite, ConversationServiceCreateSelfDm) {
+  auto a = CreateTestUser("self_dm_u");
+  auto r = conv_service_->CreateDm(a.user_id, a.user_id, a.user_id);
+  ASSERT_TRUE(r.has_value());
+  ASSERT_TRUE(conversations_->IsUserInConversation(*r, a.user_id));
+}
+
+TEST_F(RelayTestSuite, SelfDmSendDeliveredZeroWhenOnlyDevice) {
+  auto a = CreateTestUser("self_send_u");
+  auto conv_r = conv_service_->CreateDm(a.user_id, a.user_id, a.user_id);
+  ASSERT_TRUE(conv_r.has_value());
+  vox::relay::SendMessageRequest req;
+  req.sender_user_id = a.user_id;
+  req.sender_device_id = a.device_id;
+  req.conversation_id = *conv_r;
+  req.ciphertext = "note";
+  auto result = relay_->SendEnvelope(req);
+  ASSERT_TRUE(result.has_value());
+  ASSERT_EQ(result->delivered_to_count, 0u);
 }
 
 TEST_F(RelayTestSuite, ConversationServiceCreateGroup) {

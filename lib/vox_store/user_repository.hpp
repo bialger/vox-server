@@ -2,12 +2,19 @@
 #define VOX_STORE_USER_REPOSITORY_HPP
 
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "lib/vox_common/types.hpp"
 #include "lib/vox_store/database.hpp"
 
 namespace vox::store {
+
+/// Public profile fields for batch APIs (non-disabled users only).
+struct UserPublicProfile {
+  common::UserId user_id;
+  std::string username;
+};
 
 struct UserRecord {
   common::UserId user_id;
@@ -16,16 +23,39 @@ struct UserRecord {
   std::string password_verifier;
   common::Timestamp created_at;
   std::optional<common::Timestamp> disabled_at;
+  int sync_key_version = 0;
+  std::string wrapped_sync_key;
+  std::string sync_wrap_salt;
+  std::string sync_wrap_params;
+};
+
+struct SyncKeyBundleRecord {
+  int sync_key_version = 0;
+  std::string wrapped_sync_key;
+  std::string sync_wrap_salt;
+  std::string sync_wrap_params;
 };
 
 class IUserRepository {
 public:
   virtual ~IUserRepository() = default;
   virtual common::VoidResult CreateUser(const UserRecord& user) = 0;
+  /// Case-insensitive match; returns the row as stored (canonical spelling).
   virtual std::optional<UserRecord> FindByUsername(const std::string& username) = 0;
   virtual std::optional<UserRecord> FindById(const common::UserId& user_id) = 0;
+  /// Non-disabled users only; order follows first occurrence in `ids` (deduplicated).
+  virtual std::vector<UserPublicProfile> FindPublicProfilesByIds(const std::vector<common::UserId>& ids) = 0;
   virtual common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) = 0;
   virtual std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) = 0;
+
+  /// Prefix search on username (`query%`), case-insensitive. Excludes disabled users.
+  virtual std::vector<UserRecord> SearchByUsernamePrefix(const std::string& query, std::size_t limit) = 0;
+
+  virtual std::optional<SyncKeyBundleRecord> GetSyncKeyBundle(const common::UserId& user_id) = 0;
+  virtual common::VoidResult SetSyncKeyBundle(const common::UserId& user_id, const SyncKeyBundleRecord& bundle) = 0;
+  virtual common::VoidResult UpdatePasswordCredentials(const common::UserId& user_id,
+                                                       const std::string& password_salt,
+                                                       const std::string& password_verifier) = 0;
 };
 
 class UserRepository : public IUserRepository {
@@ -35,8 +65,17 @@ public:
   common::VoidResult CreateUser(const UserRecord& user) override;
   std::optional<UserRecord> FindByUsername(const std::string& username) override;
   std::optional<UserRecord> FindById(const common::UserId& user_id) override;
+  std::vector<UserPublicProfile> FindPublicProfilesByIds(const std::vector<common::UserId>& ids) override;
   common::VoidResult DisableUser(const common::UserId& user_id, common::Timestamp now) override;
   std::vector<UserRecord> ListUsers(std::size_t limit = 100, std::size_t offset = 0) override;
+
+  std::vector<UserRecord> SearchByUsernamePrefix(const std::string& query, std::size_t limit) override;
+
+  std::optional<SyncKeyBundleRecord> GetSyncKeyBundle(const common::UserId& user_id) override;
+  common::VoidResult SetSyncKeyBundle(const common::UserId& user_id, const SyncKeyBundleRecord& bundle) override;
+  common::VoidResult UpdatePasswordCredentials(const common::UserId& user_id,
+                                               const std::string& password_salt,
+                                               const std::string& password_verifier) override;
 
 private:
   IDatabase& db_;

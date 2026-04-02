@@ -18,25 +18,34 @@ namespace vox::relay {
 struct QueuedEnvelope {
   common::EnvelopeId envelope_id;
   common::ConversationId conversation_id;
+  common::UserId sender_user_id;
   common::DeviceId sender_device_id;
   std::string ciphertext;
   common::Timestamp server_timestamp;
+  int envelope_type = 0;
   std::optional<std::int64_t> ordering_epoch;
 };
 
 class IDeliveryManager {
 public:
   virtual ~IDeliveryManager() = default;
-  /// Optional hook invoked after a successful in-memory enqueue (e.g. WebSocket push).
-  virtual void SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook) = 0;
+  /// Optional hook invoked after a successful in-memory enqueue (e.g. WebSocket push). Key is `DeviceScopeKey`.
+  virtual void SetEnqueueHook(std::function<void(const std::string& device_scope_key, const QueuedEnvelope&)> hook) = 0;
 
-  virtual common::VoidResult Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) = 0;
-  virtual std::vector<QueuedEnvelope> Dequeue(const common::DeviceId& device_id, std::size_t max_count = 50) = 0;
-  virtual common::VoidResult Acknowledge(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id) = 0;
-  virtual void SwitchToOffline(const common::DeviceId& device_id) = 0;
-  virtual std::size_t QueueSize(const common::DeviceId& device_id) const = 0;
-  /// Drops queued envelopes for `device_id` that belong to `conversation_id` (e.g. after membership change).
+  virtual common::VoidResult Enqueue(const common::UserId& user_id,
+                                     const common::DeviceId& device_id,
+                                     const QueuedEnvelope& envelope) = 0;
+  virtual std::vector<QueuedEnvelope> Dequeue(const common::UserId& user_id,
+                                              const common::DeviceId& device_id,
+                                              std::size_t max_count = 50) = 0;
+  virtual common::VoidResult Acknowledge(const common::UserId& user_id,
+                                         const common::DeviceId& device_id,
+                                         const common::EnvelopeId& envelope_id) = 0;
+  virtual void SwitchToOffline(const common::UserId& user_id, const common::DeviceId& device_id) = 0;
+  virtual std::size_t QueueSize(const common::UserId& user_id, const common::DeviceId& device_id) const = 0;
+  /// Drops queued envelopes for the scoped device that belong to `conversation_id` (e.g. after membership change).
   virtual void PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                                const common::UserId& user_id,
                                                 const common::DeviceId& device_id) = 0;
 };
 
@@ -46,14 +55,21 @@ class DeliveryManager : public IDeliveryManager {
 public:
   DeliveryManager(store::IEnvelopeRepository& envelopes, std::size_t max_queue_per_device);
 
-  void SetEnqueueHook(std::function<void(const common::DeviceId&, const QueuedEnvelope&)> hook) override;
+  void SetEnqueueHook(std::function<void(const std::string& device_scope_key, const QueuedEnvelope&)> hook) override;
 
-  common::VoidResult Enqueue(const common::DeviceId& device_id, const QueuedEnvelope& envelope) override;
-  std::vector<QueuedEnvelope> Dequeue(const common::DeviceId& device_id, std::size_t max_count = 50) override;
-  common::VoidResult Acknowledge(const common::DeviceId& device_id, const common::EnvelopeId& envelope_id) override;
-  void SwitchToOffline(const common::DeviceId& device_id) override;
-  std::size_t QueueSize(const common::DeviceId& device_id) const override;
+  common::VoidResult Enqueue(const common::UserId& user_id,
+                             const common::DeviceId& device_id,
+                             const QueuedEnvelope& envelope) override;
+  std::vector<QueuedEnvelope> Dequeue(const common::UserId& user_id,
+                                      const common::DeviceId& device_id,
+                                      std::size_t max_count = 50) override;
+  common::VoidResult Acknowledge(const common::UserId& user_id,
+                                 const common::DeviceId& device_id,
+                                 const common::EnvelopeId& envelope_id) override;
+  void SwitchToOffline(const common::UserId& user_id, const common::DeviceId& device_id) override;
+  std::size_t QueueSize(const common::UserId& user_id, const common::DeviceId& device_id) const override;
   void PurgeConversationFromDeviceQueue(const common::ConversationId& conversation_id,
+                                        const common::UserId& user_id,
                                         const common::DeviceId& device_id) override;
 
 private:
@@ -62,12 +78,12 @@ private:
     mutable std::mutex mutex;
   };
 
-  DeviceQueue& GetOrCreateQueue(const common::DeviceId& device_id);
+  DeviceQueue& GetOrCreateQueue(const common::UserId& user_id, const common::DeviceId& device_id);
 
   store::IEnvelopeRepository& envelopes_;
   std::size_t max_queue_per_device_;
-  common::ShardMap<common::DeviceId, std::shared_ptr<DeviceQueue>> queues_;
-  std::function<void(const common::DeviceId&, const QueuedEnvelope&)> enqueue_hook_;
+  common::ShardMap<std::string, std::shared_ptr<DeviceQueue>> queues_;
+  std::function<void(const std::string&, const QueuedEnvelope&)> enqueue_hook_;
 };
 
 } // namespace vox::relay

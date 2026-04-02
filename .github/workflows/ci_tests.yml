@@ -138,6 +138,12 @@ jobs:
           script: |
             set -euo pipefail
             _d() { printf '%s\n' "[vox-deploy] $*"; }
+            _dcompose_diag() {
+              _d "--- docker compose ps -a ---"
+              docker compose ps -a 2>&1 | sed 's/^/[vox-deploy] /' || true
+              _d "--- docker compose logs (last 400 lines) ---"
+              docker compose logs --tail 400 2>&1 | sed 's/^/[vox-deploy] /' || true
+            }
             # appleboy/ssh-action runs bash --noprofile --norc; docker/git often live in /usr/local/bin
             export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
             _d "whoami=$(whoami) pwd=$(pwd) PATH=$PATH"
@@ -150,9 +156,8 @@ jobs:
             cd /opt/vox-server
             _d "repo root $(pwd)"
             git fetch origin "${BRANCH}"
-            git checkout "${BRANCH}"
-            git pull --ff-only origin "${BRANCH}"
-            _d "--- after git pull ---"
+            git checkout -B "${BRANCH}" "origin/${BRANCH}"
+            _d "--- after git sync ---"
             git rev-parse HEAD && git status -sb || true
             if [ ! -d deploy ]; then
               _d "ERROR: $(pwd)/deploy is not a directory"; exit 1
@@ -187,9 +192,9 @@ jobs:
               echo "${TOKEN}" | docker login ghcr.io -u "${U}" --password-stdin
             fi
             _d "docker compose pull vox-server"
-            docker compose pull vox-server || { _d "ERROR: docker compose pull failed (see above)"; exit 1; }
+            docker compose pull vox-server || { _d "ERROR: docker compose pull failed (see above)"; _dcompose_diag; exit 1; }
             _d "docker compose up -d"
-            docker compose up -d || { _d "ERROR: docker compose up failed"; exit 1; }
+            docker compose up -d || { _d "ERROR: docker compose up failed"; _dcompose_diag; exit 1; }
             _d "nginx reload (conf.d bind mount)"
-            docker compose exec -T nginx nginx -s reload || { _d "ERROR: nginx reload failed"; exit 1; }
+            docker compose exec -T nginx nginx -s reload || { _d "ERROR: nginx reload failed"; _dcompose_diag; exit 1; }
             _d "finished OK"

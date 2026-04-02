@@ -18,6 +18,10 @@ build/
 CMakePresets.json
 compile_commands.json
 
+# Local config files
+**/.env
+deploy/nginx/conf.d/20-ssl.conf
+
 # mpeltonen/sbt-idea plugin
 **.idea_modules/
 

@@ -22,7 +22,7 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
         common::Error{.code = common::ErrorCode::kInvalidArgument, .message = "Ciphertext is required"});
   }
 
-  auto sender_device = devices_.FindById(request.sender_device_id);
+  auto sender_device = devices_.FindByUserAndDevice(request.sender_user_id, request.sender_device_id);
   if (!sender_device) {
     return std::unexpected(
         common::Error{.code = common::ErrorCode::kUnauthorized, .message = "Sender device not found"});
@@ -40,10 +40,20 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   }
 
   if (conv->type == common::ConversationType::kChannel) {
-    auto member = conversations_.GetMember(request.conversation_id, sender_device->user_id);
-    if (!member || (member->role != common::MemberRole::kOwner && member->role != common::MemberRole::kAdmin)) {
-      return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden,
-                                           .message = "Only admins/owners can publish to channels"});
+    if (!conversations_.IsUserInConversation(request.conversation_id, sender_device->user_id)) {
+      return std::unexpected(
+          common::Error{.code = common::ErrorCode::kForbidden, .message = "Not subscribed to channel"});
+    }
+    bool admins_only = true;
+    if (conv->policy_blob.find(R"("channel_post_policy":"everyone")") != std::string::npos) {
+      admins_only = false;
+    }
+    if (admins_only) {
+      auto member = conversations_.GetMember(request.conversation_id, sender_device->user_id);
+      if (!member || (member->role != common::MemberRole::kOwner && member->role != common::MemberRole::kAdmin)) {
+        return std::unexpected(common::Error{.code = common::ErrorCode::kForbidden,
+                                             .message = "Only admins/owners can publish to this channel"});
+      }
     }
   }
 
@@ -58,6 +68,7 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   store::EnvelopeRecord envelope;
   envelope.envelope_id = envelope_id;
   envelope.conversation_id = request.conversation_id;
+  envelope.sender_user_id = request.sender_user_id;
   envelope.sender_device_id = request.sender_device_id;
   envelope.ciphertext = request.ciphertext;
   envelope.server_timestamp = now;
@@ -85,23 +96,28 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
   QueuedEnvelope queued;
   queued.envelope_id = envelope_id;
   queued.conversation_id = request.conversation_id;
+  queued.sender_user_id = request.sender_user_id;
   queued.sender_device_id = request.sender_device_id;
   queued.ciphertext = request.ciphertext;
   queued.server_timestamp = now;
+  queued.envelope_type = request.envelope_type;
   queued.ordering_epoch = request.ordering_epoch;
 
   std::size_t delivered_count = 0;
   for (const auto& uid : target_users) {
     auto user_devices = devices_.GetDevicesForUser(uid);
     for (const auto& dev : user_devices) {
-      if (dev.device_id == request.sender_device_id) {
+      if (dev.revoked_at.has_value()) {
         continue;
       }
-      auto enqueue_result = delivery_.Enqueue(dev.device_id, queued);
+      if (dev.user_id == request.sender_user_id && dev.device_id == request.sender_device_id) {
+        continue;
+      }
+      auto enqueue_result = delivery_.Enqueue(uid, dev.device_id, queued);
       if (enqueue_result) {
         ++delivered_count;
       } else {
-        if (auto add_result = envelopes_.AddDeliveryState(envelope_id, dev.device_id, now); !add_result) {
+        if (auto add_result = envelopes_.AddDeliveryState(envelope_id, uid, dev.device_id, now); !add_result) {
           spdlog::warn("Failed to add delivery state for device {}: {}", dev.device_id, add_result.error().message);
         }
       }
@@ -112,13 +128,16 @@ common::Result<SendMessageResponse> RelayService::SendEnvelope(const SendMessage
       .envelope_id = envelope_id, .server_timestamp = now, .delivered_to_count = delivered_count};
 }
 
-std::vector<store::EnvelopeRecord> RelayService::SyncOffline(const common::DeviceId& device_id, std::size_t limit) {
-  return envelopes_.GetPendingForDevice(device_id, limit);
+std::vector<store::EnvelopeRecord> RelayService::SyncOffline(const common::UserId& user_id,
+                                                             const common::DeviceId& device_id,
+                                                             std::size_t limit) {
+  return envelopes_.GetPendingForDevice(user_id, device_id, limit);
 }
 
-common::VoidResult RelayService::AcknowledgeEnvelope(const common::DeviceId& device_id,
+common::VoidResult RelayService::AcknowledgeEnvelope(const common::UserId& user_id,
+                                                     const common::DeviceId& device_id,
                                                      const common::EnvelopeId& envelope_id) {
-  return delivery_.Acknowledge(device_id, envelope_id);
+  return delivery_.Acknowledge(user_id, device_id, envelope_id);
 }
 
 common::Timestamp RelayService::Now() {

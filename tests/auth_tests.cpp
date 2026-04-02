@@ -12,6 +12,15 @@ constexpr vox::common::Timestamp kDisableUserTimestamp = 9999999;
 constexpr int kConcurrentRegistrationAttempts = 10;
 constexpr int kExpectedSingleSuccess = 1;
 
+void FillRegisterCrypto(vox::auth::RegisterRequest& r) {
+  r.identity_key_public = "ik_pub";
+  r.signed_prekey_public = "spk_pub";
+  r.signed_prekey_signature = "spk_sig";
+  r.wrapped_sync_key = "wrapped";
+  r.sync_wrap_salt = "salt";
+  r.sync_wrap_params = R"({"algorithm":"argon2id","memory_kib":65536,"iterations":3,"parallelism":1})";
+}
+
 } // namespace
 
 TEST_F(AuthTestSuite, RegisterSuccessfully) {
@@ -19,9 +28,7 @@ TEST_F(AuthTestSuite, RegisterSuccessfully) {
   req.username = "alice";
   req.password_derived_value = "client_hashed_pw";
   req.device_id = "dev1";
-  req.identity_key_public = "ik_pub";
-  req.signed_prekey_public = "spk_pub";
-  req.signed_prekey_signature = "spk_sig";
+  FillRegisterCrypto(req);
 
   auto result = auth_->Register(req);
   ASSERT_TRUE(result.has_value());
@@ -35,10 +42,12 @@ TEST_F(AuthTestSuite, RegisterDuplicateUsernameFails) {
   req.username = "bob";
   req.password_derived_value = "pw1";
   req.device_id = "dev1";
+  FillRegisterCrypto(req);
 
   ASSERT_TRUE(auth_->Register(req).has_value());
 
   req.device_id = "dev2";
+  FillRegisterCrypto(req);
   auto result = auth_->Register(req);
   ASSERT_FALSE(result.has_value());
   ASSERT_EQ(result.error().code, vox::common::ErrorCode::kAlreadyExists);
@@ -60,6 +69,7 @@ TEST_F(AuthTestSuite, LoginWithCorrectPassword) {
   reg.username = "charlie";
   reg.password_derived_value = "correct_pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   ASSERT_TRUE(auth_->Register(reg).has_value());
 
   vox::auth::LoginRequest login;
@@ -77,6 +87,7 @@ TEST_F(AuthTestSuite, LoginWithWrongPasswordFails) {
   reg.username = "dave";
   reg.password_derived_value = "correct_pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   ASSERT_TRUE(auth_->Register(reg).has_value());
 
   vox::auth::LoginRequest login;
@@ -105,6 +116,7 @@ TEST_F(AuthTestSuite, RefreshTokenReturnsNewTokens) {
   reg.username = "eve";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
 
@@ -122,6 +134,7 @@ TEST_F(AuthTestSuite, RefreshWithWrongDeviceFails) {
   reg.username = "frank";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
 
   ASSERT_TRUE(reg_result.has_value());
@@ -139,6 +152,7 @@ TEST_F(AuthTestSuite, RevokedRefreshTokenFails) {
   reg.username = "grace";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
 
@@ -158,6 +172,7 @@ TEST_F(AuthTestSuite, LogoutRevokesSession) {
   reg.username = "henry";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
   auto access_hash = tokens_->HashToken(reg_result.value().tokens.access_token);
@@ -178,6 +193,7 @@ TEST_F(AuthTestSuite, LogoutWithAccessTokenRevokesSession) {
   reg.username = "ida";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
   const std::string& token = reg_result->tokens.access_token;
@@ -205,6 +221,7 @@ TEST_F(AuthTestSuite, ConcurrentRegistrationsSameUsername) {
       req.username = "race_user";
       req.password_derived_value = "pw_" + std::to_string(i);
       req.device_id = "dev_" + std::to_string(i);
+      FillRegisterCrypto(req);
       auto result = auth_->Register(req);
       if (result.has_value()) {
         success_count.fetch_add(1);
@@ -221,6 +238,7 @@ TEST_F(AuthTestSuite, LoginDisabledAccountFails) {
   reg.username = "disabled";
   reg.password_derived_value = "pw";
   reg.device_id = "dev1";
+  FillRegisterCrypto(reg);
   auto reg_result = auth_->Register(reg);
   ASSERT_TRUE(reg_result.has_value());
   ASSERT_TRUE(users_->DisableUser(reg_result->user_id, kDisableUserTimestamp));

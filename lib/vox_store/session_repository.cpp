@@ -108,6 +108,20 @@ common::VoidResult SessionRepository::RevokeAllForUser(const common::UserId& use
   return {};
 }
 
+common::VoidResult SessionRepository::RevokeAllForDevice(const common::UserId& user_id,
+                                                         const common::DeviceId& device_id,
+                                                         common::Timestamp now) {
+  auto lock = db_.WriteLock();
+  SQLite::Statement stmt(
+      db_.Connection(),
+      "UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL");
+  stmt.bind(1, now);
+  stmt.bind(2, user_id);
+  stmt.bind(3, device_id);
+  stmt.exec();
+  return {};
+}
+
 int SessionRepository::CleanExpired(common::Timestamp now) {
   auto lock = db_.WriteLock();
   SQLite::Statement stmt(db_.Connection(),

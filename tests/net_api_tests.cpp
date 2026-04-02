@@ -9,6 +9,7 @@
 namespace {
 
 constexpr std::int64_t kSmallAttachmentBytes = 12;
+constexpr int kArgon2MemoryKib = 65536;
 
 boost::json::object ParseObj(const std::string& body) {
   return boost::json::parse(body).as_object();
@@ -16,6 +17,17 @@ boost::json::object ParseObj(const std::string& body) {
 
 std::string JsonString(const std::string& json, std::string_view key) {
   return {ParseObj(json).at(key).as_string().c_str()};
+}
+
+void AddSyncBundle(boost::json::object& reg) {
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap;
+  wrap["algorithm"] = "argon2id";
+  wrap["memory_kib"] = kArgon2MemoryKib;
+  wrap["iterations"] = 3;
+  wrap["parallelism"] = 1;
+  reg["sync_wrap_params"] = wrap;
 }
 
 } // namespace
@@ -28,6 +40,7 @@ TEST_F(NetApiTestSuite, RegisterAndLoginSuccess) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg);
   auto [st, body] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st, 200u);
   ASSERT_FALSE(JsonString(body, "access_token").empty());
@@ -67,6 +80,7 @@ TEST_F(NetApiTestSuite, SendMessageFlow) {
   reg_a["identity_key_public"] = "ik";
   reg_a["signed_prekey_public"] = "spk";
   reg_a["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg_a);
   auto [r1, b1] = HttpPost("/v1/register", boost::json::serialize(reg_a));
   ASSERT_EQ(r1, 200u);
   std::string uid_a = JsonString(b1, "user_id");
@@ -78,6 +92,7 @@ TEST_F(NetApiTestSuite, SendMessageFlow) {
   reg_b["identity_key_public"] = "ik";
   reg_b["signed_prekey_public"] = "spk";
   reg_b["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg_b);
   auto [r2, b2] = HttpPost("/v1/register", boost::json::serialize(reg_b));
   ASSERT_EQ(r2, 200u);
   std::string tok_b = JsonString(b2, "access_token");
@@ -123,6 +138,128 @@ TEST_F(NetApiTestSuite, RefreshReturnsNewTokens) {
   ASSERT_FALSE(o["refresh_token"].as_string().empty());
 }
 
+TEST_F(NetApiTestSuite, GetUserProfileReturnsCanonicalUsername) {
+  auto u = RegisterUser("MixedCaseUser", "dev_mcu");
+  auto [st, body] = HttpGet(std::string("/v1/users/") + u.user_id, u.access_token);
+  ASSERT_EQ(st, 200u);
+  auto o = ParseObj(body);
+  ASSERT_EQ(o["username"].as_string(), "MixedCaseUser");
+}
+
+TEST_F(NetApiTestSuite, GetUserByUsernamePathCaseInsensitive) {
+  auto u = RegisterUser("CanonicalName", "dev_cname");
+  auto [st, body] = HttpGet("/v1/users/by-username/canonicalname", u.access_token);
+  ASSERT_EQ(st, 200u);
+  auto o = ParseObj(body);
+  ASSERT_EQ(o["user_id"].as_string(), u.user_id);
+  ASSERT_EQ(o["username"].as_string(), "CanonicalName");
+}
+
+TEST_F(NetApiTestSuite, BatchGetUsersByIds) {
+  auto a = RegisterUser("batch_u1", "d_b1");
+  auto b = RegisterUser("batch_u2", "d_b2");
+  std::string path = std::string("/v1/users?ids=") + a.user_id + "," + b.user_id;
+  auto [st, body] = HttpGet(path, a.access_token);
+  ASSERT_EQ(st, 200u);
+  auto arr = ParseObj(body)["users"].as_array();
+  ASSERT_EQ(arr.size(), 2u);
+}
+
+TEST_F(NetApiTestSuite, ConversationMembersIncludeUsernames) {
+  auto a = RegisterUser("mem_a", "dma");
+  auto b = RegisterUser("mem_b", "dmb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  std::string mpath = std::string("/v1/conversations/") + conv_id + "/members";
+  auto [gst, gbody] = HttpGet(mpath, b.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto arr = ParseObj(gbody)["members"].as_array();
+  bool saw_b = false;
+  for (const auto& item : arr) {
+    const auto& o = item.as_object();
+    if (o.at("user_id").as_string() == b.user_id) {
+      ASSERT_EQ(o.at("username").as_string(), "mem_b");
+      saw_b = true;
+    }
+  }
+  ASSERT_TRUE(saw_b);
+}
+
+TEST_F(NetApiTestSuite, ListConversationsIncludesCreatedByUsername) {
+  auto a = RegisterUser("lst_a", "lda");
+  auto b = RegisterUser("lst_b", "ldb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst, 200u);
+  bool found = false;
+  auto list_root = ParseObj(gbody);
+  for (const auto& item : list_root["conversations"].as_array()) {
+    const auto& o = item.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_EQ(o.at("created_by_username").as_string(), "lst_b");
+      ASSERT_TRUE(o.contains("peer_user_id"));
+      ASSERT_EQ(o.at("peer_user_id").as_string(), a.user_id);
+      found = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found);
+}
+
+TEST_F(NetApiTestSuite, GetConversationIncludesCreatedByUsername) {
+  auto a = RegisterUser("gone_a", "gda");
+  auto b = RegisterUser("gone_b", "gdb");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet(std::string("/v1/conversations/") + conv_id, b.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto o = ParseObj(gbody);
+  ASSERT_EQ(o["created_by_username"].as_string(), "gone_b");
+  ASSERT_TRUE(o.contains("peer_user_id"));
+  ASSERT_EQ(o["peer_user_id"].as_string(), a.user_id);
+}
+
+TEST_F(NetApiTestSuite, ListConversationsOmitsPeerUserIdForGroup) {
+  auto a = RegisterUser("grp_l_a", "grp_lda");
+  auto b = RegisterUser("grp_l_b", "grp_ldb");
+  boost::json::object conv;
+  conv["type"] = "group";
+  boost::json::array members;
+  members.emplace_back(a.user_id);
+  members.emplace_back(b.user_id);
+  conv["members"] = members;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), a.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+
+  auto [gst, gbody] = HttpGet("/v1/conversations", a.access_token);
+  ASSERT_EQ(gst, 200u);
+  bool found = false;
+  auto list_root = ParseObj(gbody);
+  for (const auto& item : list_root["conversations"].as_array()) {
+    const auto& o = item.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_FALSE(o.contains("peer_user_id"));
+      found = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found);
+}
+
 TEST_F(NetApiTestSuite, LogoutRevokesBearer) {
   auto u = RegisterUser("logout_u", "dev_l");
   auto [st1, body1] = HttpPost("/v1/logout", "{}", u.access_token);
@@ -155,6 +292,54 @@ TEST_F(NetApiTestSuite, ListConversationsIncludesDm) {
     }
   }
   ASSERT_TRUE(found);
+}
+
+TEST_F(NetApiTestSuite, ListConversationsIncludesLastActivityFromMessages) {
+  auto a = RegisterUser("lact_a", "lact_da");
+  auto b = RegisterUser("lact_b", "lact_db");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = a.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), b.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+
+  auto [gst0, gbody0] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst0, 200u);
+  bool found0 = false;
+  auto list0 = ParseObj(gbody0);
+  for (const auto& it : list0["conversations"].as_array()) {
+    if (it.as_object().at("conversation_id").as_string() == conv_id) {
+      ASSERT_TRUE(it.as_object().contains("last_activity_at"));
+      ASSERT_TRUE(it.as_object().at("last_activity_at").is_null());
+      found0 = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found0);
+
+  boost::json::object send;
+  send["device_id"] = "lact_db";
+  send["conversation_id"] = conv_id;
+  send["ciphertext"] = "hello";
+  auto [sst, sbody] = HttpPost("/v1/messages/send", boost::json::serialize(send), b.access_token);
+  ASSERT_EQ(sst, 200u);
+  const auto ts = ParseObj(sbody)["server_timestamp"].as_int64();
+
+  auto [gst1, gbody1] = HttpGet("/v1/conversations", b.access_token);
+  ASSERT_EQ(gst1, 200u);
+  bool matched = false;
+  auto list1 = ParseObj(gbody1);
+  for (const auto& it : list1["conversations"].as_array()) {
+    const auto& o = it.as_object();
+    if (o.at("conversation_id").as_string() == conv_id) {
+      ASSERT_FALSE(o.at("last_activity_at").is_null());
+      ASSERT_EQ(o.at("last_activity_at").as_int64(), ts);
+      matched = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(matched);
 }
 
 TEST_F(NetApiTestSuite, GetConversationEnvelopes) {
@@ -291,7 +476,7 @@ TEST_F(NetApiTestSuite, GroupCreateAddRemoveMember) {
   (void) abody;
 
   std::string del_path = std::string("/v1/conversations/") + conv_id + "/members/" + u3.user_id;
-  auto [dst, dbody] = HttpDelete(del_path, u1.access_token);
+  auto [dst, dbody] = HttpDelete(del_path, "", u1.access_token);
   ASSERT_EQ(dst, 200u);
   (void) dbody;
 }
@@ -421,6 +606,11 @@ TEST_F(NetApiTestSuite, RegisterDuplicateReturns409) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap;
+  wrap["algorithm"] = "argon2id";
+  reg["sync_wrap_params"] = wrap;
   auto [st1, b1] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st1, 200u);
   reg["device_id"] = "dd2";
@@ -459,11 +649,16 @@ TEST_F(NetApiTestSuite, AdminDeleteUser) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  reg["wrapped_sync_key"] = "w";
+  reg["sync_wrap_salt"] = "s";
+  boost::json::object wrap2;
+  wrap2["algorithm"] = "argon2id";
+  reg["sync_wrap_params"] = wrap2;
   auto [rst, rbody] = HttpPost("/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(rst, 200u);
   std::string uid = JsonString(rbody, "user_id");
 
-  auto [dst, dbody] = HttpDelete(std::string("/v1/admin/users/") + uid, "", "test-admin-secret");
+  auto [dst, dbody] = HttpDelete(std::string("/v1/admin/users/") + uid, "", "", "test-admin-secret");
   ASSERT_EQ(dst, 200u);
   (void) dbody;
 
@@ -491,6 +686,7 @@ TEST_F(NetApiTestSuite, AsioTcpRegisterAndLoginViaExchange) {
   reg["identity_key_public"] = "ik";
   reg["signed_prekey_public"] = "spk";
   reg["signed_prekey_signature"] = "sig";
+  AddSyncBundle(reg);
   auto [st, body] = AsioHttpExchange("POST", "/v1/register", boost::json::serialize(reg));
   ASSERT_EQ(st, 200u);
   ASSERT_FALSE(JsonString(body, "access_token").empty());
@@ -517,4 +713,62 @@ TEST_F(NetApiTestSuite, AsioTcpProtectedRouteWithoutAuthViaExchange) {
   auto [st, body] = AsioHttpExchange("GET", "/v1/conversations");
   ASSERT_EQ(st, 401u);
   (void) body;
+}
+
+TEST_F(NetApiTestSuite, SelfDmCreateAndSendMessage) {
+  auto u = RegisterUser("self_dm_net", "dev_self");
+  boost::json::object conv;
+  conv["type"] = "dm";
+  conv["peer_user_id"] = u.user_id;
+  auto [cst, cbody] = HttpPost("/v1/conversations", boost::json::serialize(conv), u.access_token);
+  ASSERT_EQ(cst, 200u);
+  std::string conv_id = JsonString(cbody, "conversation_id");
+  auto [gst, gbody] = HttpGet(std::string("/v1/conversations/") + conv_id, u.access_token);
+  ASSERT_EQ(gst, 200u);
+  auto conv_obj = ParseObj(gbody);
+  ASSERT_TRUE(conv_obj.contains("peer_user_id"));
+  ASSERT_EQ(conv_obj["peer_user_id"].as_string(), u.user_id);
+
+  boost::json::object send;
+  send["device_id"] = "dev_self";
+  send["conversation_id"] = conv_id;
+  send["ciphertext"] = "self_note";
+  auto [sst, sbody] = HttpPost("/v1/messages/send", boost::json::serialize(send), u.access_token);
+  ASSERT_EQ(sst, 200u);
+  (void) sbody;
+}
+
+TEST_F(NetApiTestSuite, SameDeviceIdTwoAccountsCanRegisterAndLogin) {
+  boost::json::object reg_a;
+  reg_a["username"] = "multi_a";
+  reg_a["password_derived_value"] = "p";
+  reg_a["device_id"] = "shared_phone";
+  reg_a["identity_key_public"] = "ik_a";
+  reg_a["signed_prekey_public"] = "spk_a";
+  reg_a["signed_prekey_signature"] = "sig_a";
+  AddSyncBundle(reg_a);
+  auto [r1, b1] = HttpPost("/v1/register", boost::json::serialize(reg_a));
+  ASSERT_EQ(r1, 200u);
+  std::string uid_a = JsonString(b1, "user_id");
+
+  boost::json::object reg_b;
+  reg_b["username"] = "multi_b";
+  reg_b["password_derived_value"] = "p";
+  reg_b["device_id"] = "shared_phone";
+  reg_b["identity_key_public"] = "ik_b";
+  reg_b["signed_prekey_public"] = "spk_b";
+  reg_b["signed_prekey_signature"] = "sig_b";
+  AddSyncBundle(reg_b);
+  auto [r2, b2] = HttpPost("/v1/register", boost::json::serialize(reg_b));
+  ASSERT_EQ(r2, 200u);
+  std::string uid_b = JsonString(b2, "user_id");
+  ASSERT_NE(uid_a, uid_b);
+
+  boost::json::object login_b;
+  login_b["username"] = "multi_b";
+  login_b["password_derived_value"] = "p";
+  login_b["device_id"] = "shared_phone";
+  auto [lbst, lbbody] = HttpPost("/v1/login", boost::json::serialize(login_b));
+  ASSERT_EQ(lbst, 200u);
+  ASSERT_EQ(JsonString(lbbody, "user_id"), uid_b);
 }

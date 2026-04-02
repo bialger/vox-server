@@ -8,8 +8,16 @@ namespace vox::store {
 namespace {
 
 constexpr int kPolicyBlobParam = 5;
+constexpr int kMembershipVersionParam = 6;
 constexpr int kAddMemberRoleParam = 5;
 constexpr int kAddMemberNowParam = 6;
+
+void BumpMembershipVersion(SQLite::Database& conn, const common::ConversationId& conv_id) {
+  SQLite::Statement bump(
+      conn, "UPDATE conversations SET membership_version = membership_version + 1 WHERE conversation_id = ?");
+  bump.bind(1, conv_id);
+  bump.exec();
+}
 
 } // namespace
 
@@ -20,13 +28,15 @@ common::VoidResult ConversationRepository::CreateConversation(const Conversation
   try {
     auto lock = db_.WriteLock();
     SQLite::Statement stmt(db_.Connection(),
-                           "INSERT INTO conversations (conversation_id, type, created_by, created_at, policy_blob) "
-                           "VALUES (?, ?, ?, ?, ?)");
+                           "INSERT INTO conversations (conversation_id, type, created_by, created_at, policy_blob, "
+                           "membership_version) "
+                           "VALUES (?, ?, ?, ?, ?, ?)");
     stmt.bind(1, conv.conversation_id);
     stmt.bind(2, static_cast<int>(conv.type));
     stmt.bind(3, conv.created_by);
     stmt.bind(4, conv.created_at);
     stmt.bind(kPolicyBlobParam, conv.policy_blob);
+    stmt.bind(kMembershipVersionParam, conv.membership_version);
     stmt.exec();
     return {};
   } catch (const SQLite::Exception& e) {
@@ -49,6 +59,7 @@ std::optional<ConversationRecord> ConversationRepository::FindById(const common:
     rec.created_by = stmt.getColumn("created_by").getString();
     rec.created_at = stmt.getColumn("created_at").getInt64();
     rec.policy_blob = stmt.getColumn("policy_blob").getString();
+    rec.membership_version = stmt.getColumn("membership_version").getInt64();
     return rec;
   }
   return std::nullopt;
@@ -72,6 +83,7 @@ common::VoidResult ConversationRepository::AddMember(const common::ConversationI
     stmt.bind(kAddMemberRoleParam, static_cast<int>(role));
     stmt.bind(kAddMemberNowParam, now);
     stmt.exec();
+    BumpMembershipVersion(db_.Connection(), conv_id);
     return {};
   } catch (const SQLite::Exception& e) {
     return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
@@ -88,7 +100,10 @@ common::VoidResult ConversationRepository::RemoveMember(const common::Conversati
   stmt.bind(1, now);
   stmt.bind(2, conv_id);
   stmt.bind(3, user_id);
-  stmt.exec();
+  int n = stmt.exec();
+  if (n > 0) {
+    BumpMembershipVersion(db_.Connection(), conv_id);
+  }
   return {};
 }
 
@@ -115,10 +130,14 @@ std::vector<MemberRecord> ConversationRepository::GetMembers(const common::Conve
 std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(const common::UserId& user_id) {
   auto lock = db_.ReadLock();
   std::vector<ConversationRecord> result;
-  SQLite::Statement stmt(db_.Connection(),
-                         "SELECT c.* FROM conversations c "
-                         "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
-                         "WHERE m.user_id = ? AND m.removed_at IS NULL");
+  SQLite::Statement stmt(
+      db_.Connection(),
+      "SELECT c.*, "
+      "(SELECT MAX(e.server_timestamp) FROM encrypted_envelopes e WHERE e.conversation_id = c.conversation_id) "
+      "AS last_activity_at "
+      "FROM conversations c "
+      "JOIN conversation_members m ON c.conversation_id = m.conversation_id "
+      "WHERE m.user_id = ? AND m.removed_at IS NULL");
   stmt.bind(1, user_id);
   while (stmt.executeStep()) {
     ConversationRecord rec;
@@ -127,6 +146,10 @@ std::vector<ConversationRecord> ConversationRepository::GetConversationsForUser(
     rec.created_by = stmt.getColumn("created_by").getString();
     rec.created_at = stmt.getColumn("created_at").getInt64();
     rec.policy_blob = stmt.getColumn("policy_blob").getString();
+    rec.membership_version = stmt.getColumn("membership_version").getInt64();
+    if (!stmt.getColumn("last_activity_at").isNull()) {
+      rec.last_activity_at = stmt.getColumn("last_activity_at").getInt64();
+    }
     result.push_back(std::move(rec));
   }
   return result;
@@ -193,6 +216,7 @@ common::VoidResult ConversationRepository::Subscribe(const common::ConversationI
     stmt.bind(3, now);
     stmt.bind(4, now);
     stmt.exec();
+    BumpMembershipVersion(db_.Connection(), conv_id);
     return {};
   } catch (const SQLite::Exception& e) {
     return std::unexpected(common::Error{.code = common::ErrorCode::kInternal, .message = e.what()});
@@ -209,7 +233,10 @@ common::VoidResult ConversationRepository::Unsubscribe(const common::Conversatio
   stmt.bind(1, now);
   stmt.bind(2, conv_id);
   stmt.bind(3, user_id);
-  stmt.exec();
+  int n = stmt.exec();
+  if (n > 0) {
+    BumpMembershipVersion(db_.Connection(), conv_id);
+  }
   return {};
 }
 

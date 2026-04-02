@@ -68,21 +68,14 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
   try {
     SQLite::Transaction txn(db_.Connection());
 
-    db_.Connection().exec(
-        "DELETE FROM delivery_state WHERE target_device_id IN "
-        "(SELECT device_id FROM devices WHERE user_id = '" +
-        user_id + "')");
+    db_.Connection().exec("DELETE FROM delivery_state WHERE target_user_id = '" + user_id + "'");
 
     db_.Connection().exec(
         "DELETE FROM delivery_state WHERE envelope_id IN "
-        "(SELECT envelope_id FROM encrypted_envelopes WHERE sender_device_id IN "
-        "(SELECT device_id FROM devices WHERE user_id = '" +
-        user_id + "'))");
-
-    db_.Connection().exec(
-        "DELETE FROM encrypted_envelopes WHERE sender_device_id IN "
-        "(SELECT device_id FROM devices WHERE user_id = '" +
+        "(SELECT envelope_id FROM encrypted_envelopes WHERE sender_user_id = '" +
         user_id + "')");
+
+    db_.Connection().exec("DELETE FROM encrypted_envelopes WHERE sender_user_id = '" + user_id + "'");
 
     db_.Connection().exec("DELETE FROM attachment_metadata WHERE user_id = '" + user_id + "'");
 
@@ -92,10 +85,7 @@ common::VoidResult AdminService::DeleteUser(const common::UserId& user_id) {
 
     db_.Connection().exec("DELETE FROM sessions WHERE user_id = '" + user_id + "'");
 
-    db_.Connection().exec(
-        "DELETE FROM one_time_prekeys WHERE device_id IN "
-        "(SELECT device_id FROM devices WHERE user_id = '" +
-        user_id + "')");
+    db_.Connection().exec("DELETE FROM one_time_prekeys WHERE user_id = '" + user_id + "'");
 
     db_.Connection().exec("DELETE FROM devices WHERE user_id = '" + user_id + "'");
 
