@@ -13,13 +13,13 @@ services:
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}
     expose:
       - "8080"
-    # HTTP probe: confirms vox-server answers (bash /dev/tcp is unreliable in minimal images / some Docker setups).
+    # HTTP probe: image must include curl (see Dockerfile.prebuilt).
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/v1/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 8
-      start_period: 90s
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 120s
     networks:
       - vox_net
 
@@ -34,9 +34,20 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - certbot-www:/var/www/certbot
       - certbot-conf:/etc/letsencrypt:ro
-    # Start after vox-server container (not after health: avoids failed deploy if probe or image is misconfigured).
     depends_on:
-      - vox-server
+      vox-server:
+        condition: service_healthy
+    # Probe through nginx so mis-proxy / upstream issues surface (busybox wget; Host matches server_name in conf.d).
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null --header='Host: messenger.bialger.com' http://127.0.0.1/v1/health || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - vox_net
 
