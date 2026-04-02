@@ -45,8 +45,8 @@ public:
   virtual std::optional<SyncKeyBundleRecord> GetSyncKeyBundle(const common::UserId& user_id) = 0;
   virtual common::VoidResult SetSyncKeyBundle(const common::UserId& user_id, const SyncKeyBundleRecord& bundle) = 0;
   virtual common::VoidResult UpdatePasswordCredentials(const common::UserId& user_id,
-                                                      const std::string& password_salt,
-                                                      const std::string& password_verifier) = 0;
+                                                       const std::string& password_salt,
+                                                       const std::string& password_verifier) = 0;
 };
 
 class UserRepository : public IUserRepository {

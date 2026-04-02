@@ -77,7 +77,7 @@ public:
   virtual common::VoidResult LogoutWithAccessToken(const std::string& access_token) = 0;
   virtual common::Result<TokenPair> Refresh(const RefreshRequest& request) = 0;
   virtual common::Result<ChangePasswordResponse> ChangePassword(const common::UserId& user_id,
-                                                               const ChangePasswordRequest& request) = 0;
+                                                                const ChangePasswordRequest& request) = 0;
 };
 
 class AuthService : public IAuthService {
@@ -94,7 +94,7 @@ public:
   common::VoidResult LogoutWithAccessToken(const std::string& access_token) override;
   common::Result<TokenPair> Refresh(const RefreshRequest& request) override;
   common::Result<ChangePasswordResponse> ChangePassword(const common::UserId& user_id,
-                                                         const ChangePasswordRequest& request) override;
+                                                        const ChangePasswordRequest& request) override;
 
 private:
   common::Timestamp Now();

@@ -96,8 +96,8 @@ public:
                                                   std::size_t limit) override;
 
   EnvelopePage ListForConversationCursored(const common::ConversationId& conversation_id,
-                                             const std::string& cursor,
-                                             std::size_t limit) override;
+                                           const std::string& cursor,
+                                           std::size_t limit) override;
   common::VoidResult MarkDelivered(const common::EnvelopeId& envelope_id,
                                    const common::DeviceId& device_id,
                                    common::Timestamp now) override;

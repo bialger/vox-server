@@ -44,20 +44,20 @@ public:
                                                  std::size_t limit) = 0;
 
   virtual common::Result<SyncPutResult> UpsertRecord(const common::UserId& user_id,
-                                                    const std::string& collection,
-                                                    const std::string& record_id,
-                                                    const std::string& ciphertext,
-                                                    const std::string& content_hash,
-                                                    int base_version,
-                                                    common::Timestamp client_updated_at,
-                                                    common::Timestamp server_now) = 0;
+                                                     const std::string& collection,
+                                                     const std::string& record_id,
+                                                     const std::string& ciphertext,
+                                                     const std::string& content_hash,
+                                                     int base_version,
+                                                     common::Timestamp client_updated_at,
+                                                     common::Timestamp server_now) = 0;
 
   virtual common::Result<SyncPutResult> TombstoneRecord(const common::UserId& user_id,
-                                                       const std::string& collection,
-                                                       const std::string& record_id,
-                                                       int base_version,
-                                                       common::Timestamp client_updated_at,
-                                                       common::Timestamp server_now) = 0;
+                                                        const std::string& collection,
+                                                        const std::string& record_id,
+                                                        int base_version,
+                                                        common::Timestamp client_updated_at,
+                                                        common::Timestamp server_now) = 0;
 };
 
 class SyncStateRepository : public ISyncStateRepository {
@@ -65,25 +65,25 @@ public:
   explicit SyncStateRepository(IDatabase& db);
 
   SyncChangesPage ListChangesAfterCursor(const common::UserId& user_id,
-                                        const std::string& collection,
-                                        const std::string& cursor,
-                                        std::size_t limit) override;
+                                         const std::string& collection,
+                                         const std::string& cursor,
+                                         std::size_t limit) override;
 
   common::Result<SyncPutResult> UpsertRecord(const common::UserId& user_id,
-                                            const std::string& collection,
-                                            const std::string& record_id,
-                                            const std::string& ciphertext,
-                                            const std::string& content_hash,
-                                            int base_version,
-                                            common::Timestamp client_updated_at,
-                                            common::Timestamp server_now) override;
+                                             const std::string& collection,
+                                             const std::string& record_id,
+                                             const std::string& ciphertext,
+                                             const std::string& content_hash,
+                                             int base_version,
+                                             common::Timestamp client_updated_at,
+                                             common::Timestamp server_now) override;
 
   common::Result<SyncPutResult> TombstoneRecord(const common::UserId& user_id,
-                                               const std::string& collection,
-                                               const std::string& record_id,
-                                               int base_version,
-                                               common::Timestamp client_updated_at,
-                                               common::Timestamp server_now) override;
+                                                const std::string& collection,
+                                                const std::string& record_id,
+                                                int base_version,
+                                                common::Timestamp client_updated_at,
+                                                common::Timestamp server_now) override;
 
 private:
   IDatabase& db_;

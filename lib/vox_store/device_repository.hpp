@@ -51,9 +51,9 @@ public:
   virtual common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) = 0;
 
   virtual common::VoidResult UpdateSignedPrekey(const common::DeviceId& device_id,
-                                               const std::string& signed_prekey_public,
-                                               const std::string& signed_prekey_signature,
-                                               common::Timestamp now) = 0;
+                                                const std::string& signed_prekey_public,
+                                                const std::string& signed_prekey_signature,
+                                                common::Timestamp now) = 0;
 
   virtual common::VoidResult RevokeDevice(const common::DeviceId& device_id, common::Timestamp now) = 0;
 
@@ -75,9 +75,9 @@ public:
   common::Result<PrekeyRecord> ConsumeOneTimePrekey(const common::DeviceId& device_id) override;
 
   common::VoidResult UpdateSignedPrekey(const common::DeviceId& device_id,
-                                       const std::string& signed_prekey_public,
-                                       const std::string& signed_prekey_signature,
-                                       common::Timestamp now) override;
+                                        const std::string& signed_prekey_public,
+                                        const std::string& signed_prekey_signature,
+                                        common::Timestamp now) override;
 
   common::VoidResult RevokeDevice(const common::DeviceId& device_id, common::Timestamp now) override;
 
