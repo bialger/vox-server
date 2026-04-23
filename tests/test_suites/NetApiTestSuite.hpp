@@ -28,9 +28,9 @@
 #include "lib/vox_store/database.hpp"
 #include "lib/vox_store/device_repository.hpp"
 #include "lib/vox_store/envelope_repository.hpp"
+#include "lib/vox_store/sdui_repository.hpp"
 #include "lib/vox_store/session_repository.hpp"
 #include "lib/vox_store/sync_state_repository.hpp"
-#include "lib/vox_store/sdui_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 #include "ProjectIntegrationTestSuite.hpp"

@@ -1,10 +1,10 @@
 #include "lib/vox_net/http_dispatch.hpp"
 
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <fstream>
 #include <optional>
-#include <array>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -554,8 +554,7 @@ boost::json::object BuildSduiEulaUpdateScreen(const common::ServerConfig& cfg, b
 
   if (include_eula) {
     body.push_back(boost::json::object{{"type", "text"}, {"style", "title"}, {"value", "EULA"}});
-    body.push_back(
-        boost::json::object{{"type", "text"}, {"style", "body"}, {"value", ResolveEulaText(cfg)}});
+    body.push_back(boost::json::object{{"type", "text"}, {"style", "body"}, {"value", ResolveEulaText(cfg)}});
 
     if (!cfg.sdui_repo_url.empty()) {
       body.push_back(boost::json::object{
@@ -639,7 +638,11 @@ boost::json::object BuildSduiEulaUpdateScreen(const common::ServerConfig& cfg, b
 }
 
 template<typename ParseBody>
-OptRes TryPublicSdui(ServerContext& ctx, const HttpRequest& req, http::verb m, std::string_view path, unsigned ver,
+OptRes TryPublicSdui(ServerContext& ctx,
+                     const HttpRequest& req,
+                     http::verb m,
+                     std::string_view path,
+                     unsigned ver,
                      ParseBody&& parse_body) {
   if (m == http::verb::get && path == "/v1/sdui/screen") {
     const auto platform = QueryParam(req.target(), "platform").value_or("");
@@ -659,11 +662,11 @@ OptRes TryPublicSdui(ServerContext& ctx, const HttpRequest& req, http::verb m, s
       return ErrRes(ver, kHttpBadRequest, e);
     }
 
-    const std::string eula_version = ctx.config.sdui_eula_version.empty() ? std::string("unspecified")
-                                                                          : ctx.config.sdui_eula_version;
+    const std::string eula_version =
+        ctx.config.sdui_eula_version.empty() ? std::string("unspecified") : ctx.config.sdui_eula_version;
     const bool need_eula = !ctx.sdui.HasAcceptedEula(device_id, eula_version);
-    const bool need_update =
-        (ctx.config.sdui_latest_client_version_code > 0) && (app_version_code < ctx.config.sdui_latest_client_version_code);
+    const bool need_update = (ctx.config.sdui_latest_client_version_code > 0) &&
+                             (app_version_code < ctx.config.sdui_latest_client_version_code);
     if (!need_eula && !need_update) {
       return JsonRes(ver, kHttpOk, nullptr);
     }
@@ -692,7 +695,7 @@ OptRes TryPublicSdui(ServerContext& ctx, const HttpRequest& req, http::verb m, s
 
     std::optional<common::Timestamp> client_time;
     if (auto ct = JsonInt(o, "client_time")) {
-      client_time = *ct;
+      client_time = ct;
     }
 
     const common::Timestamp now = NowSeconds();

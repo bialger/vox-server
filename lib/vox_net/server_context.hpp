@@ -17,8 +17,8 @@
 #include "lib/vox_store/conversation_repository.hpp"
 #include "lib/vox_store/device_repository.hpp"
 #include "lib/vox_store/envelope_repository.hpp"
-#include "lib/vox_store/sync_state_repository.hpp"
 #include "lib/vox_store/sdui_repository.hpp"
+#include "lib/vox_store/sync_state_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 namespace vox::net {

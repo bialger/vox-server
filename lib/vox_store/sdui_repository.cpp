@@ -1,10 +1,12 @@
 #include "lib/vox_store/sdui_repository.hpp"
 
 #include <SQLiteCpp/SQLiteCpp.h>
+#include <cstdint>
 
 namespace vox::store {
 
-SduiRepository::SduiRepository(IDatabase& db) : db_(db) {}
+SduiRepository::SduiRepository(IDatabase& db) : db_(db) {
+}
 
 bool SduiRepository::HasAcceptedEula(const std::string& device_id, const std::string& eula_version) {
   auto lk = db_.ReadLock();
@@ -20,13 +22,12 @@ common::Result<void> SduiRepository::UpsertEulaAcceptance(const std::string& dev
                                                           common::Timestamp accepted_at) {
   try {
     auto lk = db_.WriteLock();
-    SQLite::Statement st(
-        db_.Connection(),
-        "INSERT INTO sdui_eula_acceptances(device_id, eula_version, accepted_at) VALUES(?, ?, ?) "
-        "ON CONFLICT(device_id, eula_version) DO UPDATE SET accepted_at = excluded.accepted_at");
+    SQLite::Statement st(db_.Connection(),
+                         "INSERT INTO sdui_eula_acceptances(device_id, eula_version, accepted_at) VALUES(?, ?, ?) "
+                         "ON CONFLICT(device_id, eula_version) DO UPDATE SET accepted_at = excluded.accepted_at");
     st.bind(1, device_id);
     st.bind(2, eula_version);
-    st.bind(3, static_cast<long long>(accepted_at));
+    st.bind(3, static_cast<std::int64_t>(accepted_at));
     st.exec();
     return common::Result<void>{};
   } catch (const SQLite::Exception& e) {
@@ -61,11 +62,11 @@ common::Result<void> SduiRepository::InsertEvent(const std::string& device_id,
       st.bind(kBindMetaJson);
     }
     if (client_time.has_value()) {
-      st.bind(kBindClientTime, static_cast<long long>(*client_time));
+      st.bind(kBindClientTime, static_cast<std::int64_t>(*client_time));
     } else {
       st.bind(kBindClientTime);
     }
-    st.bind(kBindServerTime, static_cast<long long>(server_time));
+    st.bind(kBindServerTime, static_cast<std::int64_t>(server_time));
     st.exec();
     return common::Result<void>{};
   } catch (const SQLite::Exception& e) {
