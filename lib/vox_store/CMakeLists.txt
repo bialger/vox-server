@@ -28,6 +28,7 @@ add_library(vox_store STATIC
         envelope_repository.cpp
         attachment_repository.cpp
         sync_state_repository.cpp
+        sdui_repository.cpp
 )
 
 target_include_directories(vox_store PUBLIC ${CMAKE_SOURCE_DIR})

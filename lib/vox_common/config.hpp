@@ -52,6 +52,19 @@ struct ServerConfig {
   std::uint32_t argon2_memory_cost = 65536; // 64 MB
   std::uint32_t argon2_parallelism = 1;
 
+  // --- SDUI (public, unauth) ---
+  // When empty, SDUI routes may still respond but will omit optional links/text.
+  std::string sdui_repo_url;
+  std::string sdui_android_store_url;
+  /// Path to a UTF-8 text file with the EULA. Preferred over `sdui_eula_text`.
+  /// Example: `/etc/vox/eula.txt` (container) or `C:\\vox\\eula.txt` (Windows).
+  std::string sdui_eula_path;
+  /// Inline EULA text (legacy fallback). Prefer `sdui_eula_path`.
+  std::string sdui_eula_text;
+  std::string sdui_eula_version;
+  std::int64_t sdui_min_client_version_code = 0;
+  std::int64_t sdui_latest_client_version_code = 0;
+
   static ServerConfig Default();
 };
 

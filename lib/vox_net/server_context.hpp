@@ -18,6 +18,7 @@
 #include "lib/vox_store/device_repository.hpp"
 #include "lib/vox_store/envelope_repository.hpp"
 #include "lib/vox_store/sync_state_repository.hpp"
+#include "lib/vox_store/sdui_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 namespace vox::net {
@@ -35,6 +36,7 @@ struct ServerContext {
   vox::store::IDeviceRepository& devices;
   vox::store::IUserRepository& users;
   vox::store::ISyncStateRepository& sync_state;
+  vox::store::ISduiRepository& sdui;
   vox::attachments::IAttachmentService& attachments;
   vox::admin::IAdminService& admin;
   /// Optional; when non-null, limits auth endpoint frequency per client IP.

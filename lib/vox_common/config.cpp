@@ -208,6 +208,33 @@ bool ApplyKey(std::string_view key, std::string_view value, ServerConfig& c, std
     return u64_u32(c.argon2_parallelism);
   }
 
+  if (key == "sdui_repo_url") {
+    c.sdui_repo_url = ParseStringValue(value);
+    return true;
+  }
+  if (key == "sdui_android_store_url") {
+    c.sdui_android_store_url = ParseStringValue(value);
+    return true;
+  }
+  if (key == "sdui_eula_path") {
+    c.sdui_eula_path = ParseStringValue(value);
+    return true;
+  }
+  if (key == "sdui_eula_text") {
+    c.sdui_eula_text = ParseStringValue(value);
+    return true;
+  }
+  if (key == "sdui_eula_version") {
+    c.sdui_eula_version = ParseStringValue(value);
+    return true;
+  }
+  if (key == "sdui_min_client_version_code") {
+    return i64(c.sdui_min_client_version_code);
+  }
+  if (key == "sdui_latest_client_version_code") {
+    return i64(c.sdui_latest_client_version_code);
+  }
+
   spdlog::warn("vox.conf:{}: unknown key '{}' (ignored)", line_no, key);
   return true;
 }

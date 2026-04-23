@@ -2,7 +2,9 @@
 
 #include <chrono>
 #include <cstring>
+#include <fstream>
 #include <optional>
+#include <array>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -129,6 +131,42 @@ common::Timestamp NowSeconds() {
 }
 
 using OptRes = std::optional<HttpResponse>;
+
+std::optional<std::string> TryReadTextFile(const std::string& path, std::size_t max_bytes) {
+  std::ifstream in(path, std::ios::binary);
+  if (!in) {
+    return std::nullopt;
+  }
+  std::string s;
+  constexpr std::size_t kChunkSize = 4096;
+  s.reserve(std::min<std::size_t>(max_bytes, kChunkSize));
+  std::array<char, kChunkSize> buf{};
+  while (in && s.size() < max_bytes) {
+    const std::size_t to_read = std::min<std::size_t>(buf.size(), max_bytes - s.size());
+    in.read(buf.data(), static_cast<std::streamsize>(to_read));
+    const auto got = static_cast<std::size_t>(in.gcount());
+    if (got == 0) {
+      break;
+    }
+    s.append(buf.data(), got);
+  }
+  return s;
+}
+
+std::string ResolveEulaText(const common::ServerConfig& cfg) {
+  if (!cfg.sdui_eula_path.empty()) {
+    // Keep this bounded to avoid huge SDUI payloads by mistake.
+    constexpr std::size_t kMaxEulaBytes = static_cast<std::size_t>(256) * static_cast<std::size_t>(1024);
+    if (auto s = TryReadTextFile(cfg.sdui_eula_path, kMaxEulaBytes)) {
+      return *s;
+    }
+    return "EULA file cannot be read from sdui_eula_path.";
+  }
+  if (!cfg.sdui_eula_text.empty()) {
+    return cfg.sdui_eula_text;
+  }
+  return "EULA is not configured on the server.";
+}
 
 boost::json::object ErrObj(const common::Error& e) {
   boost::json::object o;
@@ -501,6 +539,190 @@ OptRes TryAdmin(ServerContext& ctx, const HttpRequest& req, http::verb m, std::s
       return ErrRes(ver, HttpStatusForError(result.error().code), result.error());
     }
     return JsonRes(ver, kHttpOk, boost::json::object{});
+  }
+
+  return std::nullopt;
+}
+
+boost::json::object BuildSduiEulaUpdateScreen(const common::ServerConfig& cfg, bool include_eula, bool include_update) {
+  boost::json::object out;
+  out["schema_version"] = 1;
+  out["screen_id"] = "eula_update";
+  out["title"] = "End User License Agreement";
+
+  boost::json::array body;
+
+  if (include_eula) {
+    body.push_back(boost::json::object{{"type", "text"}, {"style", "title"}, {"value", "EULA"}});
+    body.push_back(
+        boost::json::object{{"type", "text"}, {"style", "body"}, {"value", ResolveEulaText(cfg)}});
+
+    if (!cfg.sdui_repo_url.empty()) {
+      body.push_back(boost::json::object{
+          {"type", "link"},
+          {"style", "body"},
+          {"label", "Repository"},
+          {"url", cfg.sdui_repo_url},
+      });
+    }
+
+    boost::json::array buttons;
+    buttons.push_back(boost::json::object{
+        {"style", "secondary"},
+        {"value", "Decline"},
+        {"action", boost::json::object{{"type", "post_event"}, {"event", "eula_declined"}}},
+    });
+    buttons.push_back(boost::json::object{
+        {"style", "primary"},
+        {"value", "Accept"},
+        {"action", boost::json::object{{"type", "post_event"}, {"event", "eula_accepted"}}},
+    });
+    body.push_back(boost::json::object{{"type", "button_row"}, {"buttons", buttons}});
+  }
+
+  if (include_eula && include_update) {
+    body.push_back(boost::json::object{{"type", "divider"}});
+  }
+
+  if (include_update) {
+    body.push_back(boost::json::object{{"type", "text"}, {"style", "title"}, {"value", "Update available"}});
+    body.push_back(
+        boost::json::object{{"type", "text"}, {"style", "body"}, {"value", "A newer version is available."}});
+
+    // Soft update: allow closing.
+    body.push_back(boost::json::object{
+        {"type", "button"},
+        {"style", "secondary"},
+        {"value", "Later"},
+        {"action", boost::json::object{{"type", "close"}}},
+    });
+
+    if (!cfg.sdui_android_store_url.empty()) {
+      body.push_back(boost::json::object{
+          {"type", "button"},
+          {"style", "primary"},
+          {"value", "Update"},
+          {"action", boost::json::object{{"type", "open_url"}, {"url", cfg.sdui_android_store_url}}},
+      });
+    } else if (!cfg.sdui_repo_url.empty()) {
+      // Temporary fallback: when there's no store listing yet, reuse repository URL.
+      body.push_back(boost::json::object{
+          {"type", "button"},
+          {"style", "primary"},
+          {"value", "Update"},
+          {"action", boost::json::object{{"type", "open_url"}, {"url", cfg.sdui_repo_url}}},
+      });
+    } else {
+      body.push_back(boost::json::object{
+          {"type", "button"},
+          {"style", "primary"},
+          {"value", "Update"},
+          {"action", boost::json::object{{"type", "close"}}},
+      });
+    }
+  }
+
+  out["body"] = body;
+
+  boost::json::object meta;
+  if (!cfg.sdui_eula_version.empty()) {
+    meta["eula_version"] = cfg.sdui_eula_version;
+  } else {
+    meta["eula_version"] = "unspecified";
+  }
+  meta["min_client_version_code"] = cfg.sdui_min_client_version_code;
+  meta["latest_client_version_code"] = cfg.sdui_latest_client_version_code;
+  meta["update_policy"] = "soft";
+  out["meta"] = meta;
+
+  return out;
+}
+
+template<typename ParseBody>
+OptRes TryPublicSdui(ServerContext& ctx, const HttpRequest& req, http::verb m, std::string_view path, unsigned ver,
+                     ParseBody&& parse_body) {
+  if (m == http::verb::get && path == "/v1/sdui/screen") {
+    const auto platform = QueryParam(req.target(), "platform").value_or("");
+    const auto device_id = QueryParam(req.target(), "device_id").value_or("");
+    const auto app_vc = QueryParam(req.target(), "app_version_code").value_or("");
+    if (platform != "android" || device_id.empty() || app_vc.empty()) {
+      common::Error e{.code = common::ErrorCode::kInvalidArgument,
+                      .message = "Required query params: platform=android, device_id, app_version_code"};
+      return ErrRes(ver, kHttpBadRequest, e);
+    }
+
+    std::int64_t app_version_code = 0;
+    try {
+      app_version_code = std::stoll(app_vc);
+    } catch (...) {
+      common::Error e{.code = common::ErrorCode::kInvalidArgument, .message = "Invalid app_version_code"};
+      return ErrRes(ver, kHttpBadRequest, e);
+    }
+
+    const std::string eula_version = ctx.config.sdui_eula_version.empty() ? std::string("unspecified")
+                                                                          : ctx.config.sdui_eula_version;
+    const bool need_eula = !ctx.sdui.HasAcceptedEula(device_id, eula_version);
+    const bool need_update =
+        (ctx.config.sdui_latest_client_version_code > 0) && (app_version_code < ctx.config.sdui_latest_client_version_code);
+    if (!need_eula && !need_update) {
+      return JsonRes(ver, kHttpOk, nullptr);
+    }
+    return JsonRes(ver, kHttpOk, BuildSduiEulaUpdateScreen(ctx.config, need_eula, need_update));
+  }
+
+  if (m == http::verb::post && path == "/v1/sdui/event") {
+    boost::json::object o;
+    if (auto br = std::forward<ParseBody>(parse_body)(o)) {
+      return std::move(br);
+    }
+
+    const std::string device_id = JsonString(o, "device_id").value_or("");
+    const std::string screen_id = JsonString(o, "screen_id").value_or("");
+    const std::string event = JsonString(o, "event").value_or("");
+    if (device_id.empty() || screen_id.empty() || event.empty()) {
+      common::Error e{.code = common::ErrorCode::kInvalidArgument,
+                      .message = "Required fields: device_id, screen_id, event"};
+      return ErrRes(ver, kHttpBadRequest, e);
+    }
+
+    std::optional<std::string> meta_json;
+    if (o.contains("meta")) {
+      meta_json = boost::json::serialize(o.at("meta"));
+    }
+
+    std::optional<common::Timestamp> client_time;
+    if (auto ct = JsonInt(o, "client_time")) {
+      client_time = *ct;
+    }
+
+    const common::Timestamp now = NowSeconds();
+
+    // Record generic event (best-effort).
+    if (auto r = ctx.sdui.InsertEvent(device_id, screen_id, event, meta_json, client_time, now); !r) {
+      return ErrRes(ver, HttpStatusForError(r.error().code), r.error());
+    }
+
+    // EULA acceptance updates the acceptance table (idempotent).
+    if (event == "eula_accepted") {
+      std::string use_version;
+      if (o.contains("meta") && o.at("meta").is_object()) {
+        auto& mo = o.at("meta").as_object();
+        use_version = JsonString(mo, "eula_version").value_or("");
+      }
+      if (use_version.empty()) {
+        use_version = ctx.config.sdui_eula_version;
+      }
+      if (use_version.empty()) {
+        use_version = "unspecified";
+      }
+      if (auto r = ctx.sdui.UpsertEulaAcceptance(device_id, use_version, now); !r) {
+        return ErrRes(ver, HttpStatusForError(r.error().code), r.error());
+      }
+    }
+
+    boost::json::object out;
+    out["ok"] = true;
+    return JsonRes(ver, kHttpOk, out);
   }
 
   return std::nullopt;
@@ -1753,6 +1975,10 @@ HttpResponse DispatchHttp(ServerContext& ctx,
     boost::json::object out;
     out["status"] = "ok";
     return detail::JsonRes(ver, detail::kHttpOk, out);
+  }
+
+  if (auto r = detail::TryPublicSdui(ctx, req, m, path, ver, parse_body)) {
+    return std::move(*r);
   }
 
   if (auto r = detail::TryPublicAuth(ctx, m, path, ver, parse_body)) {

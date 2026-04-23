@@ -229,6 +229,27 @@ void Database::CreateSchema() {
       "CREATE INDEX IF NOT EXISTS idx_sync_records_user_coll_time ON sync_records (user_id, collection, "
       "server_updated_at, id)");
 
+  db_->exec(R"SQL(
+    CREATE TABLE IF NOT EXISTS sdui_eula_acceptances (
+      device_id     TEXT NOT NULL,
+      eula_version  TEXT NOT NULL,
+      accepted_at   INTEGER NOT NULL,
+      PRIMARY KEY (device_id, eula_version)
+    )
+  )SQL");
+
+  db_->exec(R"SQL(
+    CREATE TABLE IF NOT EXISTS sdui_events (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      device_id     TEXT NOT NULL,
+      screen_id     TEXT NOT NULL,
+      event         TEXT NOT NULL,
+      meta_json     TEXT,
+      client_time   INTEGER,
+      server_time   INTEGER NOT NULL
+    )
+  )SQL");
+
   MigrateLegacySchema();
 }
 
