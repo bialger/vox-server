@@ -137,6 +137,139 @@ Use this for load balancers, uptime checks, or a quick sanity check. Auth routes
 
 ---
 
+## SDUI (Server-Driven UI)
+
+SDUI endpoints return a **declarative screen description** (JSON). The mobile client renders the UI based on component `type`, `style`, and `action` objects.
+
+Notes:
+
+- The client must treat unknown `type` / `action.type` as **unsupported** and ignore them safely.
+- The server includes `schema_version` for forward compatibility.
+
+### `GET /v1/sdui/screen`
+
+Return a screen description for the given client context, or `null` if there is nothing to show.
+
+**Auth:** none
+
+**Behavior (current implementation)**
+
+- The server returns the `eula_update` screen when either:
+  - EULA for `meta.eula_version` has **not** been accepted for this `device_id`, or
+  - `sdui_latest_client_version_code > app_version_code` (soft update available).
+- Otherwise it returns `null`.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `platform` | string | yes | Currently only `android` |
+| `device_id` | string | yes | Stable device/install id |
+| `app_version_code` | integer | yes | Android `versionCode` |
+| `app_version_name` | string | no | Android `versionName` (optional) |
+| `locale` | string | no | BCP-47 locale (e.g. `ru-RU`) |
+
+**Response `200`** (`application/json`)
+
+Either `null`, or a screen object:
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `schema_version` | integer | SDUI schema version (currently `1`) |
+| `screen_id` | string | Screen identifier (stable) |
+| `title` | string | Screen title |
+| `body` | array | List of components |
+| `meta` | object | Screen-specific metadata |
+
+**Example `200` (no screen)**
+
+```json
+null
+```
+
+**Example `200` (EULA + soft update)**
+
+```json
+{
+  "schema_version": 1,
+  "screen_id": "eula_update",
+  "title": "End User License Agreement",
+  "body": [
+    { "type": "text", "style": "title", "value": "EULA" },
+    { "type": "text", "style": "body", "value": "..." },
+    { "type": "link", "style": "body", "label": "Repository", "url": "https://github.com/<org>/<repo>" },
+    { "type": "divider" },
+    { "type": "text", "style": "title", "value": "Update available" },
+    { "type": "text", "style": "body", "value": "A newer version is available." },
+    { "type": "button", "style": "secondary", "value": "Later", "action": { "type": "close" } },
+    {
+      "type": "button",
+      "style": "primary",
+      "value": "Update",
+      "action": { "type": "open_url", "url": "https://play.google.com/store/apps/details?id=<pkg>" }
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        { "style": "secondary", "value": "Decline", "action": { "type": "post_event", "event": "eula_declined" } },
+        { "style": "primary", "value": "Accept",  "action": { "type": "post_event", "event": "eula_accepted" } }
+      ]
+    }
+  ],
+  "meta": {
+    "eula_version": "2026-04-23",
+    "min_client_version_code": 100,
+    "latest_client_version_code": 123,
+    "update_policy": "soft"
+  }
+}
+```
+
+### `POST /v1/sdui/event`
+
+Record a client-side SDUI event (telemetry and state transitions such as EULA acceptance).
+
+**Auth:** none
+
+**Request body** (`application/json`)
+
+| Field | Type | Required | Description |
+| ----- | ---- | -------- | ----------- |
+| `device_id` | string | yes | Stable device/install id |
+| `screen_id` | string | yes | Screen identifier |
+| `event` | string | yes | Event name (e.g. `eula_accepted`) |
+| `meta` | object | no | Event-specific metadata (stored as JSON) |
+| `client_time` | integer | no | Client Unix seconds (optional) |
+
+**Response `200`** (`application/json`)
+
+```json
+{ "ok": true }
+```
+
+**Behavior (current implementation)**
+
+- When `event = "eula_accepted"`, the server stores `(device_id, eula_version)` acceptance (idempotent).
+- Other events are stored as telemetry only.
+
+#### Component types (schema_version = 1)
+
+`body[]` elements are objects with `type`:
+
+- `text`: `{ "type":"text", "style":"title|body", "value":"..." }`
+- `link`: `{ "type":"link", "style":"body", "label":"...", "url":"https://..." }`
+- `divider`: `{ "type":"divider" }`
+- `button`: `{ "type":"button", "style":"primary|secondary", "value":"...", "action": { ... } }`
+- `button_row`: `{ "type":"button_row", "buttons": [ { ...buttonWithoutType... } ] }`
+
+#### Action types (schema_version = 1)
+
+- `close`: `{ "type":"close" }`
+- `open_url`: `{ "type":"open_url", "url":"https://..." }`
+- `post_event`: `{ "type":"post_event", "event":"eula_accepted" }`
+
+---
+
 ### `POST /v1/register`
 
 Create a new user and create the first device session.

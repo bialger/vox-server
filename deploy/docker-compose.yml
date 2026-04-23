@@ -8,6 +8,9 @@ services:
     volumes:
       - vox_data:/data
       - ./vox.conf:/etc/vox.conf:ro
+      # SDUI EULA text (example file in repo: deploy/eula.example.txt)
+      # Put your actual EULA in deploy/eula.txt on the server.
+      - ./eula.txt:/etc/vox/eula.txt:ro
     environment:
       VOX_SESSION_PEPPER: ${VOX_SESSION_PEPPER:?set VOX_SESSION_PEPPER in .env}
       VOX_ADMIN_TOKEN: ${VOX_ADMIN_TOKEN:-}

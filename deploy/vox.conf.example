@@ -42,6 +42,23 @@ argon2_time_cost = 3
 argon2_memory_cost = 65536
 argon2_parallelism = 1
 
+# --- SDUI (public, unauth): EULA + update ---
+#
+# Repo link shown on the EULA screen and (temporarily) used as Update URL fallback
+# when `sdui_android_store_url` is empty.
+sdui_repo_url = https://github.com/bialger/VoxMessenger
+#
+# Later: set to Play Store listing URL. If empty, Update button will open `sdui_repo_url`.
+# sdui_android_store_url =
+#
+# EULA is read from this file (UTF-8). In Docker Compose, mount it into the container.
+sdui_eula_path = /etc/vox/eula.txt
+sdui_eula_version = 2026-04-23
+#
+# If `sdui_latest_client_version_code` is set and greater than the client's app_version_code,
+# the SDUI screen will include a soft update block.
+# sdui_latest_client_version_code = 0
+
 # --- optional: leave empty and use VOX_SESSION_PEPPER / VOX_ADMIN_TOKEN in .env ---
 # session_token_pepper =
 # admin_token =

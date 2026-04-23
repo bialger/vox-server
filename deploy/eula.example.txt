@@ -1,0 +1,19 @@
+VOX End User License Agreement (EULA)
+Version: 2026-04-23
+
+1. Overview
+This is an example EULA text file for the Vox server SDUI screen.
+Replace this content with your actual EULA.
+
+2. License Grant
+Subject to your compliance with this EULA, you are granted a limited, non-exclusive,
+non-transferable, revocable license to use the Vox client application.
+
+3. No Warranty
+The software is provided "AS IS", without warranty of any kind.
+
+4. Source Code
+Repository: https://github.com/bialger/VoxMessenger
+
+5. Contact
+<your-contact-here>

@@ -243,6 +243,35 @@ Full reference (request/response shapes, auth, errors, WebSocket, health): **[AP
 
 Summary: JSON bodies use `Content-Type: application/json`. Authenticated routes use `Authorization: Bearer <access_token>` unless noted. Admin routes use `X-Admin-Token` when the server is configured with an admin token. Unauthenticated **`GET /v1/health`** returns `{"status":"ok"}` for probes (no Bearer).
 
+## SDUI (EULA + update) configuration
+
+The server exposes SDUI endpoints (see `API.md`) and can show a public (unauth) screen with:
+
+- EULA text (loaded from a file)
+- repository link
+- optional soft update prompt
+
+### Files to edit on the server (Docker deployment)
+
+1. Create an EULA file:
+
+- Start from [`deploy/eula.example.txt`](deploy/eula.example.txt)
+- Copy to `deploy/eula.txt` on the server (this repo does not ship `deploy/eula.txt` by default)
+
+2. Configure SDUI keys in `deploy/vox.conf`:
+
+Use [`deploy/vox.conf.example`](deploy/vox.conf.example) as a reference. Required / common keys:
+
+- `sdui_eula_path = /etc/vox/eula.txt`
+- `sdui_eula_version = 2026-04-23` (bump when the text changes)
+- `sdui_repo_url = https://github.com/bialger/VoxMessenger`
+- `sdui_android_store_url = ...` (optional; if empty, Update button falls back to `sdui_repo_url`)
+- `sdui_latest_client_version_code = 0` (optional; set to a number to show a soft update prompt)
+
+3. Ensure Compose mounts the EULA file:
+
+`deploy/docker-compose.yml` mounts `./eula.txt` into the container at `/etc/vox/eula.txt`.
+
 ## How to build and run tests
 
 ### Unit tests (no Boost)
