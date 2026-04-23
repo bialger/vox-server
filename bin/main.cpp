@@ -41,6 +41,7 @@
 #include "lib/vox_store/envelope_repository.hpp"
 #include "lib/vox_store/session_repository.hpp"
 #include "lib/vox_store/sync_state_repository.hpp"
+#include "lib/vox_store/sdui_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 namespace net = boost::asio;
@@ -153,6 +154,7 @@ int main(int argc, char** argv) {
     vox::store::EnvelopeRepository envelopes(db);
     vox::store::AttachmentRepository attachments(db);
     vox::store::SyncStateRepository sync_state(db);
+    vox::store::SduiRepository sdui(db);
 
     vox::common::ThreadPool cpu_pool(config.cpu_pool_size, config.task_queue_capacity);
     vox::common::ThreadPool storage_pool(config.storage_pool_size, config.task_queue_capacity);
@@ -193,6 +195,7 @@ int main(int argc, char** argv) {
                                 .devices = devices,
                                 .users = users,
                                 .sync_state = sync_state,
+                                .sdui = sdui,
                                 .attachments = attachment_service,
                                 .admin = admin_service,
                                 .auth_rate_limiter = auth_rate_limiter.get(),

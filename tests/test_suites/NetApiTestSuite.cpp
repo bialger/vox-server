@@ -107,6 +107,7 @@ void NetApiTestSuite::SetUp() {
   envelopes_ = std::make_unique<vox::store::EnvelopeRepository>(*db_);
   attachments_ = std::make_unique<vox::store::AttachmentRepository>(*db_);
   sync_state_ = std::make_unique<vox::store::SyncStateRepository>(*db_);
+  sdui_ = std::make_unique<vox::store::SduiRepository>(*db_);
 
   cpu_pool_ = std::make_unique<vox::common::ThreadPool>(kCpuPoolThreads, kCpuQueue);
   storage_pool_ = std::make_unique<vox::common::ThreadPool>(kStoragePoolThreads, kStorageQueue);
@@ -154,6 +155,7 @@ void NetApiTestSuite::SetUp() {
       .devices = *devices_,
       .users = *users_,
       .sync_state = *sync_state_,
+      .sdui = *sdui_,
       .attachments = *attachment_service_,
       .admin = *admin_service_,
       .ws_push = ws_registry_.get(),

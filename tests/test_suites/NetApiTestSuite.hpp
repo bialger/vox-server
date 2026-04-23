@@ -30,6 +30,7 @@
 #include "lib/vox_store/envelope_repository.hpp"
 #include "lib/vox_store/session_repository.hpp"
 #include "lib/vox_store/sync_state_repository.hpp"
+#include "lib/vox_store/sdui_repository.hpp"
 #include "lib/vox_store/user_repository.hpp"
 
 #include "ProjectIntegrationTestSuite.hpp"
@@ -102,6 +103,7 @@ protected:
   std::unique_ptr<vox::store::EnvelopeRepository> envelopes_;
   std::unique_ptr<vox::store::AttachmentRepository> attachments_;
   std::unique_ptr<vox::store::SyncStateRepository> sync_state_;
+  std::unique_ptr<vox::store::SduiRepository> sdui_;
   std::unique_ptr<vox::common::ThreadPool> cpu_pool_;
   std::unique_ptr<vox::common::ThreadPool> storage_pool_;
   std::unique_ptr<vox::auth::PasswordHasher> hasher_;
